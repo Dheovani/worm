@@ -11,13 +11,13 @@
 
 ## Reflexão
 
-- [ ] Implementar descritores de campos tipados com ponteiros para membros.
-- [ ] Definir o conceito C++20 `Reflectable`.
-- [ ] Implementar visitação `ForEachField` sem alocações ou funções virtuais.
+- [x] Implementar descritores de campos tipados com ponteiros para membros.
+- [x] Definir o conceito C++20 `Reflectable`.
+- [x] Implementar visitação `ForEachField` sem alocações ou funções virtuais.
 - [ ] Adicionar metadados de ORM: coluna, chave primária, geração automática e campo ignorado.
 - [ ] Implementar lookup opcional por nome com tratamento de colisão de hash.
 - [ ] Criar snapshots de entidade e detecção de campos alterados.
-- [ ] Criar testes unitários separados para cada componente de reflexão.
+- [x] Criar testes unitários separados para a fundação do subsistema de reflexão.
 
 ## Persistência e ORM
 
