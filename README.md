@@ -33,6 +33,10 @@ Defina `VCPKG_ROOT` apontando para a instalação do vcpkg:
 $env:VCPKG_ROOT = "C:\Users\seu-usuario\vcpkg"
 ```
 
+Copie [.env.example](.env.example) para `.env` e ajuste o driver e as
+credenciais. O valor `database_type` aceita `sqlite`, `postgresql` ou `mysql`;
+para SQLite, `dbname` também pode ser `:memory:`.
+
 ## Configuração e build
 
 No Windows com MSVC, os presets versionados são a forma recomendada:
@@ -95,4 +99,4 @@ worm/
 
 ## Licença
 
-Uma licença ainda não foi definida para o projeto.
+Este projeto é distribuído sob a [licença MIT](LICENSE).
