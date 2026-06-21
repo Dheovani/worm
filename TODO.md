@@ -15,7 +15,7 @@
 - [x] Definir o conceito C++20 `Reflectable`.
 - [x] Implementar visitação `for_each_field` sem alocações ou funções virtuais.
 - [x] Adicionar metadados de ORM: coluna, chave primária, geração automática e campo ignorado.
-- [ ] Implementar lookup opcional por nome com tratamento de colisão de hash.
+- [x] Implementar lookup opcional por nome com tratamento de colisão de hash.
 - [ ] Criar snapshots de entidade e detecção de campos alterados.
 - [x] Criar testes unitários separados para a fundação do subsistema de reflexão.
 
