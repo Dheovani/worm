@@ -1,11 +1,5 @@
 # Roadmap
 
-## Bloqueios atuais
-
-- [ ] Concluir a migração dos helpers de reflexão em `src/utils/helpers.hpp`:
-      incluir os tipos de `std::variant` e remover a referência ao namespace
-      antigo `reflection`.
-
 ## Infraestrutura concluída
 
 - [x] Organizar o código de produção em `src/`.
@@ -13,6 +7,7 @@
 - [x] Adicionar manifesto vcpkg reproduzível.
 - [x] Integrar testes ao CTest fora de `src/`.
 - [x] Cobrir os tipos de erro e os contratos básicos de conexão.
+- [x] Cobrir helpers, hash, logger, factory e injeção de dependências.
 
 ## Reflexão
 

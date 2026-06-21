@@ -9,7 +9,7 @@ de dependências e no desenho de um subsistema de reflexão tipado.
 - clientes para MySQL, PostgreSQL e SQLite;
 - dependências gerenciadas por vcpkg;
 - build organizado em targets CMake namespaced (`Worm::*`);
-- testes unitários para erros e contratos de conexão;
+- testes unitários para erros, conexões e utilitários;
 - teste de integração SQLite executado inteiramente em memória.
 
 O projeto ainda não deve ser considerado pronto para produção. Consulte

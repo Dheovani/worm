@@ -18,7 +18,7 @@ namespace worm
 		ERROR
 	} LogLevel;
 
-	const std::string GetClassName(const char* name)
+	inline const std::string GetClassName(const char* name)
 	{
 		std::string fullFilePath(name);
 		size_t lastSeparator = fullFilePath.find_last_of("/\\");
@@ -31,7 +31,7 @@ namespace worm
 		return fullFilePath.substr(lastSeparator + 1);
 	}
 
-	const std::string GetLogTypeMessage(const LogLevel& type)
+	inline const std::string GetLogTypeMessage(const LogLevel& type)
 	{
 		switch (type)
 		{
@@ -160,4 +160,4 @@ namespace worm
 }
 
 #define LOGGER \
-	worm::utils::Logger(__FILE__, __LINE__)
+	worm::Logger(__FILE__, __LINE__)

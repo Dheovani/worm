@@ -42,10 +42,10 @@ namespace worm
 
 	/** Specialization class for database client dependency */
 	template <>
-	class DependencyInjector<Client>
+	class DependencyInjector<connection::Client>
 	{
 	public:
-		Client& Get() const
+		connection::Client& Get() const
 		{
 			const std::string db = utils::env::GetDatabaseType();
 			Json::Value dbconfig;
