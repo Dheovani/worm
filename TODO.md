@@ -16,7 +16,7 @@
 - [x] Implementar visitação `for_each_field` sem alocações ou funções virtuais.
 - [x] Adicionar metadados de ORM: coluna, chave primária, geração automática e campo ignorado.
 - [x] Implementar lookup opcional por nome com tratamento de colisão de hash.
-- [ ] Criar snapshots de entidade e detecção de campos alterados.
+- [x] Criar snapshots de entidade e detecção de campos alterados.
 - [x] Criar testes unitários separados para a fundação do subsistema de reflexão.
 
 ## Persistência e ORM

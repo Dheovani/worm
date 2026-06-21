@@ -4,4 +4,5 @@
 #include <reflection/field.hpp>
 #include <reflection/lookup.hpp>
 #include <reflection/metadata.hpp>
+#include <reflection/snapshot.hpp>
 #include <reflection/visit.hpp>

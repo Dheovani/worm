@@ -12,3 +12,4 @@ add_worm_reflection_test(WormConceptsTests concepts-tests.cpp Worm.Reflection.Co
 add_worm_reflection_test(WormVisitTests visit-tests.cpp Worm.Reflection.Visit)
 add_worm_reflection_test(WormMetadataTests metadata-tests.cpp Worm.Reflection.Metadata)
 add_worm_reflection_test(WormLookupTests lookup-tests.cpp Worm.Reflection.Lookup)
+add_worm_reflection_test(WormSnapshotTests snapshot-tests.cpp Worm.Reflection.Snapshot)
