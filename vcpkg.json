@@ -3,7 +3,7 @@
   "name": "worm",
   "version-semver": "0.1.0",
   "description": "A C++ ORM inspired by Doctrine",
-  "builtin-baseline": "a0b1c8d3a477c1cb4813d8e127a56961707ca42b",
+  "builtin-baseline": "031f4afe03be385aee354f15be6e6b1fe57497c7",
   "dependencies": [
     "jsoncpp",
     "libmysql",

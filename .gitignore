@@ -1,0 +1,45 @@
+# Codex/local agent metadata
+.agents/
+
+# CMake build trees and generated files
+/build/
+/out/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# Local CMake and vcpkg configuration
+CMakeUserPresets.json
+vcpkg_installed/
+
+# Compiler and linker output
+*.a
+*.dll
+*.dylib
+*.exe
+*.exp
+*.ilk
+*.lib
+*.o
+*.obj
+*.pdb
+*.so
+
+# IDE and editor state
+.idea/
+.vs/
+.vscode/
+*.suo
+*.user
+
+# Runtime configuration and logs
+.env
+.env.*
+*.log
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
