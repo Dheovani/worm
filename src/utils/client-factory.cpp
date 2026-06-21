@@ -1,6 +1,6 @@
 #include <utils/client-factory.hpp>
 #include <connection/mysql-client.hpp>
-#include <connection/pgclient.hpp>
+#include <connection/pg-client.hpp>
 #include <connection/sqlite-client.hpp>
 #include <errors/database-exception.hpp>
 

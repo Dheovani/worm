@@ -29,7 +29,7 @@ option(WORM_BUILD_APP "Build the Worm example executable" ON)
 include(CTest)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
-include(Dependencies)
+include(dependencies)
 
 add_subdirectory(src)
 

@@ -1,4 +1,4 @@
-#include <connection/pgclient.hpp>
+#include <connection/pg-client.hpp>
 
 using worm::connection::PgClient;
 

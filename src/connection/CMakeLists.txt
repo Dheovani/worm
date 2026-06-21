@@ -1,7 +1,7 @@
 add_library(
     WormConnection
     client.cpp
-    pgclient.cpp
+    pg-client.cpp
     mysql-client.cpp
     sqlite-client.cpp
 )

@@ -21,7 +21,7 @@ add_worm_connection_test(
 
 add_worm_connection_test(
     WormPgClientTests
-    pgclient-tests.cpp
+    pg-client-tests.cpp
     Worm.Connection.PgClient
 )
 
