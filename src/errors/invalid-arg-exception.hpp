@@ -2,21 +2,21 @@
 
 #include <exception>
 #include <string>
+#include <utility>
 
 namespace worm
 {
-	class InvalidArgException: public std::exception
-	{
-	private:
-		std::string errorMessage;
+  class InvalidArgException : public std::exception
+  {
+  public:
+    explicit InvalidArgException(std::string message) : message_(std::move(message)) {}
 
-	public:
-		InvalidArgException(const std::string& msg) : errorMessage(msg)
-		{}
+    [[nodiscard]] const char* what() const noexcept override
+    {
+      return message_.c_str();
+    }
 
-		const char* what() const noexcept override
-		{
-			return errorMessage.c_str();
-		}
-	};
-}
+  private:
+    std::string message_;
+  };
+} // namespace worm

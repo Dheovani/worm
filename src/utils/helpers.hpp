@@ -1,88 +1,87 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <string_view>
-#include <cstddef>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
 
-namespace utils
+namespace worm
 {
-	template <typename _Ty>
-	struct is_string_impl : std::false_type {};
+  namespace utils
+  {
+    template <typename Type> struct is_string_impl : std::false_type
+    {};
 
-	template <>
-	struct is_string_impl<std::string> : std::true_type {};
+    template <> struct is_string_impl<std::string> : std::true_type
+    {};
 
-	template <>
-	struct is_string_impl<std::string_view> : std::true_type {};
+    template <> struct is_string_impl<std::string_view> : std::true_type
+    {};
 
-	template <>
-	struct is_string_impl<const char*> : std::true_type {};
+    template <> struct is_string_impl<const char*> : std::true_type
+    {};
 
-	template <>
-	struct is_string_impl<char*> : std::true_type {};
+    template <> struct is_string_impl<char*> : std::true_type
+    {};
 
-	template <typename _Ty>
-	constexpr bool is_string = is_string_impl<std::decay_t<_Ty>>::value;
+    template <typename Type>
+    inline constexpr bool is_string = is_string_impl<std::decay_t<Type>>::value;
 
-	// Checks if a given <typename> is an instance or extends a diferent <typename>
-	template <typename _Base, typename _Derived>
-	constexpr bool instance_of = std::is_base_of_v<_Base, std::remove_pointer_t<_Derived>>;
+    template <typename Base, typename Derived>
+    inline constexpr bool instance_of = std::is_base_of_v<Base, std::remove_pointer_t<Derived>>;
 
-	// Checks for functions
-	template <typename _Ty>
-	constexpr bool is_function = std::is_member_function_pointer_v<_Ty> || std::is_function_v<std::remove_pointer_t<_Ty>>;
+    template <typename Type>
+    inline constexpr bool is_function =
+        std::is_member_function_pointer_v<Type> || std::is_function_v<std::remove_pointer_t<Type>>;
 
-	// Checks for attributes
-	template <typename _Ty>
-	constexpr bool is_attribute = !is_function<_Ty> &&
-		(std::is_member_object_pointer_v<_Ty> || std::is_object_v<std::remove_pointer_t<_Ty>>);
+    template <typename Type>
+    inline constexpr bool is_attribute =
+        !is_function<Type> &&
+        (std::is_member_object_pointer_v<Type> || std::is_object_v<std::remove_pointer_t<Type>>);
 
-	// Returns the index of a given variant option.
-	// If the variant is not found, returns std::variant_npos
-	template <typename _Ty, typename _Var, size_t _Idx = 0>
-	constexpr size_t GetVariantIndex()
-	{
-		if constexpr (_Idx >= std::variant_size_v<_Var>)
-			return std::variant_npos;
-		else if constexpr (std::is_same_v<std::variant_alternative_t<_Idx, _Var>, _Ty>)
-			return _Idx;
-		else
-			return GetVariantIndex<_Ty, _Var, _Idx + 1>();
-	}
+    namespace detail
+    {
+      template <typename Type, typename Variant, std::size_t Index = 0>
+      consteval std::size_t get_variant_index_impl()
+      {
+        if constexpr (Index >= std::variant_size_v<Variant>)
+          return std::variant_npos;
+        else if constexpr (std::is_same_v<std::variant_alternative_t<Index, Variant>, Type>)
+          return Index;
+        else
+          return get_variant_index_impl<Type, Variant, Index + 1>();
+      }
+    } // namespace detail
 
-	template <typename _Ty, typename _Var, size_t _Idx = -1>
-	constexpr size_t get_variant_index = GetVariantIndex<_Ty, _Var, _Idx + 1>();
+    template <typename Type, typename Variant>
+    inline constexpr std::size_t get_variant_index =
+        detail::get_variant_index_impl<Type, Variant>();
 
-	// Checks if a given variant type holds a <typename> option
-	template <typename _Ty, typename _Var>
-	constexpr bool holds_variant_option = get_variant_index<_Ty, _Var> != std::variant_npos;
+    template <typename Type, typename Variant>
+    inline constexpr bool holds_variant_option =
+        get_variant_index<Type, Variant> != std::variant_npos;
 
-	template <typename _Ty, class _Class>
-	struct remove_class_pointer {
-		using type = _Ty;
-	};
+    template <typename Type, typename Class> struct remove_class_pointer
+    {
+      using type = Type;
+    };
 
-	template <typename _Ty, class _Class>
-	struct remove_class_pointer<_Ty _Class::*, _Class> {
-		using type = _Ty;
-	};
+    template <typename Type, typename Class> struct remove_class_pointer<Type Class::*, Class>
+    {
+      using type = Type;
+    };
 
-	// Specialization to remove a class pointers
-	template <typename _Ty, class _Class>
-	using remove_class_pointer_t = typename remove_class_pointer<_Ty, _Class>::type;
+    template <typename Type, typename Class>
+    using remove_class_pointer_t = typename remove_class_pointer<Type, Class>::type;
 
-namespace env
-{
-	// This function searchs for the .env file in the project's root dir
-	const std::string FindEnvInProjectRoot();
-
-	// Loads the .env file from a given path
-	const std::unordered_map<std::string, std::string> LoadFromPath(const std::string& path);
-
-	// Returns the database type from the .env file
-	const std::string GetDatabaseType();
-}
-}
+    namespace env
+    {
+      [[nodiscard]] std::string findInProjectRoot();
+      [[nodiscard]] std::unordered_map<std::string, std::string>
+      loadFromPath(const std::string& path);
+      [[nodiscard]] std::string getDatabaseType();
+    } // namespace env
+  } // namespace utils
+} // namespace worm

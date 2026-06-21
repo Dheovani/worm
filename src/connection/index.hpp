@@ -7,6 +7,6 @@
  */
 
 #include <connection/client.hpp>
-#include <connection/pg-client.hpp>
 #include <connection/mysql-client.hpp>
+#include <connection/pg-client.hpp>
 #include <connection/sqlite-client.hpp>

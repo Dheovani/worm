@@ -1,75 +1,75 @@
 #include <utils/helpers.hpp>
-#include <fstream>
-#include <sstream>
-#include <cstdlib>
-#include <iostream>
-#include <filesystem>
+
 #include <errors/invalid-arg-exception.hpp>
 
-const std::string utils::env::FindEnvInProjectRoot()
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+
+std::string worm::utils::env::findInProjectRoot()
 {
-    std::filesystem::path current = std::filesystem::current_path();
+  std::filesystem::path current = std::filesystem::current_path();
 
-    while (!current.empty()) {
-        std::filesystem::path env_path = current / ".env";
+  while (!current.empty()) {
+    const std::filesystem::path envPath = current / ".env";
 
-        if (std::filesystem::exists(env_path))
-            return env_path.string();
-        else if (current.has_parent_path())
-            current = current.parent_path();
-        else
-            break;
-    }
+    if (std::filesystem::exists(envPath))
+      return envPath.string();
+    if (current.has_parent_path())
+      current = current.parent_path();
+    else
+      break;
+  }
 
-    return "";
+  return {};
 }
 
-const std::unordered_map<std::string, std::string> utils::env::LoadFromPath(const std::string& path)
+std::unordered_map<std::string, std::string> worm::utils::env::loadFromPath(const std::string& path)
 {
-    std::unordered_map<std::string, std::string> vars;
-    std::ifstream file(path);
+  std::unordered_map<std::string, std::string> variables;
+  std::ifstream file(path);
 
-    if (!file.is_open())
-        throw worm::InvalidArgException(("[EnvLoader] Não foi possível abrir o arquivo: " + path));
+  if (!file.is_open())
+    throw InvalidArgException("Unable to open environment file: " + path);
 
-    std::string line;
-    while (std::getline(file, line)) {
-        if (line.empty() || line[0] == '#') continue;
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.empty() || line.front() == '#')
+      continue;
 
-        auto pos = line.find('=');
-        if (pos == std::string::npos) continue;
+    const auto separator = line.find('=');
+    if (separator == std::string::npos)
+      continue;
 
-        std::string key = line.substr(0, pos);
-        std::string value = line.substr(pos + 1);
+    std::string key = line.substr(0, separator);
+    std::string value = line.substr(separator + 1);
 
-        key.erase(0, key.find_first_not_of(" \t"));
-        key.erase(key.find_last_not_of(" \t") + 1);
-        value.erase(0, value.find_first_not_of(" \t\""));
-        value.erase(value.find_last_not_of(" \t\"") + 1);
+    key.erase(0, key.find_first_not_of(" \t"));
+    key.erase(key.find_last_not_of(" \t") + 1);
+    value.erase(0, value.find_first_not_of(" \t\""));
+    value.erase(value.find_last_not_of(" \t\"") + 1);
 
-        vars[key] = value;
+    variables[key] = value;
 #ifdef _WIN32
-        _putenv_s(key.c_str(), value.c_str());
+    _putenv_s(key.c_str(), value.c_str());
 #else
-        setenv(key.c_str(), value.c_str(), 1);
+    setenv(key.c_str(), value.c_str(), 1);
 #endif
-    }
+  }
 
-    return vars;
+  return variables;
 }
 
-const std::string utils::env::GetDatabaseType()
+std::string worm::utils::env::getDatabaseType()
 {
-    std::string path = FindEnvInProjectRoot();
-    
-    if (path.empty())
-        throw worm::InvalidArgException("Path to .env not found. Please configure your .env file in the root directory.");
+  const std::string path = findInProjectRoot();
+  if (path.empty())
+    throw InvalidArgException("The project .env file was not found.");
 
-    std::unordered_map<std::string, std::string> env_vars = LoadFromPath(path);
-    std::string db = env_vars.at("database_type");
+  const auto variables = loadFromPath(path);
+  const auto databaseType = variables.find("database_type");
+  if (databaseType == variables.end() || databaseType->second.empty())
+    throw InvalidArgException("The database_type environment variable is missing.");
 
-    if (db.empty())
-        db = std::getenv("database_type");
-
-    return db;
+  return databaseType->second;
 }

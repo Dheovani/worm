@@ -4,40 +4,40 @@
 #include <string_view>
 #include <vector>
 
-namespace worm::core
+namespace worm
 {
-	enum class Direction
-	{
-		Ascending,
-		Descending
-	};
+  namespace core
+  {
+    enum class Direction
+    {
+      Ascending,
+      Descending
+    };
 
-	class OrderBy
-	{
-	public:
-		explicit OrderBy(
-			std::string column,
-			Direction direction = Direction::Ascending
-		);
+    class OrderBy
+    {
+    public:
+      explicit OrderBy(std::string column, Direction direction = Direction::Ascending);
 
-		[[nodiscard]] const std::string& column() const noexcept;
-		[[nodiscard]] Direction direction() const noexcept;
-		[[nodiscard]] std::string sql() const;
+      [[nodiscard]] const std::string& column() const noexcept;
+      [[nodiscard]] Direction direction() const noexcept;
+      [[nodiscard]] std::string sql() const;
 
-	private:
-		std::string column_;
-		Direction direction_;
-	};
+    private:
+      std::string column_;
+      Direction direction_;
+    };
 
-	class OrderClause
-	{
-	public:
-		OrderClause& add(OrderBy ordering);
+    class OrderClause
+    {
+    public:
+      OrderClause& add(OrderBy ordering);
 
-		[[nodiscard]] bool empty() const noexcept;
-		[[nodiscard]] std::string sql() const;
+      [[nodiscard]] bool empty() const noexcept;
+      [[nodiscard]] std::string sql() const;
 
-	private:
-		std::vector<OrderBy> items_;
-	};
-}
+    private:
+      std::vector<OrderBy> items_;
+    };
+  } // namespace core
+} // namespace worm

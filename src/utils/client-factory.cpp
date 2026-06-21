@@ -1,22 +1,20 @@
 #include <utils/client-factory.hpp>
+
 #include <connection/mysql-client.hpp>
 #include <connection/pg-client.hpp>
 #include <connection/sqlite-client.hpp>
 #include <errors/database-exception.hpp>
 
-worm::connection::Client& worm::GetInstance(const Json::Value& connectionData, const worm::DbTypes& type)
+worm::connection::Client& worm::getInstance(const Json::Value& connectionData, DatabaseType type)
 {
-	switch (type) {
-	case worm::DbTypes::PostgreSQL:
-		return worm::connection::PgClient::GetInstance(connectionData);
-
-	case worm::DbTypes::MySQL:
-		return worm::connection::MySqlClient::GetInstance(connectionData);
-
-	case worm::DbTypes::SQLite:
-		return worm::connection::SqLiteClient::GetInstance(connectionData);
-
-	default:
-		throw worm::DatabaseException("Unsupported Database type.");
-	}
+  switch (type) {
+  case DatabaseType::PostgreSQL:
+    return connection::PgClient::getInstance(connectionData);
+  case DatabaseType::MySQL:
+    return connection::MySqlClient::getInstance(connectionData);
+  case DatabaseType::SQLite:
+    return connection::SqliteClient::getInstance(connectionData);
+  default:
+    throw DatabaseException("Unsupported database type.");
+  }
 }

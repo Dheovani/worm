@@ -1,87 +1,89 @@
 #include <connection/sqlite-client.hpp>
 #include <errors/database-exception.hpp>
 
-using worm::connection::SqLiteClient;
+#include <iostream>
+#include <string>
 
-SqLiteClient::SqLiteClient(const char* dbname)
+using worm::connection::SqliteClient;
+
+SqliteClient::SqliteClient(const char* databaseName)
 {
-	int rc = sqlite3_open(dbname, &conn);
+  int resultCode = sqlite3_open(databaseName, &connection_);
 
-	// Error connecting to DB
-	if (rc != SQLITE_OK)
-		HandleError(CLOSE_CONN);
+  // Error connecting to DB
+  if (resultCode != SQLITE_OK)
+    handleError(ErrorHandlingAction::CloseConnection);
 }
 
-SqLiteClient::~SqLiteClient()
+SqliteClient::~SqliteClient()
 {
-	sqlite3_close(conn);
+  sqlite3_close(connection_);
 }
 
-void SqLiteClient::HandleError(const ErrorHandlingAction& action, sqlite3_stmt* stmt) const
+void SqliteClient::handleError(ErrorHandlingAction action, sqlite3_stmt* statement) const
 {
-	try {
-		const char* msg = sqlite3_errmsg(conn);
+  try {
+    const char* message = sqlite3_errmsg(connection_);
 
-		if (action == CLOSE_CONN) {
-			sqlite3_close(conn);
-			throw worm::DatabaseException(msg);
-		}
-		else if (action == FINALIZE_STMT && stmt) {
-			sqlite3_finalize(stmt);
-			std::cerr << msg << std::endl;
-		}
-	}
-	catch (const std::exception& e) {
-		sqlite3_close(conn);
-		throw worm::DatabaseException(e.what());
-	}
+    if (action == ErrorHandlingAction::CloseConnection) {
+      sqlite3_close(connection_);
+      throw worm::DatabaseException(message);
+    } else if (action == ErrorHandlingAction::FinalizeStatement && statement) {
+      sqlite3_finalize(statement);
+      std::cerr << message << std::endl;
+    }
+  } catch (const std::exception& e) {
+    sqlite3_close(connection_);
+    throw worm::DatabaseException(e.what());
+  }
 }
 
-SqLiteClient& SqLiteClient::GetInstance(const Json::Value& dbconfig) noexcept
+SqliteClient& SqliteClient::getInstance(const Json::Value& databaseConfig)
 {
-	const std::string& dbname = dbconfig["dbname"].asString();
-	static SqLiteClient instance(dbname.c_str());
-	return instance;
+  const std::string databaseName = databaseConfig["dbname"].asString();
+  static SqliteClient instance(databaseName.c_str());
+  return instance;
 }
 
-const Json::Value SqLiteClient::executeQuery(const std::string& query) const
+Json::Value SqliteClient::executeQuery(const std::string& query) const
 {
-	Json::Value results;
-	sqlite3_stmt* stmt;
-	int rc = sqlite3_prepare_v2(conn, query.c_str(), static_cast<int>(query.size()), &stmt, nullptr);
+  Json::Value results;
+  sqlite3_stmt* statement = nullptr;
+  int resultCode = sqlite3_prepare_v2(connection_, query.c_str(), static_cast<int>(query.size()),
+                                      &statement, nullptr);
 
-	if (rc != SQLITE_OK) {
-		std::cerr << sqlite3_errmsg(conn) << std::endl;
+  if (resultCode != SQLITE_OK) {
+    std::cerr << sqlite3_errmsg(connection_) << std::endl;
 
-		if (stmt)
-			HandleError(FINALIZE_STMT, stmt);
+    if (statement)
+      handleError(ErrorHandlingAction::FinalizeStatement, statement);
 
-		return Json::Value();
-	}
+    return Json::Value();
+  }
 
-	if (isSelect(query)) {
-		int columnCount = sqlite3_column_count(stmt);
+  if (isSelect(query)) {
+    int columnCount = sqlite3_column_count(statement);
 
-		while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-			Json::Value result;
+    while ((resultCode = sqlite3_step(statement)) == SQLITE_ROW) {
+      Json::Value result;
 
-			for (int i = 0; i < columnCount; i++) {
-				const char* columnName = reinterpret_cast<const char*>(sqlite3_column_name(stmt, i));
-				const char* columnValue = reinterpret_cast<const char*>(sqlite3_column_text(stmt, i));
+      for (int i = 0; i < columnCount; i++) {
+        const char* columnName = sqlite3_column_name(statement, i);
+        const auto* columnValue = reinterpret_cast<const char*>(sqlite3_column_text(statement, i));
 
-				if (columnValue == NULL)
-					columnValue = "";
+        if (columnValue == nullptr)
+          columnValue = "";
 
-				result[columnName] = columnValue;
-			}
+        result[columnName] = columnValue;
+      }
 
-			results["results"].append(result);
-		}
-	}
+      results["results"].append(result);
+    }
+  }
 
-	if (rc != SQLITE_DONE)
-		std::cerr << sqlite3_errmsg(conn) << std::endl;
+  if (resultCode != SQLITE_DONE)
+    std::cerr << sqlite3_errmsg(connection_) << std::endl;
 
-	sqlite3_finalize(stmt);
-	return results;
+  sqlite3_finalize(statement);
+  return results;
 }

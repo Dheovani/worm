@@ -1,24 +1,18 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 namespace worm
 {
-	typedef unsigned long long hash;
+  using Hash = std::uint64_t;
 
-	// Creates a HashCode from a given string.
-	// The generated hash will always be equal according to the given string
-	constexpr hash HashCode(const char* key) noexcept(true)
-	{
-		hash value = 0;
-		size_t len = 0;
-		while (key[len] != '\0')
-			++len;
+  [[nodiscard]] constexpr Hash hashCode(std::string_view key) noexcept
+  {
+    Hash value = 0;
+    for (const char character : key)
+      value = value * 37 + static_cast<unsigned char>(character);
 
-		for (uint64_t i = 0; i < len; ++i) {
-			value = value * 37 + key[i];
-		}
-
-		return value;
-	}
-}
+    return value;
+  }
+} // namespace worm

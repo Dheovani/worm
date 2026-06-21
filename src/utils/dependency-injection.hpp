@@ -1,90 +1,71 @@
 #pragma once
 
-#include <cstdlib>
-#include <fstream>
-#include <json/json.h>
-#include <utils/logger.hpp>
-#include <utils/helpers.hpp>
-#include <utils/client-factory.hpp>
+#include <connection/client.hpp>
 #include <errors/database-exception.hpp>
+#include <utils/client-factory.hpp>
+#include <utils/helpers.hpp>
+#include <utils/logger.hpp>
 
-using worm::Logger;
+#include <cstddef>
+#include <cstdlib>
+#include <json/json.h>
+#include <string>
+#include <typeinfo>
 
-#define UseDependencyInjection \
-	template <class _Ty> auto GetDI() noexcept { return worm::DependencyInjector<_Ty>(); }
+#define WORM_USE_DEPENDENCY_INJECTION                                                              \
+  template <typename Type> auto getDependencyInjector() noexcept                                   \
+  {                                                                                                \
+    return worm::DependencyInjector<Type>();                                                       \
+  }
 
 namespace worm
 {
-	template <class _Ty>
-	class DependencyInjector
-	{
-	public:
-		_Ty Get() const
-		{
-			return _Ty();
-		}
-	};
+  template <typename Type> class DependencyInjector
+  {
+  public:
+    [[nodiscard]] Type get() const
+    {
+      return Type{};
+    }
+  };
 
-	/** Specialization class for Logger dependency */
-	template <>
-	class DependencyInjector<Logger>
-	{
-#if !defined(_DFLT_LVL_INFO) && !defined(_DFLT_LVL_DEBUG) && !defined(_DFLT_LVL_TRACE) && !defined(_DFLT_LVL_WARNING)
-#define _DFLT_LVL_DEBUG
-#endif // !_DFLT_LVL_DEBUG
-	public:
-		template <class _Class, size_t _Idx>
-		Logger Get() const
-		{
-			return Logger(typeid(_Class).name(), _Idx);
-		}
-	};
+  template <> class DependencyInjector<Logger>
+  {
+  public:
+    template <typename Class, std::size_t Index> [[nodiscard]] Logger get() const
+    {
+      return Logger(typeid(Class).name(), static_cast<int>(Index));
+    }
+  };
 
-	/** Specialization class for database client dependency */
-	template <>
-	class DependencyInjector<connection::Client>
-	{
-	public:
-		connection::Client& Get() const
-		{
-			const std::string db = utils::env::GetDatabaseType();
-			Json::Value dbconfig;
+  template <> class DependencyInjector<connection::Client>
+  {
+  public:
+    [[nodiscard]] connection::Client& get() const
+    {
+      const std::string database = utils::env::getDatabaseType();
+      Json::Value config;
 
-			char
-				*host = NULL,
-				*username = NULL,
-				*password = NULL,
-				*dbname = NULL,
-				*port = NULL;
+      for (const char* key : {"host", "username", "password", "dbname", "port"}) {
+        if (const char* value = std::getenv(key))
+          config[key] = value;
+      }
 
-			if (host = std::getenv("host"))
-				dbconfig["host"] = host;
-			if (username = std::getenv("username"))
-				dbconfig["username"] = username;
-			if (password = std::getenv("password"))
-				dbconfig["password"] = password;
-			if (dbname = std::getenv("dbname"))
-				dbconfig["dbname"] = dbname;
-			if (port = std::getenv("port"))
-				dbconfig["port"] = port;
+      return worm::getInstance(config, databaseTypes.at(database));
+    }
+  };
 
-			return worm::GetInstance(dbconfig, worm::types.at(db));
-		}
-	};
+  template <> class DependencyInjector<DatabaseType>
+  {
+  public:
+    [[nodiscard]] DatabaseType get() const
+    {
+      const std::string database = utils::env::getDatabaseType();
+      const auto type = databaseTypes.find(database);
+      if (type == databaseTypes.end())
+        throw DatabaseException("Unsupported database type.");
 
-	/** Specialization that returns the DbTypes value */
-	template <>
-	class DependencyInjector<DbTypes>
-	{
-	public:
-		const DbTypes& Get() const
-		{
-			const std::string db = utils::env::GetDatabaseType();
-
-			if (db.empty()) 
-				throw worm::DatabaseException("Unsupported Database type.");
-
-			return worm::types.at(db);
-		}
-	};
-}
+      return type->second;
+    }
+  };
+} // namespace worm

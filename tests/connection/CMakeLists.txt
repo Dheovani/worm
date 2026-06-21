@@ -26,12 +26,12 @@ add_worm_connection_test(
 )
 
 add_worm_connection_test(
-    WormSqLiteClientTests
+    WormSqliteClientTests
     sqlite-client-tests.cpp
-    Worm.Connection.SqLiteClient
+    Worm.Connection.SqliteClient
 )
 
 set_tests_properties(
-    Worm.Connection.SqLiteClient
+    Worm.Connection.SqliteClient
     PROPERTIES LABELS "integration;connection;sqlite"
 )

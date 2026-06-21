@@ -1,163 +1,128 @@
 #pragma once
 
-#include <string>
+#include <cstdio>
+#include <exception>
 #include <fstream>
-#include <sstream>
 #include <iostream>
-#include <typeinfo>
+#include <sstream>
+#include <string>
 #include <type_traits>
+#include <typeinfo>
 
 namespace worm
 {
-	typedef enum
-	{
-		INFO,
-		DEBUG,
-		TRACE,
-		WARNING,
-		ERROR
-	} LogLevel;
+  enum class LogLevel
+  {
+    Info,
+    Debug,
+    Trace,
+    Warning,
+    Error
+  };
 
-	inline const std::string GetClassName(const char* name)
-	{
-		std::string fullFilePath(name);
-		size_t lastSeparator = fullFilePath.find_last_of("/\\");
+  [[nodiscard]] inline std::string getClassName(const char* path)
+  {
+    const std::string fullPath(path);
+    const std::size_t separator = fullPath.find_last_of("/\\");
+    return separator == std::string::npos ? fullPath : fullPath.substr(separator + 1);
+  }
 
-		if (lastSeparator == std::string::npos)
-		{
-			return fullFilePath;
-		}
+  [[nodiscard]] inline std::string getLogTypeMessage(LogLevel level)
+  {
+    switch (level) {
+    case LogLevel::Info:
+      return "[INFO] ";
+    case LogLevel::Debug:
+      return "[DEBUG] ";
+    case LogLevel::Trace:
+      return "[TRACE] ";
+    case LogLevel::Warning:
+      return "[WARNING] ";
+    case LogLevel::Error:
+      return "[ERROR] ";
+    }
 
-		return fullFilePath.substr(lastSeparator + 1);
-	}
+    return "[UNKNOWN] ";
+  }
 
-	inline const std::string GetLogTypeMessage(const LogLevel& type)
-	{
-		switch (type)
-		{
-		default:
-		case INFO:
-			return "[INFO] ";
+  class Logger
+  {
+  public:
+    template <typename Class> Logger(Class source, int lineNumber) : line_(lineNumber)
+    {
+      if constexpr (std::is_convertible_v<Class, const char*>)
+        className_ = getClassName(source);
+      else
+        className_ = typeid(source).name();
+    }
 
-		case DEBUG:
-			return "[DEBUG] ";
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
 
-		case TRACE:
-			return "[TRACE] ";
+    template <typename Type> const Logger& operator<<(const Type& value) const
+    {
+      std::ostringstream stream;
+      stream << value;
+      debug("%s", stream.str().c_str());
+      return *this;
+    }
 
-		case WARNING:
-			return "[WARNING] ";
+    template <typename... Args> void log(LogLevel level, const char* message, Args... args) const
+    {
+      std::ostringstream prefix;
+      prefix << className_;
+      if (line_ != 0)
+        prefix << ", line: " << line_;
+      prefix << ' ' << getLogTypeMessage(level);
 
-		case ERROR:
-			return "[ERROR] ";
-		}
-	}
-
-	class Logger
-	{
-		int line;
-		std::string className;
-
-		// Prevent the use of copy constructor and assignment operator for safety.
-		Logger(const Logger&) = delete;
-		Logger& operator=(const Logger&) = delete;
-
-	public:
-		template <class Class>
-		Logger(Class c, int lineNumber)
-			: line(lineNumber)
-		{
-			if constexpr (std::is_same_v<Class, const char*>)
-				className = worm::GetClassName(c);
-			else
-			{
-				const std::string name = typeid(c).name();
-				size_t pos = name.find(' ', 0) + 1;
-
-				className = (pos == std::string::npos) ? name.c_str() : (name.c_str() + pos);
-			}
-		}
-
-		template<typename T>
-		const Logger& operator<<(const T& value) const
-		{
-#if defined(_DFLT_LVL_INFO)
-			Info(value);
-#elif defined(_DFLT_LVL_DEBUG)
-			Debug(value);
-#elif defined(_DFLT_LVL_TRACE)
-			Trace(value);
-#elif defined(_DFLT_LVL_WARNING)
-			Warning(value);
-#else
-			Error(value);
-#endif // !_DFLT_LVL_
-			return *this;
-		}
-
-		template<typename... Args>
-		inline void Log(const LogLevel& logType, const char* msg, Args... args) const
-		{
-			std::stringstream ss;
-			ss << className;
-			if (line)
-				ss << ", line: " << line;
-			ss << worm::GetLogTypeMessage(logType) << std::endl;
-
-			std::printf(ss.str().c_str());
-			std::printf(msg, args...);
-			std::cout << std::endl;
+      std::printf("%s", prefix.str().c_str());
+      std::printf(message, args...);
+      std::printf("\n");
 
 #ifdef _LOG_FILE
-			const std::string filename = className + "_log_file.log";
-			std::fstream fileStream(filename, std::ios::in | std::ios::out | std::ios::trunc);
+      const std::string filename = className_ + "_log_file.log";
+      std::ofstream file(filename, std::ios::app);
+      if (file.is_open())
+        file << getLogTypeMessage(level) << message << '\n';
+      else
+        std::cerr << "Failed opening log file.\n";
+#endif
+    }
 
-			if (fileStream.is_open())
-				fileStream << GetLogTypeMessage(logType) << msg << std::endl;
-			else
-				std::cerr << "Failed opening file!" << std::endl;
+    template <typename... Args> void info(const char* message, Args... args) const
+    {
+      log(LogLevel::Info, message, args...);
+    }
 
-			fileStream.close();
-#endif // _LOG_FILE
-		}
+    template <typename... Args> void debug(const char* message, Args... args) const
+    {
+      log(LogLevel::Debug, message, args...);
+    }
 
-		template<typename... Args>
-		void Info(const char* msg, Args... args) const
-		{
-			Log(INFO, msg, args...);
-		}
+    template <typename... Args> void trace(const char* message, Args... args) const
+    {
+      log(LogLevel::Trace, message, args...);
+    }
 
-		template<typename... Args>
-		void Debug(const char* msg, Args... args) const
-		{
-			Log(DEBUG, msg, args...);
-		}
+    template <typename... Args> void warning(const char* message, Args... args) const
+    {
+      log(LogLevel::Warning, message, args...);
+    }
 
-		template<typename... Args>
-		void Trace(const char* msg, Args... args) const
-		{
-			Log(TRACE, msg, args...);
-		}
+    template <typename... Args> void error(const char* message, Args... args) const
+    {
+      log(LogLevel::Error, message, args...);
+    }
 
-		template<typename... Args>
-		void Warning(const char* msg, Args... args) const
-		{
-			Log(WARNING, msg, args...);
-		}
+    void error(const std::exception& exception) const
+    {
+      log(LogLevel::Error, "%s", exception.what());
+    }
 
-		template<typename... Args>
-		void Error(const char* msg, Args... args) const
-		{
-			Log(ERROR, msg, args...);
-		}
+  private:
+    int line_;
+    std::string className_;
+  };
+} // namespace worm
 
-		template<typename... Args>
-		void Error(const std::exception& ex, Args... args) const
-		{
-			Log(ERROR, ex.what(), args...);
-		}
-	};
-}
-
-#define LOGGER \
-	worm::Logger(__FILE__, __LINE__)
+#define WORM_LOGGER worm::Logger(__FILE__, __LINE__)

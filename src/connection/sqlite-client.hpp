@@ -1,42 +1,42 @@
 #pragma once
 
-#include <sqlite3.h>
 #include <connection/client.hpp>
+#include <sqlite3.h>
 
 namespace worm
 {
-namespace connection
-{
-	// SQLite-specific database client.
-	class SqLiteClient final : public Client
-	{
-	private:
-		enum ErrorHandlingAction
-		{
-			CLOSE_CONN,
-			FINALIZE_STMT
-		};
+  namespace connection
+  {
+    // SQLite-specific database client.
+    class SqliteClient final : public Client
+    {
+    private:
+      enum class ErrorHandlingAction
+      {
+        CloseConnection,
+        FinalizeStatement
+      };
 
-		sqlite3* conn;  // Pointer to the SQLite connection.
+      sqlite3* connection_; // Pointer to the SQLite connection.
 
-		SqLiteClient(const char* dbname);
+      explicit SqliteClient(const char* databaseName);
 
-		// Prevent the use of copy constructor and assignment operator for safety.
-		SqLiteClient(const SqLiteClient&) = delete;
-		SqLiteClient& operator=(const SqLiteClient&) = delete;
+      // Prevent the use of copy constructor and assignment operator for safety.
+      SqliteClient(const SqliteClient&) = delete;
+      SqliteClient& operator=(const SqliteClient&) = delete;
 
-		// Deals with possible errors according to the action defined by the user
-		void HandleError(const ErrorHandlingAction& action, sqlite3_stmt* stmt = nullptr) const;
+      // Deals with possible errors according to the action defined by the user
+      void handleError(ErrorHandlingAction action, sqlite3_stmt* statement = nullptr) const;
 
-	public:
-		~SqLiteClient();
+    public:
+      ~SqliteClient();
 
-		// This static method returns a reference to the Singleton instance of 'SqLiteClient'
-		// based on the provided database configuration in the form of a 'Json::Value'.
-		static SqLiteClient& GetInstance(const Json::Value& dbconfig) noexcept;
+      // This static method returns a reference to the singleton SqliteClient instance.
+      // based on the provided database configuration in the form of a 'Json::Value'.
+      static SqliteClient& getInstance(const Json::Value& databaseConfig);
 
-		// This method is used to execute a database query specific to SQLite.
-		const Json::Value executeQuery(const std::string& query) const override;
-	};
-}
-}
+      // This method is used to execute a database query specific to SQLite.
+      Json::Value executeQuery(const std::string& query) const override;
+    };
+  } // namespace connection
+} // namespace worm

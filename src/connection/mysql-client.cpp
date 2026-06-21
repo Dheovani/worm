@@ -1,81 +1,80 @@
 #include <connection/mysql-client.hpp>
 #include <errors/database-exception.hpp>
 
+#include <iostream>
+#include <string>
+#include <vector>
+
 using worm::connection::MySqlClient;
 
-MySqlClient::MySqlClient(
-	const char* host,
-	const char* user,
-	const char* passwd,
-	const char* db,
-	unsigned int port
-) {
-	conn = mysql_init(NULL);
+MySqlClient::MySqlClient(const char* host, const char* user, const char* passwd, const char* db,
+                         unsigned int port)
+{
+  connection_ = mysql_init(nullptr);
 
-	if (conn == NULL) {
-		throw worm::DatabaseException(mysql_error(conn));
-	}
+  if (connection_ == nullptr) {
+    throw worm::DatabaseException("Unable to initialize the MySQL client.");
+  }
 
-	if (mysql_real_connect(conn, host, user, passwd, db, port, NULL, 0) == NULL) {
-		const char* msg = mysql_error(conn);
-		mysql_close(conn);
-		throw worm::DatabaseException(msg);
-	}
+  if (mysql_real_connect(connection_, host, user, passwd, db, port, nullptr, 0) == nullptr) {
+    const char* msg = mysql_error(connection_);
+    mysql_close(connection_);
+    throw worm::DatabaseException(msg);
+  }
 }
 
 MySqlClient::~MySqlClient()
 {
-	mysql_close(conn);
+  mysql_close(connection_);
 }
 
-MySqlClient& MySqlClient::GetInstance(const Json::Value& dbconfig) noexcept
+MySqlClient& MySqlClient::getInstance(const Json::Value& databaseConfig)
 {
-	const std::string host = dbconfig["host"].asString();
-	const std::string username = dbconfig["username"].asString();
-	const std::string password = dbconfig["password"].asString();
-	const std::string dbname = dbconfig["dbname"].asString();
-	const unsigned int port = dbconfig["port"].asUInt();
+  const std::string host = databaseConfig["host"].asString();
+  const std::string username = databaseConfig["username"].asString();
+  const std::string password = databaseConfig["password"].asString();
+  const std::string databaseName = databaseConfig["dbname"].asString();
+  const unsigned int port = databaseConfig["port"].asUInt();
 
-	static MySqlClient instance(host.c_str(), username.c_str(), password.c_str(), dbname.c_str(), port);
-	return instance;
+  static MySqlClient instance(host.c_str(), username.c_str(), password.c_str(),
+                              databaseName.c_str(), port);
+  return instance;
 }
 
-const Json::Value MySqlClient::executeQuery(const std::string& query) const
+Json::Value MySqlClient::executeQuery(const std::string& query) const
 {
-	Json::Value results;
-	std::vector<char*> columns;
+  Json::Value results;
+  std::vector<char*> columns;
 
-	MYSQL_RES* res;
-	MYSQL_ROW row;
+  MYSQL_RES* res;
+  MYSQL_ROW row;
 
-	if (mysql_query(conn, query.c_str())) {
-		std::cerr << "Error executing query: " << mysql_error(conn) << std::endl;
-	}
-	else if (isSelect(query)) {
-		res = mysql_store_result(conn);
+  if (mysql_query(connection_, query.c_str())) {
+    std::cerr << "Error executing query: " << mysql_error(connection_) << std::endl;
+  } else if (isSelect(query)) {
+    res = mysql_store_result(connection_);
 
-		if (res) {
-			MYSQL_FIELD* field;
-			while ((field = mysql_fetch_field(res))) {
-				columns.push_back(field->name);
-			}
+    if (res) {
+      MYSQL_FIELD* field;
+      while ((field = mysql_fetch_field(res))) {
+        columns.push_back(field->name);
+      }
 
-			while ((row = mysql_fetch_row(res))) {
-				Json::Value result;
+      while ((row = mysql_fetch_row(res))) {
+        Json::Value result;
 
-				for (unsigned int i = 0; i < mysql_num_fields(res); ++i) {
-					result[columns[i]] = row[i] ? row[i] : "NULL";
-				}
+        for (unsigned int i = 0; i < mysql_num_fields(res); ++i) {
+          result[columns[i]] = row[i] ? row[i] : "NULL";
+        }
 
-				results["results"].append(result);
-			}
+        results["results"].append(result);
+      }
 
-			mysql_free_result(res);
-		}
-		else {
-			std::cerr << "Error fetching results: " << mysql_error(conn) << std::endl;
-		}
-	}
+      mysql_free_result(res);
+    } else {
+      std::cerr << "Error fetching results: " << mysql_error(connection_) << std::endl;
+    }
+  }
 
-	return results;
+  return results;
 }

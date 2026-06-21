@@ -13,7 +13,7 @@
 
 - [x] Implementar descritores de campos tipados com ponteiros para membros.
 - [x] Definir o conceito C++20 `Reflectable`.
-- [x] Implementar visitação `ForEachField` sem alocações ou funções virtuais.
+- [x] Implementar visitação `for_each_field` sem alocações ou funções virtuais.
 - [ ] Adicionar metadados de ORM: coluna, chave primária, geração automática e campo ignorado.
 - [ ] Implementar lookup opcional por nome com tratamento de colisão de hash.
 - [ ] Criar snapshots de entidade e detecção de campos alterados.
@@ -31,9 +31,9 @@
 
 ## Conexões
 
-- [ ] Adicionar destrutor virtual à interface `Client`.
-- [ ] Remover `noexcept` de fábricas que podem falhar ao conectar.
-- [ ] Padronizar nomes e tratamento de erros entre os três drivers.
+- [x] Adicionar destrutor virtual à interface `Client`.
+- [x] Remover `noexcept` de fábricas que podem falhar ao conectar.
+- [x] Padronizar nomes e tratamento de erros entre os três drivers.
 - [ ] Criar testes de integração descartáveis para MySQL e PostgreSQL.
 - [ ] Separar drivers opcionais para não exigir todos os bancos em cada build.
 
