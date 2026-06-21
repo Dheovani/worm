@@ -13,6 +13,8 @@ de dependências e no desenho de um subsistema de reflexão tipado.
 - teste de integração SQLite executado inteiramente em memória.
 - reflexão C++20 tipada com descritores `constexpr`, conceito `Reflectable` e
   visitação de campos.
+- núcleo inicial de consultas com expressões parametrizadas e composição de
+  cláusulas `WHERE` e `ORDER BY`.
 
 O projeto ainda não deve ser considerado pronto para produção. Consulte
 [TODO.md](TODO.md) para acompanhar as próximas etapas.
@@ -60,6 +62,7 @@ Para executar apenas um domínio:
 ```powershell
 ctest --test-dir build -C Debug -L errors --output-on-failure
 ctest --test-dir build -C Debug -L connection --output-on-failure
+ctest --test-dir build -C Debug -L core --output-on-failure
 ```
 
 Os testes ficam fora do código de produção:
@@ -81,6 +84,7 @@ worm/
 ├── cmake/          # descoberta e normalização de dependências
 ├── src/
 │   ├── connection/ # clientes de banco de dados
+│   ├── core/       # expressões e cláusulas SQL parametrizadas
 │   ├── errors/     # tipos de erro públicos
 │   ├── reflection/ # descritores e visitação tipada de campos
 │   └── utils/      # helpers, factory e injeção de dependências

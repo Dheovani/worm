@@ -21,6 +21,7 @@
 
 ## Persistência e ORM
 
+- [x] Criar a fundação parametrizada para expressões, cláusulas `WHERE` e ordenação.
 - [ ] Reintroduzir o núcleo de entidades sobre o novo subsistema de reflexão.
 - [ ] Implementar geração de `SELECT`, `INSERT`, `UPDATE` e `DELETE`.
 - [ ] Introduzir parâmetros vinculados para evitar interpolação insegura de SQL.
