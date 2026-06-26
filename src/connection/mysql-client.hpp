@@ -13,8 +13,7 @@ namespace worm
     private:
       MYSQL* connection_; // Pointer to the MySQL connection.
 
-      MySqlClient(const char* host, const char* user, const char* passwd, const char* db,
-                  unsigned int port);
+      MySqlClient(const char* host, const char* user, const char* passwd, const char* db, unsigned int port);
 
       // Prevent the use of copy constructor and assignment operator for safety.
       MySqlClient(const MySqlClient&) = delete;

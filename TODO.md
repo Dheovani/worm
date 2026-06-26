@@ -55,8 +55,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [x] Criar expressões parametrizadas e cláusulas `WHERE` e `ORDER BY`.
 - [ ] Implementar operadores lógicos agrupados: `AND`, `OR` e `NOT`.
 - [ ] Vincular parâmetros nos drivers sem interpolação de valores.
-- [ ] Criar uma abstração de dialeto para placeholders, identificadores e recursos
-  específicos de SQLite, PostgreSQL e MySQL.
+- [ ] Criar uma abstração de dialeto para placeholders, identificadores e recursos específicos de SQLite, PostgreSQL e MySQL.
 - [ ] Permitir SQL manual parametrizado como escape controlado da abstração.
 
 ### Tipos e hidratação

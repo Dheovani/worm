@@ -1,4 +1,4 @@
-#include <core/where-clause.hpp>
+#include <core/filters.hpp>
 
 #include <errors/invalid-arg-exception.hpp>
 
@@ -10,11 +10,11 @@ int main()
   using worm::core::Comparison;
   using worm::core::Expression;
   using worm::core::Expressions;
-  using worm::core::WhereClause;
+  using worm::core::Filters;
 
-  WhereClause clause;
+  Filters clause;
   if (!clause.empty() || !clause.sql().empty() || !clause.parameters().empty()) {
-    std::cerr << "A new WhereClause is not empty.\n";
+    std::cerr << "A new Filters is not empty.\n";
     return 1;
   }
 
@@ -26,13 +26,13 @@ int main()
       clause.parameters().size() != 3 || std::get<std::int64_t>(clause.parameters()[0]) != 18 ||
       std::get<std::int64_t>(clause.parameters()[1]) != 7 ||
       std::get<std::int64_t>(clause.parameters()[2]) != 9) {
-    std::cerr << "WhereClause composition or parameter order is invalid.\n";
+    std::cerr << "Filters composition or parameter order is invalid.\n";
     return 1;
   }
 
   try {
     clause.add(Expression{});
-    std::cerr << "WhereClause accepted an empty expression.\n";
+    std::cerr << "Filters accepted an empty expression.\n";
     return 1;
   } catch (const worm::InvalidArgException&) {}
 

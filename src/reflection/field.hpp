@@ -16,9 +16,10 @@ namespace worm
       using value_type = Value;
       using member_pointer = Value Owner::*;
 
-      constexpr FieldDescriptor(std::string_view name, member_pointer member,
+      constexpr FieldDescriptor(std::string_view name,
+                                member_pointer member,
                                 FieldMetadata metadata = {}) noexcept
-          : name_(name), member_(member), metadata_(metadata)
+        : name_(name), member_(member), metadata_(metadata)
       {}
 
       [[nodiscard]] constexpr std::string_view name() const noexcept
@@ -81,7 +82,8 @@ namespace worm
     FieldDescriptor(std::string_view, Value Owner::*) -> FieldDescriptor<Owner, Value>;
 
     template <typename Owner, typename Value>
-    [[nodiscard]] constexpr auto field(std::string_view name, Value Owner::* member,
+    [[nodiscard]] constexpr auto field(std::string_view name,
+                                       Value Owner::* member,
                                        FieldMetadata metadata = {}) noexcept
     {
       return FieldDescriptor<Owner, Value>{name, member, metadata};
@@ -96,6 +98,6 @@ namespace worm
 
     template <typename T>
     inline constexpr bool is_field_descriptor_v =
-        is_field_descriptor<std::remove_cvref_t<T>>::value;
+      is_field_descriptor<std::remove_cvref_t<T>>::value;
   } // namespace reflection
 } // namespace worm

@@ -61,11 +61,11 @@ namespace
 } // namespace
 
 worm::core::Expression worm::core::Expressions::compare(std::string_view column,
-                                                        Comparison comparison, Parameter value)
+                                                        Comparison comparison,
+                                                        Parameter value)
 {
   validateColumn(column);
-  return {std::string{column} + std::string{comparisonOperator(comparison)} + "?",
-          {std::move(value)}};
+  return {std::string{column} + std::string{comparisonOperator(comparison)} + "?", {std::move(value)}};
 }
 
 worm::core::Expression worm::core::Expressions::isNull(std::string_view column)
@@ -80,21 +80,18 @@ worm::core::Expression worm::core::Expressions::isNotNull(std::string_view colum
   return {std::string{column} + " IS NOT NULL", {}};
 }
 
-worm::core::Expression worm::core::Expressions::between(std::string_view column, Parameter lower,
-                                                        Parameter upper)
+worm::core::Expression worm::core::Expressions::between(std::string_view column, Parameter lower, Parameter upper)
 {
   validateColumn(column);
   return {std::string{column} + " BETWEEN ? AND ?", {std::move(lower), std::move(upper)}};
 }
 
-worm::core::Expression worm::core::Expressions::in(std::string_view column,
-                                                   std::vector<Parameter> values)
+worm::core::Expression worm::core::Expressions::in(std::string_view column, std::vector<Parameter> values)
 {
   return membershipExpression(column, std::move(values), " IN");
 }
 
-worm::core::Expression worm::core::Expressions::notIn(std::string_view column,
-                                                      std::vector<Parameter> values)
+worm::core::Expression worm::core::Expressions::notIn(std::string_view column, std::vector<Parameter> values)
 {
   return membershipExpression(column, std::move(values), " NOT IN");
 }

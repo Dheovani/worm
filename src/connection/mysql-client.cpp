@@ -7,8 +7,7 @@
 
 using worm::connection::MySqlClient;
 
-MySqlClient::MySqlClient(const char* host, const char* user, const char* passwd, const char* db,
-                         unsigned int port)
+MySqlClient::MySqlClient(const char* host, const char* user, const char* passwd, const char* db, unsigned int port)
 {
   connection_ = mysql_init(nullptr);
 
@@ -36,8 +35,7 @@ MySqlClient& MySqlClient::getInstance(const Json::Value& databaseConfig)
   const std::string databaseName = databaseConfig["dbname"].asString();
   const unsigned int port = databaseConfig["port"].asUInt();
 
-  static MySqlClient instance(host.c_str(), username.c_str(), password.c_str(),
-                              databaseName.c_str(), port);
+  static MySqlClient instance(host.c_str(), username.c_str(), password.c_str(), databaseName.c_str(), port);
   return instance;
 }
 

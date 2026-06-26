@@ -2,7 +2,7 @@ add_library(
     WormCore
     expression.cpp
     ordering.cpp
-    where-clause.cpp
+    filters.cpp
 )
 add_library(Worm::Core ALIAS WormCore)
 

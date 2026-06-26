@@ -1,27 +1,28 @@
-#include <core/where-clause.hpp>
+#include <core/filters.hpp>
 
 #include <errors/invalid-arg-exception.hpp>
 
 #include <iterator>
 #include <utility>
 
-worm::core::WhereClause& worm::core::WhereClause::add(Expression expression)
+worm::core::Filters& worm::core::Filters::add(Expression expression)
 {
   if (expression.sql.empty())
     throw worm::InvalidArgException("Where expression cannot be empty.");
 
-  parameters_.insert(parameters_.end(), std::make_move_iterator(expression.parameters.begin()),
+  parameters_.insert(parameters_.end(),
+                     std::make_move_iterator(expression.parameters.begin()),
                      std::make_move_iterator(expression.parameters.end()));
   expressions_.push_back(std::move(expression));
   return *this;
 }
 
-bool worm::core::WhereClause::empty() const noexcept
+bool worm::core::Filters::empty() const noexcept
 {
   return expressions_.empty();
 }
 
-std::string worm::core::WhereClause::sql() const
+std::string worm::core::Filters::sql() const
 {
   if (expressions_.empty())
     return {};
@@ -36,7 +37,7 @@ std::string worm::core::WhereClause::sql() const
   return result;
 }
 
-const std::vector<worm::core::Parameter>& worm::core::WhereClause::parameters() const noexcept
+const std::vector<worm::core::Parameter>& worm::core::Filters::parameters() const noexcept
 {
   return parameters_;
 }

@@ -13,8 +13,9 @@ bool Client::isSelect(const std::string& query) const
   std::string firstWord;
 
   iss >> firstWord;
-  std::transform(firstWord.begin(), firstWord.end(), firstWord.begin(),
-                 [](unsigned char value) { return static_cast<char>(std::toupper(value)); });
+  std::transform(firstWord.begin(), firstWord.end(), firstWord.begin(), [](unsigned char value) {
+    return static_cast<char>(std::toupper(value));
+  });
 
   return firstWord == "SELECT";
 }

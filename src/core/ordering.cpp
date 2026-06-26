@@ -5,7 +5,7 @@
 #include <utility>
 
 worm::core::OrderBy::OrderBy(std::string column, Direction direction)
-    : column_(std::move(column)), direction_(direction)
+  : column_(std::move(column)), direction_(direction)
 {
   if (column_.empty())
     throw worm::InvalidArgException("Order column cannot be empty.");
