@@ -10,20 +10,24 @@ namespace worm::core
 
   struct Source
   {
-    const std::string_view name_;
-    const std::optional<std::string_view> alias_;
+    const std::string_view name;
+    const std::optional<std::string_view> alias;
 
     Source(std::string_view name, std::optional<std::string_view> alias = std::nullopt) noexcept
-      : name_(name), alias_(alias)
+      : name(name),
+        alias(alias)
     {}
   };
 
   struct Field
   {
-    const std::string_view name_;
-    const Source source_;
+    const std::string_view name;
+    const Source source;
 
-    Field(std::string_view name, Source source) noexcept : name_(name), source_(source) {}
+    Field(std::string_view name, Source source) noexcept
+      : name(name),
+        source(source)
+    {}
   };
 
   enum class Join
@@ -36,13 +40,16 @@ namespace worm::core
 
   struct Relation
   {
-    const Join type_;
-    const Source left_;
-    const Source right_;
-    const Expression expression_;
+    const Join joinType;
+    const Source baseSource;
+    const Source joinedSource;
+    const Expression condition;
 
-    Relation(Join type, Source left, Source right, Expression expression) noexcept
-      : type_(type), left_(left), right_(right), expression_(expression)
+    Relation(Join joinType, Source baseSource, Source joinedSource, Expression condition) noexcept
+      : joinType(joinType),
+        baseSource(baseSource),
+        joinedSource(joinedSource),
+        condition(condition)
     {}
   };
 

@@ -62,10 +62,7 @@ namespace worm::core
       parameters.reserve(size);
 
       for (const auto& param : params) {
-        parameters.insert(
-          parameters.end(),
-          param.get().begin(),
-          param.get().end());
+        parameters.insert(parameters.end(), param.get().begin(), param.get().end());
       }
 
       return parameters;
@@ -103,9 +100,9 @@ namespace worm::core
       for (std::size_t index = 0; index < fields.size(); ++index) {
         const auto& field = fields[index];
 
-        list += std::string{field.source_.alias_.value_or(field.source_.name_)};
+        list += std::string{field.source.alias.value_or(field.source.name)};
         list += ".";
-        list += std::string{field.name_};
+        list += std::string{field.name};
 
         if (index + 1 < fields.size()) {
           list += ",";
@@ -141,17 +138,17 @@ namespace worm::core
       std::size_t parameterIndex = 1;
 
       for (auto& rel : relations) {
-        list += getJoinClause(rel.type_) + " ";
-        list += std::string{rel.left_.name_} + " ";
+        list += getJoinClause(rel.joinType) + " ";
+        list += std::string{rel.joinedSource.name} + " ";
 
-        if (rel.left_.alias_.has_value()) {
-          list += std::string{rel.left_.alias_.value()};
+        if (rel.joinedSource.alias.has_value()) {
+          list += std::string{rel.joinedSource.alias.value()};
         }
 
         list += " on (";
-        list += builder.renderExpression(rel.expression_, parameterIndex);
+        list += builder.renderExpression(rel.condition, parameterIndex);
         list += ")";
-        parameterIndex += rel.expression_.parameters.size();
+        parameterIndex += rel.condition.parameters.size();
       }
 
       return list;
@@ -252,7 +249,7 @@ namespace worm::core
     const std::vector<Relation>& relations) const
   {
     const std::string fieldsList = listSelectFields(fields);
-    const std::string sourceName = std::string{source.name_} + " " + std::string{source.alias_.value_or("")};
+    const std::string sourceName = std::string{source.name} + " " + std::string{source.alias.value_or("")};
     const std::string _relations = buildRelations(*this, relations);
     const std::string sql = "select " + fieldsList + " from " + sourceName + " " + _relations;
 

@@ -25,19 +25,19 @@ int main()
   using worm::core::Source;
 
   const Source users{"users"};
-  if (users.name_ != "users" || users.alias_.has_value()) {
+  if (users.name != "users" || users.alias.has_value()) {
     std::cerr << "Source did not preserve an unaliased table name.\n";
     return 1;
   }
 
   const Source aliasedUsers{"users", "u"};
-  if (aliasedUsers.name_ != "users" || aliasedUsers.alias_.value() != "u") {
+  if (aliasedUsers.name != "users" || aliasedUsers.alias.value() != "u") {
     std::cerr << "Source did not preserve an aliased table name.\n";
     return 1;
   }
 
   const Field id{"id", aliasedUsers};
-  if (id.name_ != "id" || id.source_.name_ != "users" || id.source_.alias_.value() != "u") {
+  if (id.name != "id" || id.source.name != "users" || id.source.alias.value() != "u") {
     std::cerr << "Field did not preserve its name and source envelope.\n";
     return 1;
   }
@@ -45,14 +45,14 @@ int main()
   Expression predicate{"u.id = o.user_id", {std::int64_t{7}, std::string{"paid"}}};
   const Relation relation{Join::Left, aliasedUsers, Source{"orders", "o"}, predicate};
 
-  if (relation.type_ != Join::Left || relation.left_.alias_.value() != "u" || relation.right_.name_ != "orders" ||
-      relation.expression_.sql != "u.id = o.user_id") {
+  if (relation.joinType != Join::Left || relation.baseSource.alias.value() != "u" ||
+      relation.joinedSource.name != "orders" || relation.condition.sql != "u.id = o.user_id") {
     std::cerr << "Relation did not preserve join/source/expression data.\n";
     return 1;
   }
 
-  if (relation.expression_.parameters.size() != 2 || !holdsValue(relation.expression_.parameters[0], std::int64_t{7}) ||
-      !holdsValue(relation.expression_.parameters[1], std::string{"paid"})) {
+  if (relation.condition.parameters.size() != 2 || !holdsValue(relation.condition.parameters[0], std::int64_t{7}) ||
+      !holdsValue(relation.condition.parameters[1], std::string{"paid"})) {
     std::cerr << "Relation expression parameters were not preserved.\n";
     return 1;
   }

@@ -16,7 +16,7 @@ namespace
       const std::vector<worm::core::Relation>& relations) const override
     {
       fieldsCount_ = fields.size();
-      sourceName_ = source.name_;
+      sourceName_ = source.name;
       relationsCount_ = relations.size();
       return std::string{query_};
     }

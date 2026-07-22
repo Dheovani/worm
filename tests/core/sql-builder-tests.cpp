@@ -4,7 +4,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace
 {
@@ -41,8 +43,12 @@ namespace
 int main()
 {
   using worm::core::Comparison;
+  using worm::core::Field;
+  using worm::core::Join;
   using worm::core::MySqlBuilder;
   using worm::core::PgBuilder;
+  using worm::core::Relation;
+  using worm::core::Source;
   using worm::core::SqliteBuilder;
 
   const PgBuilder pgBuilder;
@@ -54,6 +60,26 @@ int main()
       mySqlBuilder.renderExpression(expression) != "id = ?" ||
       sqliteBuilder.renderExpression(expression) != "id = ?") {
     std::cerr << "Dialect placeholders were rendered incorrectly.\n";
+    return 1;
+  }
+
+  const Source users{"users", "u"};
+  const Source orders{"orders", "o"};
+  const std::vector<Field> fields{
+    Field{"id", users},
+    Field{"total", orders},
+  };
+  const std::vector<Relation> relations{
+    Relation{
+      Join::Inner,
+      users,
+      orders,
+      pgBuilder.compare("u.id", Comparison::Equal, std::int64_t{7})},
+  };
+  const std::string select = pgBuilder.select(fields, users, relations);
+
+  if (select != "select u.id,o.total from users u inner join orders o on (u.id = $1)") {
+    std::cerr << "Select builder did not use the joined source in JOIN rendering.\n";
     return 1;
   }
 
