@@ -2,96 +2,18 @@
 
 #include <connection/client.hpp>
 #include <errors/database-exception.hpp>
-#include <errors/invalid-arg-exception.hpp>
 #include <utils/dependency-injection.hpp>
 
 #include <cstddef>
-#include <functional>
-#include <initializer_list>
 #include <memory>
+#include <optional>
 #include <string>
-#include <utility>
 
 namespace worm::core
 {
 
   namespace
   {
-
-    void validateColumn(std::string_view column)
-    {
-      if (column.empty()) {
-        throw worm::InvalidArgException("Expression column cannot be empty.");
-      }
-    }
-
-    std::string_view comparisonOperator(Comparison comparison)
-    {
-      using enum Comparison;
-
-      switch (comparison) {
-      case Equal:
-        return " = ";
-      case NotEqual:
-        return " <> ";
-      case Greater:
-        return " > ";
-      case GreaterOrEqual:
-        return " >= ";
-      case Less:
-        return " < ";
-      case LessOrEqual:
-        return " <= ";
-      case Like:
-        return " LIKE ";
-      }
-
-      throw worm::InvalidArgException("Unsupported comparison operator.");
-    }
-
-    std::vector<Parameter> extractParameters(
-      std::initializer_list<std::reference_wrapper<const std::vector<Parameter>>> params)
-    {
-      std::vector<Parameter> parameters;
-      std::size_t size = 0;
-
-      for (const auto& param : params) {
-        size += param.get().size();
-      }
-
-      parameters.reserve(size);
-
-      for (const auto& param : params) {
-        parameters.insert(parameters.end(), param.get().begin(), param.get().end());
-      }
-
-      return parameters;
-    }
-
-    Expression membershipExpression(
-      std::string_view column,
-      std::vector<Parameter> values,
-      std::string_view keyword)
-    {
-      validateColumn(column);
-      if (values.empty()) {
-        throw worm::InvalidArgException("Membership expressions require at least one value.");
-      }
-
-      std::string sql{column};
-      sql += keyword;
-      sql += " (";
-
-      for (std::size_t index = 0; index < values.size(); ++index) {
-        if (index != 0) {
-          sql += ", ";
-        }
-        sql += '?';
-      }
-
-      sql += ')';
-      return {std::move(sql), std::move(values)};
-    }
 
     std::string listSelectFields(const std::vector<worm::core::Field>& fields)
     {
@@ -130,100 +52,28 @@ namespace worm::core
       return "inner join";
     }
 
-    std::string buildRelations(
-      const Builder& builder,
-      const std::vector<Relation>& relations)
+    std::string getOrderDirection(const OrderDirection direction)
     {
-      std::string list;
-      std::size_t parameterIndex = 1;
+      using enum OrderDirection;
 
-      for (auto& rel : relations) {
-        list += getJoinClause(rel.joinType) + " ";
-        list += std::string{rel.joinedSource.name} + " ";
-
-        if (rel.joinedSource.alias.has_value()) {
-          list += std::string{rel.joinedSource.alias.value()};
-        }
-
-        list += " on (";
-        list += builder.renderExpression(rel.condition, parameterIndex);
-        list += ")";
-        parameterIndex += rel.condition.parameters.size();
+      switch (direction) {
+      case Ascending:
+        return "asc";
+      case Descending:
+        return "desc";
       }
 
-      return list;
+      return "asc";
     }
 
   } // namespace
 
-  Expression Builder::compare(
-    std::string_view column,
-    Comparison comparison,
-    Parameter value) const
-  {
-    validateColumn(column);
-    return {std::string{column} + std::string{comparisonOperator(comparison)} + "?", {std::move(value)}};
-  }
-
-  Expression Builder::isNull(std::string_view column) const
-  {
-    validateColumn(column);
-    return {std::string{column} + " IS NULL", {}};
-  }
-
-  Expression Builder::isNotNull(std::string_view column) const
-  {
-    validateColumn(column);
-    return {std::string{column} + " IS NOT NULL", {}};
-  }
-
-  Expression Builder::between(
-    std::string_view column,
-    Parameter lower,
-    Parameter upper) const
-  {
-    validateColumn(column);
-    return {std::string{column} + " BETWEEN ? AND ?", {std::move(lower), std::move(upper)}};
-  }
-
-  Expression Builder::in(
-    std::string_view column,
-    std::vector<Parameter> values) const
-  {
-    return membershipExpression(column, std::move(values), " IN");
-  }
-
-  Expression Builder::notIn(
-    std::string_view column,
-    std::vector<Parameter> values) const
-  {
-    return membershipExpression(column, std::move(values), " NOT IN");
-  }
-
-  Expression Builder::_and(
-    const Expression& left,
-    const Expression& right) const
-  {
-    return {
-      left.sql + " and " + right.sql,
-      extractParameters({std::cref(left.parameters), std::cref(right.parameters)})};
-  }
-
-  Expression Builder::_or(
-    const Expression& left,
-    const Expression& right) const
-  {
-    return {
-      left.sql + " or " + right.sql,
-      extractParameters({std::cref(left.parameters), std::cref(right.parameters)})};
-  }
-
-  std::string Builder::placeholder(std::size_t) const
+  std::string SqlBuilder::placeholder(std::size_t) const
   {
     return "?";
   }
 
-  std::string Builder::renderExpression(
+  std::string SqlBuilder::renderExpression(
     const Expression& expression,
     std::size_t firstParameterIndex) const
   {
@@ -243,17 +93,96 @@ namespace worm::core
     return rendered;
   }
 
-  std::string Builder::select(
+  std::string SqlBuilder::buildRelations(const std::vector<Relation>& relations) const
+  {
+    std::string list;
+    std::size_t parameterIndex = 1;
+
+    for (auto& rel : relations) {
+      list += getJoinClause(rel.joinType) + " ";
+      list += std::string{rel.joinedSource.name} + " ";
+
+      if (rel.joinedSource.alias.has_value()) {
+        list += std::string{rel.joinedSource.alias.value()};
+      }
+
+      list += " on (";
+      list += renderExpression(rel.condition, parameterIndex);
+      list += ")";
+      parameterIndex += rel.condition.parameters.size();
+    }
+
+    return list;
+  }
+
+  std::string SqlBuilder::renderFilter(
+    const Filter& filter,
+    std::size_t firstParameterIndex) const
+  {
+    return renderExpression(filter.expression(), firstParameterIndex);
+  }
+
+  std::string SqlBuilder::renderOrdering(const std::vector<Ordering>& ordering) const
+  {
+    if (ordering.empty()) {
+      return {};
+    }
+
+    std::string sql = " order by ";
+    for (std::size_t index = 0; index < ordering.size(); ++index) {
+      const auto& order = ordering[index];
+
+      if (index != 0) {
+        sql += ",";
+      }
+
+      sql += std::string{order.column};
+      sql += " ";
+      sql += getOrderDirection(order.direction);
+    }
+
+    return sql;
+  }
+
+  std::string SqlBuilder::select(
     const std::vector<worm::core::Field>& fields,
     const Source& source,
-    const std::vector<Relation>& relations) const
+    const std::vector<Relation>& relations,
+    const std::optional<Filter>& filter,
+    const std::vector<Ordering>& ordering) const
   {
     const std::string fieldsList = listSelectFields(fields);
     const std::string sourceName = std::string{source.name} + " " + std::string{source.alias.value_or("")};
-    const std::string _relations = buildRelations(*this, relations);
-    const std::string sql = "select " + fieldsList + " from " + sourceName + " " + _relations;
+    const std::string _relations = buildRelations(relations);
+    std::string sql = "select " + fieldsList + " from " + sourceName + " " + _relations;
 
+    if (filter.has_value()) {
+      std::size_t parameterIndex = 1;
+      for (const auto& relation : relations) {
+        parameterIndex += relation.condition.parameters.size();
+      }
+
+      sql += " where ";
+      sql += renderFilter(filter.value(), parameterIndex);
+    }
+
+    sql += renderOrdering(ordering);
     return sql;
+  }
+
+  std::string SqlBuilder::insert(const Source&) const
+  {
+    throw worm::DatabaseException("Insert query building is not implemented yet.");
+  }
+
+  std::string SqlBuilder::update(const Source&, const std::optional<Filter>&) const
+  {
+    throw worm::DatabaseException("Update query building is not implemented yet.");
+  }
+
+  std::string SqlBuilder::remove(const Source&, const std::optional<Filter>&) const
+  {
+    throw worm::DatabaseException("Delete query building is not implemented yet.");
   }
 
   std::string PgBuilder::placeholder(std::size_t index) const
@@ -261,7 +190,7 @@ namespace worm::core
     return "$" + std::to_string(index);
   }
 
-  std::unique_ptr<Builder> getBuilder()
+  std::unique_ptr<SqlBuilder> getSqlBuilder()
   {
     const auto type = worm::DependencyInjector<worm::connection::DatabaseType>().get();
 

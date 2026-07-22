@@ -1,5 +1,7 @@
 #include <core/sql-builder.hpp>
 
+#include <core/predicate.hpp>
+
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -19,20 +21,20 @@ namespace
       envFile << "database_type=" << databaseType << '\n';
     }
 
-    const auto builder = worm::core::getBuilder();
+    const auto builder = worm::core::getSqlBuilder();
 
     if (databaseType == "postgresql" && dynamic_cast<worm::core::PgBuilder*>(builder.get()) == nullptr) {
-      std::cerr << "Builder factory did not return PgBuilder.\n";
+      std::cerr << "SqlBuilder factory did not return PgBuilder.\n";
       return 1;
     }
 
     if (databaseType == "mysql" && dynamic_cast<worm::core::MySqlBuilder*>(builder.get()) == nullptr) {
-      std::cerr << "Builder factory did not return MySqlBuilder.\n";
+      std::cerr << "SqlBuilder factory did not return MySqlBuilder.\n";
       return 1;
     }
 
     if (databaseType == "sqlite" && dynamic_cast<worm::core::SqliteBuilder*>(builder.get()) == nullptr) {
-      std::cerr << "Builder factory did not return SqliteBuilder.\n";
+      std::cerr << "SqlBuilder factory did not return SqliteBuilder.\n";
       return 1;
     }
 
@@ -44,9 +46,13 @@ int main()
 {
   using worm::core::Comparison;
   using worm::core::Field;
+  using worm::core::Filter;
   using worm::core::Join;
   using worm::core::MySqlBuilder;
+  using worm::core::OrderDirection;
+  using worm::core::Ordering;
   using worm::core::PgBuilder;
+  using worm::core::Predicate;
   using worm::core::Relation;
   using worm::core::Source;
   using worm::core::SqliteBuilder;
@@ -54,14 +60,6 @@ int main()
   const PgBuilder pgBuilder;
   const MySqlBuilder mySqlBuilder;
   const SqliteBuilder sqliteBuilder;
-
-  const auto expression = pgBuilder.compare("id", Comparison::Equal, std::int64_t{7});
-  if (pgBuilder.renderExpression(expression) != "id = $1" ||
-      mySqlBuilder.renderExpression(expression) != "id = ?" ||
-      sqliteBuilder.renderExpression(expression) != "id = ?") {
-    std::cerr << "Dialect placeholders were rendered incorrectly.\n";
-    return 1;
-  }
 
   const Source users{"users", "u"};
   const Source orders{"orders", "o"};
@@ -74,12 +72,31 @@ int main()
       Join::Inner,
       users,
       orders,
-      pgBuilder.compare("u.id", Comparison::Equal, std::int64_t{7})},
+      Predicate::compare("u.id", Comparison::Equal, std::int64_t{7})},
   };
-  const std::string select = pgBuilder.select(fields, users, relations);
+  const Filter filter{Predicate::equal("u.active", true)};
+  const std::vector<Ordering> ordering{
+    Ordering{"o.total", OrderDirection::Descending},
+  };
+  const std::string select = pgBuilder.select(fields, users, relations, filter, ordering);
 
-  if (select != "select u.id,o.total from users u inner join orders o on (u.id = $1)") {
-    std::cerr << "Select builder did not use the joined source in JOIN rendering.\n";
+  if (select !=
+      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+      " where u.active = $2 order by o.total desc") {
+    std::cerr << "Select builder did not render joined source, filter, or ordering correctly.\n";
+    return 1;
+  }
+
+  const std::string mySqlSelect = mySqlBuilder.select(fields, users, relations, filter, ordering);
+  const std::string sqliteSelect = sqliteBuilder.select(fields, users, relations, filter, ordering);
+
+  if (mySqlSelect !=
+        "select u.id,o.total from users u inner join orders o on (u.id = ?)"
+        " where u.active = ? order by o.total desc" ||
+      sqliteSelect !=
+        "select u.id,o.total from users u inner join orders o on (u.id = ?)"
+        " where u.active = ? order by o.total desc") {
+    std::cerr << "Question mark dialect placeholders were rendered incorrectly.\n";
     return 1;
   }
 
@@ -100,7 +117,7 @@ int main()
       result = assertFactoryReturnsBuilder(root, "sqlite");
     }
   } catch (const std::exception& error) {
-    std::cerr << "Builder factory test failed: " << error.what() << '\n';
+    std::cerr << "SqlBuilder factory test failed: " << error.what() << '\n';
     result = 1;
   }
 

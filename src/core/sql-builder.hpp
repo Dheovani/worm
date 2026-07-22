@@ -3,93 +3,77 @@
 #include <concepts>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
 #include <core/expression.hpp>
+#include <core/filter.hpp>
+#include <core/ordering.hpp>
 #include <core/source.hpp>
 
 namespace worm::core
 {
 
-  class Builder
+  class SqlBuilder
   {
   public:
     [[nodiscard]]
     virtual std::string select(
       const std::vector<worm::core::Field>& fields,
       const Source& source,
-      const std::vector<Relation>& relations) const;
-
-    virtual ~Builder() = default;
-
-    [[nodiscard]]
-    Expression compare(
-      std::string_view column,
-      Comparison comparison,
-      Parameter value) const;
+      const std::vector<Relation>& relations,
+      const std::optional<Filter>& filter = std::nullopt,
+      const std::vector<Ordering>& ordering = {}) const;
 
     [[nodiscard]]
-    Expression isNull(std::string_view column) const;
+    virtual std::string insert(const Source& source) const;
 
     [[nodiscard]]
-    Expression isNotNull(std::string_view column) const;
+    virtual std::string update(const Source& source, const std::optional<Filter>& filter = std::nullopt) const;
 
     [[nodiscard]]
-    Expression between(
-      std::string_view column,
-      Parameter lower,
-      Parameter upper) const;
+    virtual std::string remove(const Source& source, const std::optional<Filter>& filter = std::nullopt) const;
 
-    [[nodiscard]]
-    Expression in(
-      std::string_view column,
-      std::vector<Parameter> values) const;
-
-    [[nodiscard]]
-    Expression notIn(
-      std::string_view column,
-      std::vector<Parameter> values) const;
-
-    [[nodiscard]]
-    Expression _and(
-      const Expression& left,
-      const Expression& right) const;
-
-    [[nodiscard]]
-    Expression _or(
-      const Expression& left,
-      const Expression& right) const;
-
-    [[nodiscard]]
-    std::string renderExpression(
-      const Expression& expression,
-      std::size_t firstParameterIndex = 1) const;
+    virtual ~SqlBuilder() = default;
 
   protected:
     [[nodiscard]]
     virtual std::string placeholder(std::size_t index) const;
+
+  private:
+    [[nodiscard]]
+    std::string renderExpression(const Expression& expression, std::size_t firstParameterIndex = 1) const;
+
+    [[nodiscard]]
+    std::string buildRelations(const std::vector<Relation>& relations) const;
+
+    [[nodiscard]]
+    std::string renderFilter(const Filter& filter, std::size_t firstParameterIndex = 1) const;
+
+    [[nodiscard]]
+    std::string renderOrdering(const std::vector<Ordering>& ordering) const;
   };
 
-  class PgBuilder : public Builder
+  class PgBuilder : public SqlBuilder
   {
   protected:
     [[nodiscard]]
     std::string placeholder(std::size_t index) const override;
   };
 
-  class MySqlBuilder : public Builder
+  class MySqlBuilder : public SqlBuilder
   {};
 
-  class SqliteBuilder : public Builder
+  class SqliteBuilder : public SqlBuilder
   {};
 
   template <typename T>
-  concept SqlBuilder = std::derived_from<std::remove_cvref_t<T>, Builder>;
+  concept SqlBuilderI = std::derived_from<std::remove_cvref_t<T>, SqlBuilder>;
 
   [[nodiscard]]
-  std::unique_ptr<Builder> getBuilder();
+  std::unique_ptr<SqlBuilder> getSqlBuilder();
 
 } // namespace worm::core

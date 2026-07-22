@@ -1,5 +1,7 @@
 add_library(
   WormCore
+  filter.cpp
+  predicate.cpp
   sql-builder.cpp
 )
 add_library(Worm::Core ALIAS WormCore)
