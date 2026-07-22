@@ -39,7 +39,8 @@ namespace worm::utils
 
   namespace detail
   {
-    template <typename Type, typename Variant, std::size_t Index = 0> consteval std::size_t get_variant_index_impl()
+    template <typename Type, typename Variant, std::size_t Index = 0>
+    consteval std::size_t get_variant_index_impl()
     {
       if constexpr (Index >= std::variant_size_v<Variant>)
         return std::variant_npos;
@@ -71,8 +72,13 @@ namespace worm::utils
 
   namespace env
   {
-    [[nodiscard]] std::string findInProjectRoot();
-    [[nodiscard]] std::unordered_map<std::string, std::string> loadFromPath(const std::string& path);
-    [[nodiscard]] std::string getDatabaseType();
+    [[nodiscard]]
+    std::string findInProjectRoot();
+
+    [[nodiscard]]
+    std::unordered_map<std::string, std::string> loadFromPath(const std::string& path);
+
+    [[nodiscard]]
+    std::string getDatabaseType();
   } // namespace env
 } // namespace worm::utils

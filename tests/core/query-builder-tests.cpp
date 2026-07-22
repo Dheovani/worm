@@ -1,6 +1,7 @@
 #include <core/query-builder.hpp>
 
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -9,14 +10,15 @@ namespace
   class RecordingBuilder final : public worm::core::Builder
   {
   public:
-    const std::string_view select(const std::vector<worm::core::Field>& fields,
-                                  const worm::core::Source& source,
-                                  const std::vector<worm::core::Relation>& relations) const noexcept override
+    std::string select(
+      const std::vector<worm::core::Field>& fields,
+      const worm::core::Source& source,
+      const std::vector<worm::core::Relation>& relations) const override
     {
       fieldsCount_ = fields.size();
       sourceName_ = source.name_;
       relationsCount_ = relations.size();
-      return query_;
+      return std::string{query_};
     }
 
     mutable std::size_t fieldsCount_{0};

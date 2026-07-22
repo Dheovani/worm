@@ -1,6 +1,5 @@
 add_library(
   WormCore
-  expression.cpp
   sql-builder.cpp
 )
 add_library(Worm::Core ALIAS WormCore)
@@ -19,4 +18,5 @@ target_link_libraries(
     Worm::Connection
     Worm::Errors
     Worm::Reflection
+    Worm::Utils
 )

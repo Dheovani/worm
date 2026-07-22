@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string_view>
+#include <string>
 #include <vector>
 
 #include <core/source.hpp>
@@ -9,24 +9,25 @@
 namespace worm::core
 {
 
-  template <SqlBuilder __SqlBuilder> class QueryBuilder
+  template <SqlBuilder SqlBuilderType>
+  class QueryBuilder
   {
   public:
-    QueryBuilder(const __SqlBuilder& sql_builder) noexcept
-      : sqlQuilder_(sql_builder)
+    explicit QueryBuilder(const SqlBuilderType& sqlBuilder) noexcept
+      : sqlBuilder_(sqlBuilder)
     {}
 
     [[nodiscard]]
-    const std::string_view select(
+    std::string select(
       const std::vector<worm::core::Field>& fields,
       const Source& source,
-      const std::vector<Relation>& relations) const noexcept
+      const std::vector<Relation>& relations) const
     {
-      return sqlQuilder_.build(fields, source, relations);
+      return sqlBuilder_.select(fields, source, relations);
     }
 
   private:
-    const __SqlBuilder& sqlQuilder_;
+    const SqlBuilderType& sqlBuilder_;
   };
 
 } // namespace worm::core
