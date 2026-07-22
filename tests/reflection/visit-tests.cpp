@@ -15,8 +15,7 @@ namespace
 
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &Entity::id),
-                        worm::reflection::field("name", &Entity::name)};
+      return std::tuple{worm::reflection::field("id", &Entity::id), worm::reflection::field("name", &Entity::name)};
     }
   };
 } // namespace
@@ -38,16 +37,14 @@ int main()
       value = "Doctrine";
   });
 
-  if (names != std::vector<std::string>{"id", "name"} || entity.id != 10 ||
-      entity.name != "Doctrine") {
+  if (names != std::vector<std::string>{"id", "name"} || entity.id != 10 || entity.name != "Doctrine") {
     std::cerr << "Mutable field visitation produced an unexpected result.\n";
     return 1;
   }
 
   const Entity& constEntity = entity;
   std::size_t visited = 0;
-  worm::reflection::for_each_field(constEntity,
-                                   [&visited](const auto&, const auto&) { ++visited; });
+  worm::reflection::for_each_field(constEntity, [&visited](const auto&, const auto&) { ++visited; });
 
   if (visited != worm::reflection::field_count<Entity>) {
     std::cerr << "Const field visitation skipped fields.\n";

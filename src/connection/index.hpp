@@ -6,6 +6,7 @@
  * from the connection namespace/dir
  */
 
+#include <connection/client-factory.hpp>
 #include <connection/client.hpp>
 #include <connection/mysql-client.hpp>
 #include <connection/pg-client.hpp>

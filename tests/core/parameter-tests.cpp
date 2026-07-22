@@ -18,8 +18,7 @@ int main()
   const Parameter integerValue = std::int64_t{42};
   const Parameter textValue = std::string{"Doctrine"};
 
-  if (!std::holds_alternative<std::nullptr_t>(nullValue) ||
-      std::get<std::int64_t>(integerValue) != 42 ||
+  if (!std::holds_alternative<std::nullptr_t>(nullValue) || std::get<std::int64_t>(integerValue) != 42 ||
       std::get<std::string>(textValue) != "Doctrine") {
     std::cerr << "Parameter did not preserve a supported value.\n";
     return 1;

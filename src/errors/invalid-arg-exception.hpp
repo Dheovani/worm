@@ -10,11 +10,11 @@ namespace worm
   {
   public:
     explicit InvalidArgException(std::string message)
-			: message_(std::move(message))
-		{}
+      : message_(std::move(message))
+    {}
 
     [[nodiscard]]
-		const char* what() const noexcept override
+    const char* what() const noexcept override
     {
       return message_.c_str();
     }

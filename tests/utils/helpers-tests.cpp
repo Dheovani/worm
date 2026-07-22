@@ -38,8 +38,7 @@ int main()
   static_assert(utils::get_variant_index<int, std::variant<std::string, int>> == 1);
   static_assert(utils::holds_variant_option<std::string, std::variant<int, std::string>>);
   static_assert(!utils::holds_variant_option<double, std::variant<int, std::string>>);
-  static_assert(
-      std::is_same_v<utils::remove_class_pointer_t<decltype(&Derived::value), Derived>, int>);
+  static_assert(std::is_same_v<utils::remove_class_pointer_t<decltype(&Derived::value), Derived>, int>);
 
   const std::filesystem::path originalPath = std::filesystem::current_path();
   const std::filesystem::path root = std::filesystem::temp_directory_path() / "worm-helpers-tests";
@@ -61,8 +60,7 @@ int main()
   try {
     const auto variables = utils::env::loadFromPath((root / ".env").string());
     if (variables.at("database_type") != "sqlite" || variables.at("host") != "localhost" ||
-        utils::env::findInProjectRoot() != (root / ".env").string() ||
-        utils::env::getDatabaseType() != "sqlite") {
+        utils::env::findInProjectRoot() != (root / ".env").string() || utils::env::getDatabaseType() != "sqlite") {
       std::cerr << "Environment helpers returned unexpected values.\n";
       result = 1;
     }

@@ -26,12 +26,12 @@ int main()
 {
   const TestClient client;
   const std::vector<std::pair<std::string, bool>> cases = {
-      {"SELECT * FROM users", true},
-      {"select id from users", true},
-      {"  SeLeCt 1", true},
-      {"INSERT INTO users VALUES (1)", false},
-      {"WITH users AS (SELECT 1) SELECT * FROM users", false},
-      {"", false},
+    {"SELECT * FROM users", true},
+    {"select id from users", true},
+    {"  SeLeCt 1", true},
+    {"INSERT INTO users VALUES (1)", false},
+    {"WITH users AS (SELECT 1) SELECT * FROM users", false},
+    {"", false},
   };
 
   for (const auto& [query, expected] : cases) {
@@ -42,9 +42,9 @@ int main()
     return 1;
   }
 
-  if (worm::databaseTypes.at("postgresql") != worm::DatabaseType::PostgreSQL ||
-      worm::databaseTypes.at("mysql") != worm::DatabaseType::MySQL ||
-      worm::databaseTypes.at("sqlite") != worm::DatabaseType::SQLite) {
+  if (worm::connection::databaseTypes.at("postgresql") != worm::connection::DatabaseType::PostgreSQL ||
+      worm::connection::databaseTypes.at("mysql") != worm::connection::DatabaseType::MySQL ||
+      worm::connection::databaseTypes.at("sqlite") != worm::connection::DatabaseType::SQLite) {
     std::cerr << "Database type mapping is incorrect.\n";
     return 1;
   }

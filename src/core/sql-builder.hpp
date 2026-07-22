@@ -8,28 +8,28 @@
 namespace worm::core
 {
 
-	class Builder
+  class Builder
   {
-	public:
+  public:
     virtual const std::string_view select(
-			const std::vector<worm::core::Field>& fields,
-			const Source& source,
+      const std::vector<worm::core::Field>& fields,
+      const Source& source,
       const std::vector<Relation>& relations) const noexcept = 0;
-	};
+  };
 
-	class PgBuilder : public Builder
+  class PgBuilder : public Builder
   {
-	public:
+  public:
     const std::string_view select(
-			const std::vector<worm::core::Field>& fields,
-			const Source& source,
-			const std::vector<Relation>& relations) const noexcept override;
-	};
+      const std::vector<worm::core::Field>& fields,
+      const Source& source,
+      const std::vector<Relation>& relations) const noexcept override;
+  };
 
-	template <typename T>
+  template <typename T>
   concept SqlBuilder = std::derived_from<std::remove_cvref_t<T>, Builder>;
 
-	[[nodiscard]]
+  [[nodiscard]]
   const auto getBuilder();
 
-}
+} // namespace worm::core

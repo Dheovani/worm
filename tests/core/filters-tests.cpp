@@ -19,12 +19,11 @@ int main()
   }
 
   clause.add(Expressions::compare("age", Comparison::GreaterOrEqual, std::int64_t{18}))
-      .add(Expressions::in("id", {std::int64_t{7}, std::int64_t{9}}))
-      .add(Expressions::isNull("deleted_at"));
+    .add(Expressions::in("id", {std::int64_t{7}, std::int64_t{9}}))
+    .add(Expressions::isNull("deleted_at"));
 
-  if (clause.sql() != "WHERE age >= ? AND id IN (?, ?) AND deleted_at IS NULL" ||
-      clause.parameters().size() != 3 || std::get<std::int64_t>(clause.parameters()[0]) != 18 ||
-      std::get<std::int64_t>(clause.parameters()[1]) != 7 ||
+  if (clause.sql() != "WHERE age >= ? AND id IN (?, ?) AND deleted_at IS NULL" || clause.parameters().size() != 3 ||
+      std::get<std::int64_t>(clause.parameters()[0]) != 18 || std::get<std::int64_t>(clause.parameters()[1]) != 7 ||
       std::get<std::int64_t>(clause.parameters()[2]) != 9) {
     std::cerr << "Filters composition or parameter order is invalid.\n";
     return 1;

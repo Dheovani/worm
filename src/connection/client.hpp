@@ -2,12 +2,13 @@
 
 #include <json/json.h>
 
+#include <cstdint>
 #include <map>
 #include <string>
 
-namespace worm
+namespace worm::connection
 {
-  enum class DatabaseType
+  enum class DatabaseType : std::uint8_t
   {
     PostgreSQL,
     MySQL,
@@ -19,23 +20,21 @@ namespace worm
     {"mysql", DatabaseType::MySQL},
     {"sqlite", DatabaseType::SQLite},
   };
-  
-  namespace connection
+
+  class Client
   {
-    class Client
-    {
-    public:
-      virtual ~Client() = default;
+  public:
+    virtual ~Client() = default;
 
-      Client(const Client&) = delete;
-      Client& operator=(const Client&) = delete;
+    Client(const Client&) = delete;
+    Client& operator=(const Client&) = delete;
 
-      virtual Json::Value executeQuery(const std::string& query) const = 0;
+    [[nodiscard]]
+    virtual Json::Value executeQuery(const std::string& query) const = 0;
 
-    protected:
-      Client() = default;
+  protected:
+    Client() = default;
 
-      [[nodiscard]] bool isSelect(const std::string& query) const;
-    };
-  } // namespace connection
-} // namespace worm
+    [[nodiscard]] bool isSelect(const std::string& query) const;
+  };
+} // namespace worm::connection

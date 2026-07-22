@@ -21,8 +21,7 @@ int main()
   }
 
   const std::filesystem::path originalPath = std::filesystem::current_path();
-  const std::filesystem::path root =
-      std::filesystem::temp_directory_path() / "worm-dependency-injection-tests";
+  const std::filesystem::path root = std::filesystem::temp_directory_path() / "worm-dependency-injection-tests";
 
   std::filesystem::remove_all(root);
   std::filesystem::create_directories(root);
@@ -36,9 +35,9 @@ int main()
 
   int result = 0;
   try {
-    const worm::DatabaseType type = worm::DependencyInjector<worm::DatabaseType>().get();
+    const worm::connection::DatabaseType type = worm::DependencyInjector<worm::connection::DatabaseType>().get();
 
-    if (type != worm::DatabaseType::SQLite) {
+    if (type != worm::connection::DatabaseType::SQLite) {
       std::cerr << "Specialized dependency injection returned an invalid value.\n";
       result = 1;
     }

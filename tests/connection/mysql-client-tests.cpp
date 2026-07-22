@@ -11,8 +11,7 @@ int main()
   static_assert(std::is_final_v<Client>);
   static_assert(!std::is_copy_constructible_v<Client>);
   static_assert(!std::is_copy_assignable_v<Client>);
-  static_assert(
-      std::is_same_v<decltype(Client::getInstance(std::declval<const Json::Value&>())), Client&>);
+  static_assert(std::is_same_v<decltype(Client::getInstance(std::declval<const Json::Value&>())), Client&>);
 
   return 0;
 }

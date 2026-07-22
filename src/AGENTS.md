@@ -17,10 +17,9 @@ Estas regras complementam o `AGENTS.md` da raiz para todo o conteúdo de `src/`.
 - Use `snake_case` apenas para símbolos de metaprogramação, como traits,
   variable templates e funções auxiliares avaliadas em tempo de compilação.
 - Use `UPPER_SNAKE_CASE` apenas para macros e constantes que sigam essa forma.
-- Declare subnamespaces dentro do namespace principal, como `namespace worm`
-  contendo `namespace connection`; não reabra o namespace principal apenas para
-  declarar o namespace filho.
-- Indente o conteúdo de cada namespace em 2 espaços, inclusive subnamespaces.
+- Declare subnamespaces com a sintaxe compacta, como `namespace worm::connection`;
+  não use namespaces aninhados no formato `namespace worm { namespace connection { ... } }`.
+- Indente o conteúdo de cada namespace em 2 espaços.
 - Use membros privados com sufixo `_`, como `connection_`.
 - Formate C++ com o `.clang-format` versionado na raiz.
 - Use indentação de 2 espaços, sem caracteres de tabulação.

@@ -49,8 +49,7 @@ Json::Value SqliteClient::executeQuery(const std::string& query) const
 {
   Json::Value results;
   sqlite3_stmt* statement = nullptr;
-  int resultCode = sqlite3_prepare_v2(
-    connection_, query.c_str(), static_cast<int>(query.size()), &statement, nullptr);
+  int resultCode = sqlite3_prepare_v2(connection_, query.c_str(), static_cast<int>(query.size()), &statement, nullptr);
 
   if (resultCode != SQLITE_OK) {
     std::cerr << sqlite3_errmsg(connection_) << std::endl;

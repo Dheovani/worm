@@ -9,25 +9,24 @@
 namespace worm::core
 {
 
-	template <SqlBuilder __SqlBuilder>
-	class QueryBuilder
+  template <SqlBuilder __SqlBuilder> class QueryBuilder
   {
-	public:
-		QueryBuilder(const __SqlBuilder& sql_builder) noexcept
-			: sqlQuilder_(sql_builder)
-		{}
+  public:
+    QueryBuilder(const __SqlBuilder& sql_builder) noexcept
+      : sqlQuilder_(sql_builder)
+    {}
 
-		[[nodiscard]]
-		const std::string_view select(
-			const std::vector<worm::core::Field>& fields,
-			const Source& source,
+    [[nodiscard]]
+    const std::string_view select(
+      const std::vector<worm::core::Field>& fields,
+      const Source& source,
       const std::vector<Relation>& relations) const noexcept
-		{
+    {
       return sqlQuilder_.build(fields, source, relations);
-		}
+    }
 
-	private:
+  private:
     const __SqlBuilder& sqlQuilder_;
-	};
+  };
 
-}
+} // namespace worm::core

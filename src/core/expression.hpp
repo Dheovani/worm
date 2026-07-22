@@ -10,7 +10,7 @@
 namespace worm::core
 {
 
-	using Parameter = std::variant<std::nullptr_t, std::int64_t, double, bool, std::string>;
+  using Parameter = std::variant<std::nullptr_t, std::int64_t, double, bool, std::string>;
 
   enum class Comparison
   {
@@ -33,27 +33,27 @@ namespace worm::core
   {
   public:
     [[nodiscard]]
-		static Expression compare(std::string_view column, Comparison comparison, Parameter value);
+    static Expression compare(std::string_view column, Comparison comparison, Parameter value);
 
     [[nodiscard]]
-		static Expression isNull(std::string_view column);
+    static Expression isNull(std::string_view column);
 
     [[nodiscard]]
-		static Expression isNotNull(std::string_view column);
+    static Expression isNotNull(std::string_view column);
 
     [[nodiscard]]
-		static Expression between(std::string_view column, Parameter lower, Parameter upper);
+    static Expression between(std::string_view column, Parameter lower, Parameter upper);
 
     [[nodiscard]]
-		static Expression in(std::string_view column, std::vector<Parameter> values);
+    static Expression in(std::string_view column, std::vector<Parameter> values);
 
     [[nodiscard]]
-		static Expression notIn(std::string_view column, std::vector<Parameter> values);
+    static Expression notIn(std::string_view column, std::vector<Parameter> values);
 
-		[[nodiscard]]
+    [[nodiscard]]
     static Expression _and(Expression& left, Expression& right);
 
-		[[nodiscard]]
+    [[nodiscard]]
     static Expression _or(Expression& left, Expression& right);
   };
 

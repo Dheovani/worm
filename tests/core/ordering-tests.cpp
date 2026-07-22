@@ -11,8 +11,7 @@ int main()
   using worm::core::OrderClause;
 
   const OrderBy order{"name", Direction::Descending};
-  if (order.column() != "name" || order.direction() != Direction::Descending ||
-      order.sql() != "name DESC") {
+  if (order.column() != "name" || order.direction() != Direction::Descending || order.sql() != "name DESC") {
     std::cerr << "OrderBy did not preserve its state.\n";
     return 1;
   }

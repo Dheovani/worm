@@ -62,10 +62,10 @@ namespace worm::core
       return {std::move(sql), std::move(values)};
     }
 
-		std::vector<Parameter> extractParameters(std::initializer_list<std::vector<Parameter>> params)
-		{
+    std::vector<Parameter> extractParameters(std::initializer_list<std::vector<Parameter>> params)
+    {
       std::vector<Parameter> parameters;
-			int size = 0;
+      int size = 0;
 
       for (auto& param : params)
         size += param.size();
@@ -75,8 +75,8 @@ namespace worm::core
       for (auto& param : params)
         parameters.insert(parameters.end(), params.begin(), params.end());
 
-			return parameters;
-		}
+      return parameters;
+    }
 
   } // namespace
 
@@ -114,24 +114,20 @@ namespace worm::core
     return membershipExpression(column, std::move(values), " NOT IN");
   }
 
-	Expression ExpressionBuilder::_and(Expression& left, Expression& right)
-	{
-    std::vector<Parameter> params;
-    params = extractParameters(std::initializer_list{left.parameters, right.parameters});
-
-    return Expression{
-			.parameters = params,
-			.sql = left.sql + " and " + right.sql};
-	}
-
-	Expression ExpressionBuilder::_or(Expression& left, Expression& right)
+  Expression ExpressionBuilder::_and(Expression& left, Expression& right)
   {
     std::vector<Parameter> params;
     params = extractParameters(std::initializer_list{left.parameters, right.parameters});
 
-    return Expression{
-			.parameters = params,
-			.sql = left.sql + " or " + right.sql};
+    return Expression{.sql = left.sql + " and " + right.sql, .parameters = params};
+  }
+
+  Expression ExpressionBuilder::_or(Expression& left, Expression& right)
+  {
+    std::vector<Parameter> params;
+    params = extractParameters(std::initializer_list{left.parameters, right.parameters});
+
+    return Expression{.sql = left.sql + " or " + right.sql, .parameters = params};
   }
 
 } // namespace worm::core

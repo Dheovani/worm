@@ -2,16 +2,13 @@
 
 #include <string_view>
 
-namespace worm
+namespace worm::reflection
 {
-  namespace reflection
+  struct FieldMetadata
   {
-    struct FieldMetadata
-    {
-      std::string_view columnName{};
-      bool primaryKey = false;
-      bool generated = false;
-      bool ignored = false;
-    };
-  } // namespace reflection
-} // namespace worm
+    std::string_view columnName{};
+    bool primaryKey = false;
+    bool generated = false;
+    bool ignored = false;
+  };
+} // namespace worm::reflection

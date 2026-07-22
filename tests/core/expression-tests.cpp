@@ -33,10 +33,13 @@ int main()
     return 1;
   }
 
-  const std::vector<std::pair<Comparison, std::string>> operators{
-      {Comparison::Equal, "="},           {Comparison::NotEqual, "<>"}, {Comparison::Greater, ">"},
-      {Comparison::GreaterOrEqual, ">="}, {Comparison::Less, "<"},      {Comparison::LessOrEqual, "<="},
-      {Comparison::Like, "LIKE"}};
+  const std::vector<std::pair<Comparison, std::string>> operators{{Comparison::Equal, "="},
+                                                                  {Comparison::NotEqual, "<>"},
+                                                                  {Comparison::Greater, ">"},
+                                                                  {Comparison::GreaterOrEqual, ">="},
+                                                                  {Comparison::Less, "<"},
+                                                                  {Comparison::LessOrEqual, "<="},
+                                                                  {Comparison::Like, "LIKE"}};
   for (const auto& [operation, sqlOperator] : operators) {
     if (ExpressionBuilder::compare("value", operation, true).sql != "value " + sqlOperator + " ?") {
       std::cerr << "A comparison operator was mapped incorrectly.\n";

@@ -12,16 +12,18 @@ namespace
     std::string_view transientValue{};
   };
 
-  constexpr auto idField = worm::reflection::field("id", &Entity::id,
+  constexpr auto idField = worm::reflection::field("id",
+                                                   &Entity::id,
                                                    worm::reflection::FieldMetadata{
-                                                       .columnName = "entity_id",
-                                                       .primaryKey = true,
-                                                       .generated = true,
+                                                     .columnName = "entity_id",
+                                                     .primaryKey = true,
+                                                     .generated = true,
                                                    });
 
-  constexpr auto ignoredField = worm::reflection::field("transientValue", &Entity::transientValue,
+  constexpr auto ignoredField = worm::reflection::field("transientValue",
+                                                        &Entity::transientValue,
                                                         worm::reflection::FieldMetadata{
-                                                            .ignored = true,
+                                                          .ignored = true,
                                                         });
 
   constexpr auto defaultField = worm::reflection::field("id", &Entity::id);
@@ -42,8 +44,8 @@ namespace
 
 int main()
 {
-  if (idField.metadata().columnName != "entity_id" || !idField.metadata().primaryKey ||
-      !idField.metadata().generated || idField.metadata().ignored) {
+  if (idField.metadata().columnName != "entity_id" || !idField.metadata().primaryKey || !idField.metadata().generated ||
+      idField.metadata().ignored) {
     std::cerr << "FieldDescriptor did not preserve its ORM metadata.\n";
     return 1;
   }

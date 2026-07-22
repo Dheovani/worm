@@ -15,8 +15,7 @@ namespace
 
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &Entity::id_),
-                        worm::reflection::field("name", &Entity::name_)};
+      return std::tuple{worm::reflection::field("id", &Entity::id_), worm::reflection::field("name", &Entity::name_)};
     }
 
   private:
@@ -34,8 +33,7 @@ int main()
   static_assert(std::is_same_v<decltype(id)::owner_type, Entity>);
   static_assert(std::is_same_v<decltype(id)::value_type, int>);
 
-  if (id.name() != "id" || name.name() != "name" || id.get(entity) != 7 ||
-      name.get(entity) != "Worm") {
+  if (id.name() != "id" || name.name() != "name" || id.get(entity) != 7 || name.get(entity) != "Worm") {
     std::cerr << "Field descriptors returned unexpected metadata or values.\n";
     return 1;
   }

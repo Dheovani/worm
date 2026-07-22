@@ -12,8 +12,7 @@ int main()
   static_assert(!std::is_copy_assignable_v<worm::Logger>);
 
   if (worm::getClassName("C:\\project\\entity.cpp") != "entity.cpp" ||
-      worm::getClassName("/project/entity.cpp") != "entity.cpp" ||
-      worm::getClassName("entity.cpp") != "entity.cpp") {
+      worm::getClassName("/project/entity.cpp") != "entity.cpp" || worm::getClassName("entity.cpp") != "entity.cpp") {
     std::cerr << "getClassName returned an unexpected value.\n";
     return 1;
   }

@@ -40,8 +40,7 @@ int main()
   }
 
   Relations multipleSources;
-  multipleSources.from(users, "u")
-      .from(orders, "o");
+  multipleSources.from(users, "u").from(orders, "o");
 
   if (multipleSources.sql() != "FROM users u, orders o") {
     std::cerr << "Relations generated an invalid multiple source FROM clause.\n";
@@ -50,37 +49,29 @@ int main()
 
   Relations joined;
   joined.from(users, "u")
-      .join(Join::Inner,
-            orders,
-            "o",
-            Expression{"u.id = o.user_id", {}})
-      .join(Join::Left,
-            payments,
-            "p",
-            Expression{"o.id = p.order_id", {}});
+    .join(Join::Inner, orders, "o", Expression{"u.id = o.user_id", {}})
+    .join(Join::Left, payments, "p", Expression{"o.id = p.order_id", {}});
 
-  if (joined.sql() !=
-      "FROM users u INNER JOIN orders o ON (u.id = o.user_id)"
-      " LEFT JOIN payments p ON (o.id = p.order_id)") {
+  if (joined.sql() != "FROM users u INNER JOIN orders o ON (u.id = o.user_id)"
+                      " LEFT JOIN payments p ON (o.id = p.order_id)") {
     std::cerr << "Relations generated an invalid JOIN clause.\n";
     return 1;
   }
 
   Relations allJoinTypes;
   allJoinTypes.from(users, "u")
-      .join(Join::Inner, orders, "oi", Expression{"u.id = oi.user_id", {}})
-      .join(Join::Left, orders, "ol", Expression{"u.id = ol.user_id", {}})
-      .join(Join::Right, orders, "orx", Expression{"u.id = orx.user_id", {}})
-      .join(Join::Full, orders, "ofx", Expression{"u.id = ofx.user_id", {}})
-      .join(Join::Cross, orders, "oc", Expression{"1 = 1", {}});
+    .join(Join::Inner, orders, "oi", Expression{"u.id = oi.user_id", {}})
+    .join(Join::Left, orders, "ol", Expression{"u.id = ol.user_id", {}})
+    .join(Join::Right, orders, "orx", Expression{"u.id = orx.user_id", {}})
+    .join(Join::Full, orders, "ofx", Expression{"u.id = ofx.user_id", {}})
+    .join(Join::Cross, orders, "oc", Expression{"1 = 1", {}});
 
-  if (allJoinTypes.sql() !=
-      "FROM users u"
-      " INNER JOIN orders oi ON (u.id = oi.user_id)"
-      " LEFT JOIN orders ol ON (u.id = ol.user_id)"
-      " RIGHT JOIN orders orx ON (u.id = orx.user_id)"
-      " FULL OUTER JOIN orders ofx ON (u.id = ofx.user_id)"
-      " CROSS JOIN orders oc ON (1 = 1)") {
+  if (allJoinTypes.sql() != "FROM users u"
+                            " INNER JOIN orders oi ON (u.id = oi.user_id)"
+                            " LEFT JOIN orders ol ON (u.id = ol.user_id)"
+                            " RIGHT JOIN orders orx ON (u.id = orx.user_id)"
+                            " FULL OUTER JOIN orders ofx ON (u.id = ofx.user_id)"
+                            " CROSS JOIN orders oc ON (1 = 1)") {
     std::cerr << "Relations generated an invalid JOIN type.\n";
     return 1;
   }

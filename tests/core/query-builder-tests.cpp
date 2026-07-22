@@ -9,7 +9,8 @@ namespace
   class RecordingBuilder final : public worm::core::Builder
   {
   public:
-    const std::string_view select(const std::vector<worm::core::Field>& fields, const worm::core::Source& source,
+    const std::string_view select(const std::vector<worm::core::Field>& fields,
+                                  const worm::core::Source& source,
                                   const std::vector<worm::core::Relation>& relations) const noexcept override
     {
       fieldsCount_ = fields.size();
@@ -42,11 +43,11 @@ int main()
   const Source users{"users", "u"};
   const Source orders{"orders", "o"};
   const std::vector<Field> fields{
-      Field{"id", users},
-      Field{"total", orders},
+    Field{"id", users},
+    Field{"total", orders},
   };
   const std::vector<Relation> relations{
-      Relation{Join::Inner, users, orders, Expression{"u.id = o.user_id", {}}},
+    Relation{Join::Inner, users, orders, Expression{"u.id = o.user_id", {}}},
   };
 
   const auto query = queryBuilder.select(fields, users, relations);

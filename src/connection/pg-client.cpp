@@ -14,11 +14,10 @@ PgClient::~PgClient()
 
 PgClient& PgClient::getInstance(const Json::Value& databaseConfig)
 {
-  std::string connectionData = "host=" + databaseConfig["host"].asString() +
-                               " port=" + databaseConfig["port"].asString() +
-                               " dbname=" + databaseConfig["dbname"].asString() +
-                               " user=" + databaseConfig["username"].asString() +
-                               " password=" + databaseConfig["password"].asString();
+  std::string connectionData =
+    "host=" + databaseConfig["host"].asString() + " port=" + databaseConfig["port"].asString() +
+    " dbname=" + databaseConfig["dbname"].asString() + " user=" + databaseConfig["username"].asString() +
+    " password=" + databaseConfig["password"].asString();
 
   static PgClient instance(connectionData);
   return instance;

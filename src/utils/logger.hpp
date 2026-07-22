@@ -48,8 +48,7 @@ namespace worm
   class Logger
   {
   public:
-    template <typename Class> Logger(Class source, int lineNumber)
-      : line_(lineNumber)
+    template <typename Class> Logger(Class source, int lineNumber) : line_(lineNumber)
     {
       if constexpr (std::is_convertible_v<Class, const char*>)
         className_ = getClassName(source);

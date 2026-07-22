@@ -11,33 +11,29 @@
 namespace worm::core
 {
 
-	struct Table
-	{
-	public:
-		constexpr Table(std::string_view name) noexcept
-			: name_(name)
-		{}
+  struct Table
+  {
+  public:
+    constexpr Table(std::string_view name) noexcept : name_(name) {}
 
-		[[nodiscard]]
-		constexpr std::string_view name() const noexcept
-		{
-			return name_;
-		}
+    [[nodiscard]]
+    constexpr std::string_view name() const noexcept
+    {
+      return name_;
+    }
 
-	private:
-		const std::string_view name_;
-	};
+  private:
+    const std::string_view name_;
+  };
 
-	template <typename Derived>
-	struct TableEntity : public Table
-	{
-		using entity_type = Derived;
-	};
+  template <typename Derived> struct TableEntity : public Table
+  {
+    using entity_type = Derived;
+  };
 
-	template <typename T>
-	concept Entity =
-		std::derived_from<std::remove_cvref_t<T>, TableEntity<std::remove_cvref_t<T>>> &&
-		reflection::Reflectable<std::remove_cvref_t<T>> &&
-		reflection::Snapshotable<std::remove_cvref_t<T>>;
+  template <typename T>
+  concept Entity = std::derived_from<std::remove_cvref_t<T>, TableEntity<std::remove_cvref_t<T>>> &&
+                   reflection::Reflectable<std::remove_cvref_t<T>> &&
+                   reflection::Snapshotable<std::remove_cvref_t<T>>;
 
 } // namespace worm::core
