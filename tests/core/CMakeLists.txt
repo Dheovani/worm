@@ -9,5 +9,5 @@ endfunction()
 
 add_worm_core_test(WormParameterTests parameter-tests.cpp Worm.Core.Parameter)
 add_worm_core_test(WormExpressionTests expression-tests.cpp Worm.Core.Expression)
-add_worm_core_test(WormOrderingTests ordering-tests.cpp Worm.Core.Ordering)
-add_worm_core_test(WormFiltersTests filters-tests.cpp Worm.Core.Filters)
+add_worm_core_test(WormSourceTests source-tests.cpp Worm.Core.Source)
+add_worm_core_test(WormQueryBuilderTests query-builder-tests.cpp Worm.Core.QueryBuilder)

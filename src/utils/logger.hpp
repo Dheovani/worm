@@ -126,4 +126,4 @@ namespace worm
   };
 } // namespace worm
 
-#define WORM_LOGGER worm::Logger(__FILE__, __LINE__)
+#define WormLogger worm::Logger(__FILE__, __LINE__)

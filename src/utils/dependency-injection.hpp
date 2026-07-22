@@ -12,7 +12,7 @@
 #include <string>
 #include <typeinfo>
 
-#define WORM_USE_DEPENDENCY_INJECTION                                                              \
+#define UseDependencyInjectionWorm                                                                 \
   template <typename Type> auto getDependencyInjector() noexcept                                   \
   {                                                                                                \
     return worm::DependencyInjector<Type>();                                                       \
@@ -29,19 +29,24 @@ namespace worm
     }
   };
 
-  template <> class DependencyInjector<Logger>
+  template <>
+	class DependencyInjector<Logger>
   {
   public:
-    template <typename Class, std::size_t Index> [[nodiscard]] Logger get() const
+    template <typename Class, std::size_t Index>
+		[[nodiscard]]
+		Logger get() const
     {
       return Logger(typeid(Class).name(), static_cast<int>(Index));
     }
   };
 
-  template <> class DependencyInjector<connection::Client>
+  template <>
+	class DependencyInjector<connection::Client>
   {
   public:
-    [[nodiscard]] connection::Client& get() const
+    [[nodiscard]]
+		connection::Client& get() const
     {
       const std::string database = utils::env::getDatabaseType();
       Json::Value config;
@@ -55,10 +60,12 @@ namespace worm
     }
   };
 
-  template <> class DependencyInjector<DatabaseType>
+  template <>
+	class DependencyInjector<DatabaseType>
   {
   public:
-    [[nodiscard]] DatabaseType get() const
+    [[nodiscard]]
+		DatabaseType get() const
     {
       const std::string database = utils::env::getDatabaseType();
       const auto type = databaseTypes.find(database);

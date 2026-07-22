@@ -5,5 +5,6 @@
 
 namespace worm
 {
-  [[nodiscard]] connection::Client& getInstance(const Json::Value& connectionData, DatabaseType type);
+  [[nodiscard]]
+	connection::Client& getInstance(const Json::Value& connectionData, DatabaseType type);
 }
