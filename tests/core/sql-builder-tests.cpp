@@ -100,6 +100,82 @@ int main()
     return 1;
   }
 
+  const Source payments{"payments", "p"};
+  const std::vector<Relation> multipleRelations{
+    Relation{
+      Join::Inner,
+      users,
+      orders,
+      Predicate::compare("u.id", Comparison::Equal, std::int64_t{7})},
+    Relation{
+      Join::Left,
+      orders,
+      payments,
+      Predicate::compare("o.id", Comparison::Equal, std::int64_t{9})},
+  };
+
+  const std::string multiJoinSelect = pgBuilder.select(fields, users, multipleRelations, filter, ordering);
+  if (multiJoinSelect !=
+      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+      " left join payments p on (o.id = $2) where u.active = $3 order by o.total desc") {
+    std::cerr << "Select builder did not separate multiple joins or number parameters correctly.\n";
+    return 1;
+  }
+
+  const std::vector<std::pair<std::string, worm::core::Parameter>> insertColumns{
+    {"name", std::string{"Ada"}},
+    {"active", true},
+  };
+
+  if (pgBuilder.insert(users, insertColumns) != "insert into users(name,active) values ($1,$2)" ||
+      mySqlBuilder.insert(users, insertColumns) != "insert into users(name,active) values (?,?)" ||
+      sqliteBuilder.insert(users, insertColumns) != "insert into users(name,active) values (?,?)") {
+    std::cerr << "Insert builder did not render placeholders correctly.\n";
+    return 1;
+  }
+
+  const Source archivedUsers{"archived_users"};
+  const std::vector<std::string> targetColumns{
+    "id",
+    "total",
+  };
+
+  if (pgBuilder.insertFromSelect(archivedUsers, targetColumns, select) !=
+      "insert into archived_users(id,total) "
+      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+      " where u.active = $2 order by o.total desc") {
+    std::cerr << "Insert from raw select query was not rendered correctly.\n";
+    return 1;
+  }
+
+  if (pgBuilder.insertFromSelect(archivedUsers, targetColumns, fields, users, relations, filter, ordering) !=
+      "insert into archived_users(id,total) "
+      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+      " where u.active = $2 order by o.total desc") {
+    std::cerr << "Insert from structured select query was not rendered correctly.\n";
+    return 1;
+  }
+
+  const std::string pgUpdate = pgBuilder.update(users, insertColumns, filter);
+  const std::string mySqlUpdate = mySqlBuilder.update(users, insertColumns, filter);
+  const std::string sqliteUpdate = sqliteBuilder.update(users, insertColumns, filter);
+  if (pgUpdate != "update users u set name = $1,active = $2 where u.active = $3" ||
+      mySqlUpdate != "update users u set name = ?,active = ? where u.active = ?" ||
+      sqliteUpdate != "update users u set name = ?,active = ? where u.active = ?") {
+    std::cerr << "Update builder did not render placeholders or filter correctly.\n";
+    return 1;
+  }
+
+  const std::string pgDelete = pgBuilder.delete_(users, filter);
+  const std::string mySqlDelete = mySqlBuilder.delete_(users, filter);
+  const std::string sqliteDelete = sqliteBuilder.delete_(users, filter);
+  if (pgDelete != "delete from users u where u.active = $1" ||
+      mySqlDelete != "delete from users u where u.active = ?" ||
+      sqliteDelete != "delete from users u where u.active = ?") {
+    std::cerr << "Delete builder did not render placeholders or filter correctly.\n";
+    return 1;
+  }
+
   const std::filesystem::path originalPath = std::filesystem::current_path();
   const std::filesystem::path root = std::filesystem::temp_directory_path() / "worm-sql-builder-tests";
 

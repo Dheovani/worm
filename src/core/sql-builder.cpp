@@ -98,7 +98,13 @@ namespace worm::core
     std::string list;
     std::size_t parameterIndex = 1;
 
-    for (auto& rel : relations) {
+    for (std::size_t index = 0; index < relations.size(); ++index) {
+      const auto& rel = relations[index];
+
+      if (index != 0) {
+        list += " ";
+      }
+
       list += getJoinClause(rel.joinType) + " ";
       list += std::string{rel.joinedSource.name} + " ";
 
@@ -170,19 +176,115 @@ namespace worm::core
     return sql;
   }
 
-  std::string SqlBuilder::insert(const Source&) const
+  std::string SqlBuilder::insert(
+    const Source& source,
+    const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
-    throw worm::DatabaseException("Insert query building is not implemented yet.");
+    std::string fields = "(",
+                values = "(";
+
+    for (std::size_t index = 0; index < columns.size(); ++index) {
+      const auto& field = columns[index].first;
+
+      fields += field;
+      values += placeholder(index + 1);
+
+      if (index + 1 < columns.size()) {
+        fields += ",";
+        values += ",";
+      }
+    }
+
+    fields += ")";
+    values += ")";
+
+    return "insert into " + std::string{source.name} + fields + " values " + values;
   }
 
-  std::string SqlBuilder::update(const Source&, const std::optional<Filter>&) const
+  std::string SqlBuilder::insertFromSelect(
+    const Source& target,
+    const std::vector<std::string>& targetColumns,
+    const std::string& sourceQuery) const
   {
-    throw worm::DatabaseException("Update query building is not implemented yet.");
+    std::string columns = "(";
+
+    for (std::size_t index = 0; index < targetColumns.size(); ++index) {
+      const auto& column = targetColumns[index];
+      columns += column;
+
+      if (index + 1 < targetColumns.size()) {
+        columns += ",";
+      }
+    }
+
+    columns += ")";
+
+    return "insert into " + std::string{target.name} + columns + " " + sourceQuery;
   }
 
-  std::string SqlBuilder::remove(const Source&, const std::optional<Filter>&) const
+  std::string SqlBuilder::insertFromSelect(
+    const Source& target,
+    const std::vector<std::string>& targetColumns,
+    const std::vector<Field>& selectedFields,
+    const Source& source,
+    const std::vector<Relation>& relations,
+    const std::optional<Filter>& filter,
+    const std::vector<Ordering>& ordering) const
   {
-    throw worm::DatabaseException("Delete query building is not implemented yet.");
+    const std::string selectClause = select(selectedFields, source, relations, filter, ordering);
+
+    return insertFromSelect(target, targetColumns, selectClause);
+  }
+
+  std::string SqlBuilder::update(
+    const Source& source,
+    const std::vector<std::pair<std::string, Parameter>>& columns,
+    const std::optional<Filter>& filter) const
+  {
+    std::string sql = "update " + std::string{source.name};
+
+    if (source.alias.has_value()) {
+      sql += " ";
+      sql += source.alias.value();
+    }
+
+    sql += " set ";
+
+    for (std::size_t index = 0; index < columns.size(); ++index) {
+      const auto& field = columns[index].first;
+
+      sql += field;
+      sql += " = ";
+      sql += placeholder(index + 1);
+
+      if (index + 1 < columns.size()) {
+        sql += ",";
+      }
+    }
+
+    if (filter.has_value()) {
+      sql += " where ";
+      sql += renderFilter(filter.value(), columns.size() + 1);
+    }
+
+    return sql;
+  }
+
+  std::string SqlBuilder::delete_(const Source& source, const std::optional<Filter>& filter) const
+  {
+    std::string sql = "delete from " + std::string{source.name};
+
+    if (source.alias.has_value()) {
+      sql += " ";
+      sql += source.alias.value();
+    }
+
+    if (filter.has_value()) {
+      sql += " where ";
+      sql += renderFilter(filter.value(), 1);
+    }
+
+    return sql;
   }
 
   std::string PgBuilder::placeholder(std::size_t index) const

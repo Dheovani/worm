@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <core/expression.hpp>
@@ -29,13 +30,34 @@ namespace worm::core
       const std::vector<Ordering>& ordering = {}) const;
 
     [[nodiscard]]
-    virtual std::string insert(const Source& source) const;
+    virtual std::string insert(
+      const Source& source,
+      const std::vector<std::pair<std::string, Parameter>>& columns) const;
 
     [[nodiscard]]
-    virtual std::string update(const Source& source, const std::optional<Filter>& filter = std::nullopt) const;
+    virtual std::string insertFromSelect(
+      const Source& target,
+      const std::vector<std::string>& targetColumns,
+      const std::string& sourceQuery) const;
 
     [[nodiscard]]
-    virtual std::string remove(const Source& source, const std::optional<Filter>& filter = std::nullopt) const;
+    virtual std::string insertFromSelect(
+      const Source& target,
+      const std::vector<std::string>& targetColumns,
+      const std::vector<Field>& selectedFields,
+      const Source& source,
+      const std::vector<Relation>& relations,
+      const std::optional<Filter>& filter = std::nullopt,
+      const std::vector<Ordering>& ordering = {}) const;
+
+    [[nodiscard]]
+    virtual std::string update(
+      const Source& source,
+      const std::vector<std::pair<std::string, Parameter>>& columns,
+      const std::optional<Filter>& filter = std::nullopt) const;
+
+    [[nodiscard]]
+    virtual std::string delete_(const Source& source, const std::optional<Filter>& filter = std::nullopt) const;
 
     virtual ~SqlBuilder() = default;
 
