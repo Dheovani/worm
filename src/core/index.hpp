@@ -8,3 +8,4 @@
 #include <core/query-builder.hpp>
 #include <core/source.hpp>
 #include <core/sql-builder.hpp>
+#include <core/statement.hpp>

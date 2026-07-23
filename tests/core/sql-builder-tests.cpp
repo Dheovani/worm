@@ -2,16 +2,45 @@
 
 #include <core/predicate.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace
 {
+  class CurrentPathGuard
+  {
+  public:
+    CurrentPathGuard()
+      : originalPath_(std::filesystem::current_path())
+    {}
+
+    ~CurrentPathGuard()
+    {
+      std::error_code error;
+      std::filesystem::current_path(originalPath_, error);
+    }
+
+    CurrentPathGuard(const CurrentPathGuard&) = delete;
+    CurrentPathGuard& operator=(const CurrentPathGuard&) = delete;
+
+  private:
+    std::filesystem::path originalPath_;
+  };
+
+  std::filesystem::path uniqueTempDirectory()
+  {
+    const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+
+    return std::filesystem::temp_directory_path() / ("worm-sql-builder-tests-" + std::to_string(now));
+  }
+
   int assertFactoryReturnsBuilder(
     const std::filesystem::path& root,
     std::string_view databaseType)
@@ -78,22 +107,27 @@ int main()
   const std::vector<Ordering> ordering{
     Ordering{"o.total", OrderDirection::Descending},
   };
-  const std::string select = pgBuilder.select(fields, users, relations, filter, ordering);
+  const worm::core::Statement select = pgBuilder.select(fields, users, relations, filter, ordering);
 
-  if (select !=
+  if (select.sql !=
       "select u.id,o.total from users u inner join orders o on (u.id = $1)"
       " where u.active = $2 order by o.total desc") {
     std::cerr << "Select builder did not render joined source, filter, or ordering correctly.\n";
     return 1;
   }
 
-  const std::string mySqlSelect = mySqlBuilder.select(fields, users, relations, filter, ordering);
-  const std::string sqliteSelect = sqliteBuilder.select(fields, users, relations, filter, ordering);
+  if (select.parameters != std::vector<worm::core::Parameter>{std::int64_t{7}, true}) {
+    std::cerr << "Select builder did not preserve relation and filter parameters.\n";
+    return 1;
+  }
 
-  if (mySqlSelect !=
+  const worm::core::Statement mySqlSelect = mySqlBuilder.select(fields, users, relations, filter, ordering);
+  const worm::core::Statement sqliteSelect = sqliteBuilder.select(fields, users, relations, filter, ordering);
+
+  if (mySqlSelect.sql !=
         "select u.id,o.total from users u inner join orders o on (u.id = ?)"
         " where u.active = ? order by o.total desc" ||
-      sqliteSelect !=
+      sqliteSelect.sql !=
         "select u.id,o.total from users u inner join orders o on (u.id = ?)"
         " where u.active = ? order by o.total desc") {
     std::cerr << "Question mark dialect placeholders were rendered incorrectly.\n";
@@ -114,11 +148,16 @@ int main()
       Predicate::compare("o.id", Comparison::Equal, std::int64_t{9})},
   };
 
-  const std::string multiJoinSelect = pgBuilder.select(fields, users, multipleRelations, filter, ordering);
-  if (multiJoinSelect !=
+  const worm::core::Statement multiJoinSelect = pgBuilder.select(fields, users, multipleRelations, filter, ordering);
+  if (multiJoinSelect.sql !=
       "select u.id,o.total from users u inner join orders o on (u.id = $1)"
       " left join payments p on (o.id = $2) where u.active = $3 order by o.total desc") {
     std::cerr << "Select builder did not separate multiple joins or number parameters correctly.\n";
+    return 1;
+  }
+
+  if (multiJoinSelect.parameters != std::vector<worm::core::Parameter>{std::int64_t{7}, std::int64_t{9}, true}) {
+    std::cerr << "Select builder did not preserve multiple relation parameters before filter parameters.\n";
     return 1;
   }
 
@@ -127,10 +166,18 @@ int main()
     {"active", true},
   };
 
-  if (pgBuilder.insert(users, insertColumns) != "insert into users(name,active) values ($1,$2)" ||
-      mySqlBuilder.insert(users, insertColumns) != "insert into users(name,active) values (?,?)" ||
-      sqliteBuilder.insert(users, insertColumns) != "insert into users(name,active) values (?,?)") {
+  const worm::core::Statement pgInsert = pgBuilder.insert(users, insertColumns);
+  const worm::core::Statement mySqlInsert = mySqlBuilder.insert(users, insertColumns);
+  const worm::core::Statement sqliteInsert = sqliteBuilder.insert(users, insertColumns);
+  if (pgInsert.sql != "insert into users(name,active) values ($1,$2)" ||
+      mySqlInsert.sql != "insert into users(name,active) values (?,?)" ||
+      sqliteInsert.sql != "insert into users(name,active) values (?,?)") {
     std::cerr << "Insert builder did not render placeholders correctly.\n";
+    return 1;
+  }
+
+  if (pgInsert.parameters != std::vector<worm::core::Parameter>{std::string{"Ada"}, true}) {
+    std::cerr << "Insert builder did not preserve column parameters.\n";
     return 1;
   }
 
@@ -140,7 +187,8 @@ int main()
     "total",
   };
 
-  if (pgBuilder.insertFromSelect(archivedUsers, targetColumns, select) !=
+  const worm::core::Statement rawInsertFromSelect = pgBuilder.insertFromSelect(archivedUsers, targetColumns, select);
+  if (rawInsertFromSelect.sql !=
       "insert into archived_users(id,total) "
       "select u.id,o.total from users u inner join orders o on (u.id = $1)"
       " where u.active = $2 order by o.total desc") {
@@ -148,7 +196,14 @@ int main()
     return 1;
   }
 
-  if (pgBuilder.insertFromSelect(archivedUsers, targetColumns, fields, users, relations, filter, ordering) !=
+  if (rawInsertFromSelect.parameters != select.parameters) {
+    std::cerr << "Insert from raw select query did not preserve source parameters.\n";
+    return 1;
+  }
+
+  const worm::core::Statement structuredInsertFromSelect =
+    pgBuilder.insertFromSelect(archivedUsers, targetColumns, fields, users, relations, filter, ordering);
+  if (structuredInsertFromSelect.sql !=
       "insert into archived_users(id,total) "
       "select u.id,o.total from users u inner join orders o on (u.id = $1)"
       " where u.active = $2 order by o.total desc") {
@@ -156,30 +211,46 @@ int main()
     return 1;
   }
 
-  const std::string pgUpdate = pgBuilder.update(users, insertColumns, filter);
-  const std::string mySqlUpdate = mySqlBuilder.update(users, insertColumns, filter);
-  const std::string sqliteUpdate = sqliteBuilder.update(users, insertColumns, filter);
-  if (pgUpdate != "update users u set name = $1,active = $2 where u.active = $3" ||
-      mySqlUpdate != "update users u set name = ?,active = ? where u.active = ?" ||
-      sqliteUpdate != "update users u set name = ?,active = ? where u.active = ?") {
+  if (structuredInsertFromSelect.parameters != select.parameters) {
+    std::cerr << "Insert from structured select query did not preserve source parameters.\n";
+    return 1;
+  }
+
+  const worm::core::Statement pgUpdate = pgBuilder.update(users, insertColumns, filter);
+  const worm::core::Statement mySqlUpdate = mySqlBuilder.update(users, insertColumns, filter);
+  const worm::core::Statement sqliteUpdate = sqliteBuilder.update(users, insertColumns, filter);
+  if (pgUpdate.sql != "update users u set name = $1,active = $2 where u.active = $3" ||
+      mySqlUpdate.sql != "update users u set name = ?,active = ? where u.active = ?" ||
+      sqliteUpdate.sql != "update users u set name = ?,active = ? where u.active = ?") {
     std::cerr << "Update builder did not render placeholders or filter correctly.\n";
     return 1;
   }
 
-  const std::string pgDelete = pgBuilder.delete_(users, filter);
-  const std::string mySqlDelete = mySqlBuilder.delete_(users, filter);
-  const std::string sqliteDelete = sqliteBuilder.delete_(users, filter);
-  if (pgDelete != "delete from users u where u.active = $1" ||
-      mySqlDelete != "delete from users u where u.active = ?" ||
-      sqliteDelete != "delete from users u where u.active = ?") {
+  if (pgUpdate.parameters != std::vector<worm::core::Parameter>{std::string{"Ada"}, true, true}) {
+    std::cerr << "Update builder did not preserve column parameters before filter parameters.\n";
+    return 1;
+  }
+
+  const worm::core::Statement pgDelete = pgBuilder.delete_(users, filter);
+  const worm::core::Statement mySqlDelete = mySqlBuilder.delete_(users, filter);
+  const worm::core::Statement sqliteDelete = sqliteBuilder.delete_(users, filter);
+  if (pgDelete.sql != "delete from users u where u.active = $1" ||
+      mySqlDelete.sql != "delete from users u where u.active = ?" ||
+      sqliteDelete.sql != "delete from users u where u.active = ?") {
     std::cerr << "Delete builder did not render placeholders or filter correctly.\n";
     return 1;
   }
 
-  const std::filesystem::path originalPath = std::filesystem::current_path();
-  const std::filesystem::path root = std::filesystem::temp_directory_path() / "worm-sql-builder-tests";
+  if (pgDelete.parameters != std::vector<worm::core::Parameter>{true}) {
+    std::cerr << "Delete builder did not preserve filter parameters.\n";
+    return 1;
+  }
 
-  std::filesystem::remove_all(root);
+  const CurrentPathGuard currentPathGuard;
+  const std::filesystem::path root = uniqueTempDirectory();
+
+  std::error_code cleanupError;
+  std::filesystem::remove_all(root, cleanupError);
   std::filesystem::create_directories(root);
   std::filesystem::current_path(root);
 
@@ -197,8 +268,8 @@ int main()
     result = 1;
   }
 
-  std::filesystem::current_path(originalPath);
-  std::filesystem::remove_all(root);
+  std::filesystem::current_path(std::filesystem::temp_directory_path(), cleanupError);
+  std::filesystem::remove_all(root, cleanupError);
 
   return result;
 }

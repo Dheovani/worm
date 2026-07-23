@@ -8,6 +8,8 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace worm::core
 {
@@ -64,6 +66,34 @@ namespace worm::core
       }
 
       return "asc";
+    }
+
+    void appendParameters(std::vector<Parameter>& target, const std::vector<Parameter>& source)
+    {
+      target.insert(target.end(), source.begin(), source.end());
+    }
+
+    std::vector<Parameter> relationParameters(const std::vector<Relation>& relations)
+    {
+      std::vector<Parameter> parameters;
+
+      for (const auto& relation : relations) {
+        appendParameters(parameters, relation.condition.parameters);
+      }
+
+      return parameters;
+    }
+
+    std::vector<Parameter> columnParameters(const std::vector<std::pair<std::string, Parameter>>& columns)
+    {
+      std::vector<Parameter> parameters;
+      parameters.reserve(columns.size());
+
+      for (const auto& column : columns) {
+        parameters.push_back(column.second);
+      }
+
+      return parameters;
     }
 
   } // namespace
@@ -150,7 +180,7 @@ namespace worm::core
     return sql;
   }
 
-  std::string SqlBuilder::select(
+  Statement SqlBuilder::select(
     const std::vector<worm::core::Field>& fields,
     const Source& source,
     const std::vector<Relation>& relations,
@@ -173,10 +203,16 @@ namespace worm::core
     }
 
     sql += renderOrdering(ordering);
-    return sql;
+
+    std::vector<Parameter> parameters = relationParameters(relations);
+    if (filter.has_value()) {
+      appendParameters(parameters, filter.value().expression().parameters);
+    }
+
+    return {std::move(sql), std::move(parameters)};
   }
 
-  std::string SqlBuilder::insert(
+  Statement SqlBuilder::insert(
     const Source& source,
     const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
@@ -198,13 +234,15 @@ namespace worm::core
     fields += ")";
     values += ")";
 
-    return "insert into " + std::string{source.name} + fields + " values " + values;
+    return {
+      "insert into " + std::string{source.name} + fields + " values " + values,
+      columnParameters(columns)};
   }
 
-  std::string SqlBuilder::insertFromSelect(
+  Statement SqlBuilder::insertFromSelect(
     const Source& target,
     const std::vector<std::string>& targetColumns,
-    const std::string& sourceQuery) const
+    const Statement& sourceStatement) const
   {
     std::string columns = "(";
 
@@ -219,10 +257,12 @@ namespace worm::core
 
     columns += ")";
 
-    return "insert into " + std::string{target.name} + columns + " " + sourceQuery;
+    return {
+      "insert into " + std::string{target.name} + columns + " " + sourceStatement.sql,
+      sourceStatement.parameters};
   }
 
-  std::string SqlBuilder::insertFromSelect(
+  Statement SqlBuilder::insertFromSelect(
     const Source& target,
     const std::vector<std::string>& targetColumns,
     const std::vector<Field>& selectedFields,
@@ -231,12 +271,12 @@ namespace worm::core
     const std::optional<Filter>& filter,
     const std::vector<Ordering>& ordering) const
   {
-    const std::string selectClause = select(selectedFields, source, relations, filter, ordering);
+    const Statement selectStatement = select(selectedFields, source, relations, filter, ordering);
 
-    return insertFromSelect(target, targetColumns, selectClause);
+    return insertFromSelect(target, targetColumns, selectStatement);
   }
 
-  std::string SqlBuilder::update(
+  Statement SqlBuilder::update(
     const Source& source,
     const std::vector<std::pair<std::string, Parameter>>& columns,
     const std::optional<Filter>& filter) const
@@ -267,10 +307,15 @@ namespace worm::core
       sql += renderFilter(filter.value(), columns.size() + 1);
     }
 
-    return sql;
+    std::vector<Parameter> parameters = columnParameters(columns);
+    if (filter.has_value()) {
+      appendParameters(parameters, filter.value().expression().parameters);
+    }
+
+    return {std::move(sql), std::move(parameters)};
   }
 
-  std::string SqlBuilder::delete_(const Source& source, const std::optional<Filter>& filter) const
+  Statement SqlBuilder::delete_(const Source& source, const std::optional<Filter>& filter) const
   {
     std::string sql = "delete from " + std::string{source.name};
 
@@ -284,7 +329,12 @@ namespace worm::core
       sql += renderFilter(filter.value(), 1);
     }
 
-    return sql;
+    std::vector<Parameter> parameters;
+    if (filter.has_value()) {
+      parameters = filter.value().expression().parameters;
+    }
+
+    return {std::move(sql), std::move(parameters)};
   }
 
   std::string PgBuilder::placeholder(std::size_t index) const

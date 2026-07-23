@@ -1,6 +1,7 @@
 #include <core/query-builder.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -13,7 +14,7 @@ namespace
   class RecordingBuilder final : public worm::core::SqlBuilder
   {
   public:
-    std::string select(
+    worm::core::Statement select(
       const std::vector<worm::core::Field>& fields,
       const worm::core::Source& source,
       const std::vector<worm::core::Relation>& relations,
@@ -25,30 +26,30 @@ namespace
       relationsCount_ = relations.size();
       hasFilter_ = filter.has_value();
       orderingCount_ = ordering.size();
-      return std::string{query_};
+      return {std::string{query_}};
     }
 
-    std::string insert(
+    worm::core::Statement insert(
       const worm::core::Source& source,
       const std::vector<std::pair<std::string, worm::core::Parameter>>& columns) const override
     {
       sourceName_ = source.name;
       insertColumnsCount_ = columns.size();
-      return std::string{insertQuery_};
+      return {std::string{insertQuery_}};
     }
 
-    std::string insertFromSelect(
+    worm::core::Statement insertFromSelect(
       const worm::core::Source& target,
       const std::vector<std::string>& targetColumns,
-      const std::string& sourceQuery) const override
+      const worm::core::Statement& sourceStatement) const override
     {
       sourceName_ = target.name;
       targetColumnsCount_ = targetColumns.size();
-      sourceQuery_ = sourceQuery;
-      return std::string{insertFromSelectQuery_};
+      sourceQuery_ = sourceStatement.sql;
+      return {std::string{insertFromSelectQuery_}, sourceStatement.parameters};
     }
 
-    std::string insertFromSelect(
+    worm::core::Statement insertFromSelect(
       const worm::core::Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<worm::core::Field>& selectedFields,
@@ -64,10 +65,10 @@ namespace
       relationsCount_ = relations.size();
       hasFilter_ = filter.has_value();
       orderingCount_ = ordering.size();
-      return std::string{structuredInsertFromSelectQuery_};
+      return {std::string{structuredInsertFromSelectQuery_}};
     }
 
-    std::string update(
+    worm::core::Statement update(
       const worm::core::Source& source,
       const std::vector<std::pair<std::string, worm::core::Parameter>>& columns,
       const std::optional<worm::core::Filter>& filter) const override
@@ -75,16 +76,16 @@ namespace
       sourceName_ = source.name;
       updateColumnsCount_ = columns.size();
       hasFilter_ = filter.has_value();
-      return std::string{updateQuery_};
+      return {std::string{updateQuery_}};
     }
 
-    std::string delete_(
+    worm::core::Statement delete_(
       const worm::core::Source& source,
       const std::optional<worm::core::Filter>& filter) const override
     {
       sourceName_ = source.name;
       hasFilter_ = filter.has_value();
-      return std::string{deleteQuery_};
+      return {std::string{deleteQuery_}};
     }
 
     mutable std::size_t fieldsCount_{0};
@@ -141,7 +142,7 @@ int main()
     Filter{Predicate::equal("u.active", true)},
     {Ordering{"o.total", OrderDirection::Descending}});
 
-  if (query != "select delegated") {
+  if (query.sql != "select delegated") {
     std::cerr << "QueryBuilder did not return the SQL produced by the concrete builder.\n";
     return 1;
   }
@@ -157,7 +158,8 @@ int main()
     {"active", true},
   };
 
-  if (queryBuilder.insert(users, insertColumns) != "insert delegated" ||
+  const worm::core::Statement insertQuery = queryBuilder.insert(users, insertColumns);
+  if (insertQuery.sql != "insert delegated" ||
       sqlBuilder.sourceName_ != "users" || sqlBuilder.insertColumnsCount_ != 2) {
     std::cerr << "QueryBuilder did not delegate insert data to the concrete builder.\n";
     return 1;
@@ -168,17 +170,21 @@ int main()
     "id",
     "total",
   };
-  const std::string selectQuery{"select u.id,o.total from users u"};
+  const worm::core::Statement selectStatement{
+    "select u.id,o.total from users u",
+    {std::int64_t{7}}};
 
-  const std::string rawInsertFromSelectQuery = queryBuilder.insertFromSelect(archivedUsers, targetColumns, selectQuery);
-  if (rawInsertFromSelectQuery != "insert from select delegated" ||
+  const worm::core::Statement rawInsertFromSelectQuery =
+    queryBuilder.insertFromSelect(archivedUsers, targetColumns, selectStatement);
+  if (rawInsertFromSelectQuery.sql != "insert from select delegated" ||
       sqlBuilder.sourceName_ != "archived_users" || sqlBuilder.targetColumnsCount_ != 2 ||
-      sqlBuilder.sourceQuery_ != selectQuery) {
+      sqlBuilder.sourceQuery_ != selectStatement.sql ||
+      rawInsertFromSelectQuery.parameters != selectStatement.parameters) {
     std::cerr << "QueryBuilder did not delegate raw insert-from-select data to the concrete builder.\n";
     return 1;
   }
 
-  const std::string structuredInsertFromSelectQuery = queryBuilder.insertFromSelect(
+  const worm::core::Statement structuredInsertFromSelectQuery = queryBuilder.insertFromSelect(
     archivedUsers,
     targetColumns,
     fields,
@@ -186,7 +192,7 @@ int main()
     relations,
     Filter{Predicate::equal("u.active", true)},
     {Ordering{"o.total", OrderDirection::Descending}});
-  if (structuredInsertFromSelectQuery != "structured insert from select delegated" ||
+  if (structuredInsertFromSelectQuery.sql != "structured insert from select delegated" ||
       sqlBuilder.targetName_ != "archived_users" || sqlBuilder.sourceName_ != "users" ||
       sqlBuilder.targetColumnsCount_ != 2 || sqlBuilder.fieldsCount_ != 2 ||
       sqlBuilder.relationsCount_ != 1 || !sqlBuilder.hasFilter_ || sqlBuilder.orderingCount_ != 1) {
@@ -194,15 +200,16 @@ int main()
     return 1;
   }
 
-  const std::string updateQuery = queryBuilder.update(users, insertColumns, Filter{Predicate::equal("u.active", true)});
-  if (updateQuery != "update delegated" ||
+  const worm::core::Statement updateQuery =
+    queryBuilder.update(users, insertColumns, Filter{Predicate::equal("u.active", true)});
+  if (updateQuery.sql != "update delegated" ||
       sqlBuilder.sourceName_ != "users" || sqlBuilder.updateColumnsCount_ != 2 || !sqlBuilder.hasFilter_) {
     std::cerr << "QueryBuilder did not delegate update data to the concrete builder.\n";
     return 1;
   }
 
-  const std::string deleteQuery = queryBuilder.delete_(users, Filter{Predicate::equal("u.active", true)});
-  if (deleteQuery != "delete delegated" ||
+  const worm::core::Statement deleteQuery = queryBuilder.delete_(users, Filter{Predicate::equal("u.active", true)});
+  if (deleteQuery.sql != "delete delegated" ||
       sqlBuilder.sourceName_ != "users" || !sqlBuilder.hasFilter_) {
     std::cerr << "QueryBuilder did not delegate delete data to the concrete builder.\n";
     return 1;

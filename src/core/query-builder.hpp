@@ -22,7 +22,7 @@ namespace worm::core
     {}
 
     [[nodiscard]]
-    std::string select(
+    Statement select(
       const std::vector<worm::core::Field>& fields,
       const Source& source,
       const std::vector<Relation>& relations = {},
@@ -33,7 +33,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::string insert(
+    Statement insert(
       const Source& source,
       const std::vector<std::pair<std::string, Parameter>>& columns) const
     {
@@ -41,16 +41,16 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::string insertFromSelect(
+    Statement insertFromSelect(
       const Source& target,
       const std::vector<std::string>& targetColumns,
-      const std::string& sourceQuery) const
+      const Statement& sourceStatement) const
     {
-      return sqlBuilder_.insertFromSelect(target, targetColumns, sourceQuery);
+      return sqlBuilder_.insertFromSelect(target, targetColumns, sourceStatement);
     }
 
     [[nodiscard]]
-    std::string insertFromSelect(
+    Statement insertFromSelect(
       const Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
@@ -70,7 +70,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::string update(
+    Statement update(
       const Source& source,
       const std::vector<std::pair<std::string, Parameter>>& columns,
       const std::optional<Filter>& filter = std::nullopt) const
@@ -79,7 +79,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::string delete_(const Source& source, const std::optional<Filter>& filter = std::nullopt) const
+    Statement delete_(const Source& source, const std::optional<Filter>& filter = std::nullopt) const
     {
       return sqlBuilder_.delete_(source, filter);
     }

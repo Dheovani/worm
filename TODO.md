@@ -50,8 +50,9 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 
 ### SQL e parâmetros
 
-- [ ] Criar uma representação `Statement` contendo SQL e parâmetros vinculados.
-- [ ] Implementar geração de `SELECT`, `INSERT`, `UPDATE` e `DELETE`.
+- [x] Criar uma representação `Statement` contendo SQL e parâmetros vinculados.
+- [x] Implementar geração inicial de `SELECT`, `INSERT`, `UPDATE`, `DELETE` e `INSERT ... SELECT`.
+- [x] Migrar builders para retornarem `Statement` com SQL e parâmetros, em vez de apenas `std::string`.
 - [x] Criar expressões parametrizadas e cláusulas `WHERE` e `ORDER BY`.
 - [ ] Implementar operadores lógicos agrupados: `AND`, `OR` e `NOT`.
 - [ ] Vincular parâmetros nos drivers sem interpolação de valores.
@@ -104,6 +105,17 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [ ] Gerar migrações revisáveis, sem executá-las automaticamente.
 - [ ] Manter histórico, checksum, aplicação e rollback de migrações.
 - [ ] Documentar diferenças e limitações de migração entre os bancos.
+
+### Gerador bidirecional
+
+- [ ] Definir a regra de decisão entre entidade como fonte da verdade, banco como fonte da verdade ou modo explícito por comando.
+- [ ] Introspectar o esquema do banco e gerar classes de entidade C++ com metadados de reflexão.
+- [ ] Ler entidades refletidas e gerar tabelas, colunas, chaves, índices e relações no banco.
+- [ ] Comparar entidade e banco para produzir um plano de sincronização revisável antes de qualquer alteração.
+- [ ] Gerar código e SQL em arquivos separados, sem aplicar mudanças destrutivas automaticamente.
+- [ ] Mapear tipos entre C++ e SQL por dialeto, incluindo nulabilidade, valores padrão, enums e datas.
+- [ ] Definir como preservar customizações manuais em entidades geradas novamente.
+- [ ] Adicionar testes com esquemas pequenos para validar os dois sentidos: banco → entidade e entidade → banco.
 
 ## Experiência do desenvolvedor
 
