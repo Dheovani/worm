@@ -1,11 +1,39 @@
 #include <connection/mysql-client.hpp>
 #include <errors/database-exception.hpp>
 
+#include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
 
 using worm::connection::MySqlClient;
+
+namespace
+{
+  worm::core::Parameter mysqlValue(const MYSQL_FIELD& field, const char* value)
+  {
+    if (value == nullptr) {
+      return nullptr;
+    }
+
+    switch (field.type) {
+    case MYSQL_TYPE_TINY:
+    case MYSQL_TYPE_SHORT:
+    case MYSQL_TYPE_LONG:
+    case MYSQL_TYPE_INT24:
+    case MYSQL_TYPE_LONGLONG:
+      return static_cast<std::int64_t>(std::strtoll(value, nullptr, 10));
+    case MYSQL_TYPE_FLOAT:
+    case MYSQL_TYPE_DOUBLE:
+    case MYSQL_TYPE_DECIMAL:
+    case MYSQL_TYPE_NEWDECIMAL:
+      return std::strtod(value, nullptr);
+    default:
+      return std::string{value};
+    }
+  }
+} // namespace
 
 MySqlClient::MySqlClient(const char* host, const char* user, const char* passwd, const char* db, unsigned int port)
 {
@@ -27,22 +55,23 @@ MySqlClient::~MySqlClient()
   mysql_close(connection_);
 }
 
-MySqlClient& MySqlClient::getInstance(const Json::Value& databaseConfig)
+MySqlClient& MySqlClient::getInstance(const worm::connection::ConnectionConfig& databaseConfig)
 {
-  const std::string host = databaseConfig["host"].asString();
-  const std::string username = databaseConfig["username"].asString();
-  const std::string password = databaseConfig["password"].asString();
-  const std::string databaseName = databaseConfig["dbname"].asString();
-  const unsigned int port = databaseConfig["port"].asUInt();
+  const unsigned int port = static_cast<unsigned int>(std::stoul(databaseConfig.port));
 
-  static MySqlClient instance(host.c_str(), username.c_str(), password.c_str(), databaseName.c_str(), port);
+  static MySqlClient instance(
+    databaseConfig.host.c_str(),
+    databaseConfig.username.c_str(),
+    databaseConfig.password.c_str(),
+    databaseConfig.dbname.c_str(),
+    port);
   return instance;
 }
 
-Json::Value MySqlClient::executeQuery(const std::string& query) const
+worm::core::ResultSet MySqlClient::executeQuery(const std::string& query) const
 {
-  Json::Value results;
-  std::vector<char*> columns;
+  std::vector<worm::core::ResultRow> rows;
+  std::vector<MYSQL_FIELD> fields;
 
   MYSQL_RES* res;
   MYSQL_ROW row;
@@ -55,17 +84,17 @@ Json::Value MySqlClient::executeQuery(const std::string& query) const
     if (res) {
       MYSQL_FIELD* field;
       while ((field = mysql_fetch_field(res))) {
-        columns.push_back(field->name);
+        fields.push_back(*field);
       }
 
       while ((row = mysql_fetch_row(res))) {
-        Json::Value result;
+        std::vector<worm::core::ResultColumn> columns;
 
         for (unsigned int i = 0; i < mysql_num_fields(res); ++i) {
-          result[columns[i]] = row[i] ? row[i] : "NULL";
+          columns.push_back({fields[i].name, mysqlValue(fields[i], row[i])});
         }
 
-        results["results"].append(result);
+        rows.push_back({columns});
       }
 
       mysql_free_result(res);
@@ -74,5 +103,5 @@ Json::Value MySqlClient::executeQuery(const std::string& query) const
     }
   }
 
-  return results;
+  return worm::core::ResultSet{rows};
 }

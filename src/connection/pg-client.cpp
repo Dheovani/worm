@@ -1,5 +1,7 @@
 #include <connection/pg-client.hpp>
 
+#include <vector>
+
 using worm::connection::PgClient;
 
 PgClient::PgClient(const std::string& connectionData)
@@ -12,36 +14,44 @@ PgClient::~PgClient()
   delete connection_;
 }
 
-PgClient& PgClient::getInstance(const Json::Value& databaseConfig)
+PgClient& PgClient::getInstance(const worm::connection::ConnectionConfig& databaseConfig)
 {
   std::string connectionData =
-    "host=" + databaseConfig["host"].asString() + " port=" + databaseConfig["port"].asString() +
-    " dbname=" + databaseConfig["dbname"].asString() + " user=" + databaseConfig["username"].asString() +
-    " password=" + databaseConfig["password"].asString();
+    " host=" + databaseConfig.host
+    " port=" + databaseConfig.port
+    " dbname=" + databaseConfig.dbname
+    " user=" + databaseConfig.username
+    " password=" + databaseConfig.password;
 
   static PgClient instance(connectionData);
   return instance;
 }
 
-Json::Value PgClient::executeQuery(const std::string& query) const
+worm::core::ResultSet PgClient::executeQuery(const std::string& query) const
 {
-  Json::Value results;
+  std::vector<worm::core::ResultRow> rows;
   pqxx::work worker = pqxx::work(*connection_);
   pqxx::result response = worker.exec(query);
   worker.commit();
 
   if (isSelect(query)) {
     for (pqxx::result::size_type i = 0; i < response.size(); i++) {
-      Json::Value result;
+      std::vector<worm::core::ResultColumn> columns;
 
       for (pqxx::result::size_type j = 0; j < response[i].size(); j++) {
         const std::string columnName = response[i][j].name();
-        result[columnName] = response[i][j].c_str();
+        worm::core::Parameter columnValue = nullptr;
+
+        if (!response[i][j].is_null()) {
+          columnValue = response[i][j].c_str();
+        }
+
+        columns.push_back({columnName, columnValue});
       }
 
-      results["results"].append(result);
+      rows.push_back({columns});
     }
   }
 
-  return results;
+  return worm::core::ResultSet{rows};
 }

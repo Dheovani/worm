@@ -1,7 +1,7 @@
 #pragma once
 
 #include <connection/client.hpp>
-#include <json/json.h>
+#include <connection/configuration.hpp>
 #include <mysql/mysql.h>
 
 namespace worm::connection
@@ -21,10 +21,10 @@ namespace worm::connection
     ~MySqlClient();
 
     // This static method returns a reference to the Singleton instance of 'MySqlClient'
-    // based on the provided database configuration in the form of a 'Json::Value'.
-    static MySqlClient& getInstance(const Json::Value& databaseConfig);
+    // based on the provided database configuration.
+    static MySqlClient& getInstance(const ConnectionConfig& databaseConfig);
 
     // This method is used to execute a database query specific to SQLite.
-    Json::Value executeQuery(const std::string& query) const override;
+    core::ResultSet executeQuery(const std::string& query) const override;
   };
 } // namespace worm::connection

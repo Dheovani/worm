@@ -14,9 +14,9 @@ add_worm_connection_test(
 )
 
 add_worm_connection_test(
-  WormClientFactoryTests
-  client-factory-tests.cpp
-  Worm.Connection.ClientFactory
+  WormConfigurationTests
+  configuration-tests.cpp
+  Worm.Connection.Configuration
 )
 
 add_worm_connection_test(

@@ -1,17 +1,8 @@
 include_guard(GLOBAL)
 
-# JsonCpp and libpqxx provide stable config-package targets both upstream and
-# through vcpkg.
-find_package(jsoncpp CONFIG REQUIRED)
+# libpqxx provides a stable config-package target both upstream and through
+# vcpkg.
 find_package(libpqxx CONFIG REQUIRED)
-
-if(TARGET JsonCpp::JsonCpp)
-  set(WORM_JSONCPP_TARGET JsonCpp::JsonCpp)
-elseif(TARGET jsoncpp_lib)
-  set(WORM_JSONCPP_TARGET jsoncpp_lib)
-else()
-  message(FATAL_ERROR "JsonCpp was found, but it did not export a supported CMake target.")
-endif()
 
 if(NOT TARGET libpqxx::pqxx)
   message(FATAL_ERROR "libpqxx was found, but target libpqxx::pqxx is unavailable.")
@@ -56,7 +47,6 @@ add_library(Worm::Dependencies ALIAS WormDependencies)
 target_link_libraries(
   WormDependencies
   INTERFACE
-    ${WORM_JSONCPP_TARGET}
     libpqxx::pqxx
     ${WORM_SQLITE_TARGET}
     ${WORM_MYSQL_TARGET}

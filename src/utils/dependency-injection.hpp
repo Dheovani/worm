@@ -1,13 +1,12 @@
 #pragma once
 
-#include <connection/client-factory.hpp>
+#include <connection/configuration.hpp>
 #include <errors/database-exception.hpp>
 #include <utils/helpers.hpp>
 #include <utils/logger.hpp>
 
 #include <cstddef>
 #include <cstdlib>
-#include <json/json.h>
 #include <string>
 #include <typeinfo>
 
@@ -19,6 +18,19 @@
 
 namespace worm
 {
+  namespace detail
+  {
+    [[nodiscard]]
+    inline std::string envValue(const char* key)
+    {
+      if (const char* value = std::getenv(key)) {
+        return value;
+      }
+
+      return {};
+    }
+  } // namespace detail
+
   template <typename Type> class DependencyInjector
   {
   public:
@@ -46,13 +58,12 @@ namespace worm
     connection::Client& get() const
     {
       const std::string database = utils::env::getDatabaseType();
-      Json::Value config;
-
-      for (const char* key : {"host", "username", "password", "dbname", "port"}) {
-        if (const char* value = std::getenv(key)) {
-          config[key] = value;
-        }
-      }
+      const connection::ConnectionConfig config = {
+        .host = detail::envValue("host"),
+        .username = detail::envValue("username"),
+        .password = detail::envValue("password"),
+        .dbname = detail::envValue("dbname"),
+        .port = detail::envValue("port")};
 
       return connection::getInstance(config, connection::databaseTypes.at(database));
     }

@@ -3,6 +3,7 @@ add_library(
   filter.cpp
   predicate.cpp
   sql-builder.cpp
+  result-set.cpp
 )
 add_library(Worm::Core ALIAS WormCore)
 

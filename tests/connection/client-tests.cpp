@@ -15,7 +15,7 @@ namespace
       return isSelect(query);
     }
 
-    Json::Value executeQuery(const std::string&) const override
+    worm::core::ResultSet executeQuery(const std::string&) const override
     {
       return {};
     }

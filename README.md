@@ -52,8 +52,7 @@ Para gerar uma build Release:
 cmake --build --preset release
 ```
 
-O manifesto [vcpkg.json](vcpkg.json) instala automaticamente JsonCpp, libmysql,
-libpqxx e SQLite durante a configuração.
+O manifesto [vcpkg.json](vcpkg.json) instala automaticamente libmysql, libpqxx e SQLite durante a configuração.
 
 ## Testes
 

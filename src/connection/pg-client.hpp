@@ -1,7 +1,7 @@
 #pragma once
 
 #include <connection/client.hpp>
-#include <json/json.h>
+#include <connection/configuration.hpp>
 #include <pqxx/pqxx>
 
 namespace worm::connection
@@ -23,9 +23,9 @@ namespace worm::connection
 
     // This static method returns a reference to the Singleton instance of 'PgClient'
     // based on the provided connection data for PostgreSQL.
-    static PgClient& getInstance(const Json::Value& connectionData);
+    static PgClient& getInstance(const ConnectionConfig& connectionData);
 
     // This method is used to execute a database query specific to PostgreSQL.
-    Json::Value executeQuery(const std::string& query) const override;
+    core::ResultSet executeQuery(const std::string& query) const override;
   };
 } // namespace worm::connection

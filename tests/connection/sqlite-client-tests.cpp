@@ -1,8 +1,10 @@
 #include <connection/sqlite-client.hpp>
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <type_traits>
+#include <variant>
 
 int main()
 {
@@ -13,8 +15,9 @@ int main()
   static_assert(!std::is_copy_constructible_v<Client>);
   static_assert(!std::is_copy_assignable_v<Client>);
 
-  Json::Value config;
-  config["dbname"] = ":memory:";
+  const worm::connection::ConnectionConfig config{
+    .dbname = ":memory:",
+  };
 
   Client& client = Client::getInstance(config);
   Client& sameClient = Client::getInstance(config);
@@ -24,15 +27,21 @@ int main()
     return 1;
   }
 
-  const Json::Value response = client.executeQuery("SELECT 42 AS answer, NULL AS missing");
+  const worm::core::ResultSet response = client.executeQuery("SELECT 42 AS answer, NULL AS missing");
 
-  const Json::Value& rows = response["results"];
-  if (!rows.isArray() || rows.size() != 1) {
+  if (response.rowCount() != 1) {
     std::cerr << "SqliteClient returned an unexpected row count.\n";
     return 1;
   }
 
-  if (rows[0]["answer"].asString() != "42" || rows[0]["missing"].asString() != "") {
+  const auto& row = response.rows().front();
+  if (row.columnCount() != 2) {
+    std::cerr << "SqliteClient returned an unexpected column count.\n";
+    return 1;
+  }
+
+  if (row.columns[0].name != "answer" || std::get<std::int64_t>(row.columns[0].value) != 42 ||
+      row.columns[1].name != "missing" || !std::holds_alternative<std::nullptr_t>(row.columns[1].value)) {
     std::cerr << "SqliteClient returned unexpected column values.\n";
     return 1;
   }

@@ -5,7 +5,7 @@ Estas regras complementam o `AGENTS.md` da raiz para todo o conteúdo de `src/`.
 ## Nomes de arquivos
 
 - Use somente letras minúsculas em nomes de arquivos próprios do projeto.
-- Use `kebab-case` para nomes compostos: `filters.hpp`, `client-factory.cpp`.
+- Use `kebab-case` para nomes compostos: `result-set.hpp`, `mysql-client.cpp`.
 - Use extensões `.hpp` para headers C++ e `.cpp` para implementações.
 - Use `index.hpp` para o header agregador público de um subsistema.
 - `CMakeLists.txt` mantém a grafia exigida pelo CMake e é uma exceção à regra.

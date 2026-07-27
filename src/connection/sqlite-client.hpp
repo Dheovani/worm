@@ -1,6 +1,7 @@
 #pragma once
 
 #include <connection/client.hpp>
+#include <connection/configuration.hpp>
 #include <sqlite3.h>
 
 namespace worm::connection
@@ -30,10 +31,10 @@ namespace worm::connection
     ~SqliteClient();
 
     // This static method returns a reference to the singleton SqliteClient instance.
-    // based on the provided database configuration in the form of a 'Json::Value'.
-    static SqliteClient& getInstance(const Json::Value& databaseConfig);
+    // based on the provided database configuration.
+    static SqliteClient& getInstance(const ConnectionConfig& databaseConfig);
 
     // This method is used to execute a database query specific to SQLite.
-    Json::Value executeQuery(const std::string& query) const override;
+    core::ResultSet executeQuery(const std::string& query) const override;
   };
 } // namespace worm::connection

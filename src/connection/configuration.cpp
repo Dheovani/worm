@@ -1,4 +1,4 @@
-#include <connection/client-factory.hpp>
+#include <connection/configuration.hpp>
 
 #include <connection/mysql-client.hpp>
 #include <connection/pg-client.hpp>
@@ -7,7 +7,7 @@
 
 namespace worm::connection
 {
-  Client& getInstance(const Json::Value& connectionData, DatabaseType type)
+  Client& getInstance(const ConnectionConfig& connectionData, DatabaseType type)
   {
     switch (type) {
     case DatabaseType::PostgreSQL:

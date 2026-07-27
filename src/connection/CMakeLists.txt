@@ -1,7 +1,7 @@
 add_library(
   WormConnection
   client.cpp
-  client-factory.cpp
+  configuration.cpp
   pg-client.cpp
   mysql-client.cpp
   sqlite-client.cpp
@@ -17,6 +17,7 @@ target_include_directories(
 target_link_libraries(
   WormConnection
   PUBLIC
+    Worm::Core
     Worm::Dependencies
   PRIVATE
     Worm::Errors

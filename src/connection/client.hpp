@@ -1,6 +1,6 @@
 #pragma once
 
-#include <json/json.h>
+#include <core/result-set.hpp>
 
 #include <cstdint>
 #include <map>
@@ -30,11 +30,12 @@ namespace worm::connection
     Client& operator=(const Client&) = delete;
 
     [[nodiscard]]
-    virtual Json::Value executeQuery(const std::string& query) const = 0;
+    virtual core::ResultSet executeQuery(const std::string& query) const = 0;
 
   protected:
     Client() = default;
 
-    [[nodiscard]] bool isSelect(const std::string& query) const;
+    [[nodiscard]]
+    bool isSelect(const std::string& query) const;
   };
 } // namespace worm::connection
