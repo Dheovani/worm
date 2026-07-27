@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/dialect.hpp>
 #include <core/entity.hpp>
 #include <core/expression.hpp>
 #include <core/filter.hpp>

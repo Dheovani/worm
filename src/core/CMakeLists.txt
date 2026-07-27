@@ -1,5 +1,6 @@
 add_library(
   WormCore
+  dialect.cpp
   filter.cpp
   predicate.cpp
   sql-builder.cpp

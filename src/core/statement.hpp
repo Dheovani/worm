@@ -20,6 +20,11 @@ namespace worm::core
       : sql(std::move(sql)),
         parameters(std::move(parameters))
     {}
+
+    static Statement from(std::string sql, std::vector<Parameter> parameters = {})
+    {
+      return {std::move(sql), std::move(parameters)};
+    }
   };
 
 } // namespace worm::core

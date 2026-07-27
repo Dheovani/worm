@@ -8,6 +8,7 @@ function(add_worm_core_test target source test_name)
 endfunction()
 
 add_worm_core_test(WormParameterTests parameter-tests.cpp Worm.Core.Parameter)
+add_worm_core_test(WormDialectTests dialect-tests.cpp Worm.Core.Dialect)
 add_worm_core_test(WormStatementTests statement-tests.cpp Worm.Core.Statement)
 add_worm_core_test(WormResultSetTests result-set-tests.cpp Worm.Core.ResultSet)
 add_worm_core_test(WormExpressionTests expression-tests.cpp Worm.Core.Expression)
