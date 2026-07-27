@@ -26,6 +26,6 @@ namespace worm::connection
     static PgClient& getInstance(const ConnectionConfig& connectionData);
 
     // This method is used to execute a database query specific to PostgreSQL.
-    core::ResultSet executeQuery(const std::string& query) const override;
+    core::ResultSet executeQuery(const core::Statement& statement) const override;
   };
 } // namespace worm::connection

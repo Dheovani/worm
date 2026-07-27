@@ -35,6 +35,6 @@ namespace worm::connection
     static SqliteClient& getInstance(const ConnectionConfig& databaseConfig);
 
     // This method is used to execute a database query specific to SQLite.
-    core::ResultSet executeQuery(const std::string& query) const override;
+    core::ResultSet executeQuery(const core::Statement& statement) const override;
   };
 } // namespace worm::connection

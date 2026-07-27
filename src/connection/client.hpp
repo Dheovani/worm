@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/result-set.hpp>
+#include <core/statement.hpp>
 
 #include <cstdint>
 #include <map>
@@ -30,7 +31,7 @@ namespace worm::connection
     Client& operator=(const Client&) = delete;
 
     [[nodiscard]]
-    virtual core::ResultSet executeQuery(const std::string& query) const = 0;
+    virtual core::ResultSet executeQuery(const core::Statement& statement) const = 0;
 
   protected:
     Client() = default;

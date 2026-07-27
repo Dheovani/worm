@@ -1,8 +1,36 @@
 #include <connection/pg-client.hpp>
 
+#include <type_traits>
+#include <variant>
 #include <vector>
 
 using worm::connection::PgClient;
+
+namespace
+{
+  pqxx::params pgParameters(const std::vector<worm::core::Parameter>& parameters)
+  {
+    pqxx::params values;
+    values.reserve(parameters.size());
+
+    for (const worm::core::Parameter& parameter : parameters) {
+      std::visit(
+        [&values](const auto& value)
+        {
+          using Value = std::decay_t<decltype(value)>;
+
+          if constexpr (std::is_same_v<Value, std::nullptr_t>) {
+            values.append();
+          } else {
+            values.append(value);
+          }
+        },
+        parameter);
+    }
+
+    return values;
+  }
+} // namespace
 
 PgClient::PgClient(const std::string& connectionData)
 {
@@ -27,14 +55,14 @@ PgClient& PgClient::getInstance(const worm::connection::ConnectionConfig& databa
   return instance;
 }
 
-worm::core::ResultSet PgClient::executeQuery(const std::string& query) const
+worm::core::ResultSet PgClient::executeQuery(const worm::core::Statement& statement) const
 {
   std::vector<worm::core::ResultRow> rows;
   pqxx::work worker = pqxx::work(*connection_);
-  pqxx::result response = worker.exec(query);
+  pqxx::result response = worker.exec(statement.sql, pgParameters(statement.parameters));
   worker.commit();
 
-  if (isSelect(query)) {
+  if (isSelect(statement.sql)) {
     for (pqxx::result::size_type i = 0; i < response.size(); i++) {
       std::vector<worm::core::ResultColumn> columns;
 

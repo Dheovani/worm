@@ -27,7 +27,7 @@ int main()
     return 1;
   }
 
-  const worm::core::ResultSet response = client.executeQuery("SELECT 42 AS answer, NULL AS missing");
+  const worm::core::ResultSet response = client.executeQuery({"SELECT 42 AS answer, NULL AS missing"});
 
   if (response.rowCount() != 1) {
     std::cerr << "SqliteClient returned an unexpected row count.\n";
@@ -43,6 +43,25 @@ int main()
   if (row.columns[0].name != "answer" || std::get<std::int64_t>(row.columns[0].value) != 42 ||
       row.columns[1].name != "missing" || !std::holds_alternative<std::nullptr_t>(row.columns[1].value)) {
     std::cerr << "SqliteClient returned unexpected column values.\n";
+    return 1;
+  }
+
+  client.executeQuery({"CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)"});
+  client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Ada"}, true}});
+  client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Grace"}, false}});
+
+  const worm::core::ResultSet filteredResponse =
+    client.executeQuery({"SELECT name, active FROM people WHERE active = ?", {true}});
+
+  if (filteredResponse.rowCount() != 1) {
+    std::cerr << "SqliteClient did not bind parameters in the filtered query.\n";
+    return 1;
+  }
+
+  const auto& filteredRow = filteredResponse.rows().front();
+  if (std::get<std::string>(filteredRow.columns[0].value) != "Ada" ||
+      std::get<std::int64_t>(filteredRow.columns[1].value) != 1) {
+    std::cerr << "SqliteClient returned unexpected values for a parameterized query.\n";
     return 1;
   }
 

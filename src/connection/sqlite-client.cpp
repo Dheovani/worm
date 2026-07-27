@@ -5,9 +5,36 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <type_traits>
+#include <variant>
 #include <vector>
 
 using worm::connection::SqliteClient;
+
+namespace
+{
+  int bindParameter(sqlite3_stmt* statement, int index, const worm::core::Parameter& parameter)
+  {
+    return std::visit(
+      [statement, index](const auto& value) -> int
+      {
+        using Value = std::decay_t<decltype(value)>;
+
+        if constexpr (std::is_same_v<Value, std::nullptr_t>) {
+          return sqlite3_bind_null(statement, index);
+        } else if constexpr (std::is_same_v<Value, std::int64_t>) {
+          return sqlite3_bind_int64(statement, index, value);
+        } else if constexpr (std::is_same_v<Value, double>) {
+          return sqlite3_bind_double(statement, index, value);
+        } else if constexpr (std::is_same_v<Value, bool>) {
+          return sqlite3_bind_int64(statement, index, value ? 1 : 0);
+        } else {
+          return sqlite3_bind_text(statement, index, value.c_str(), static_cast<int>(value.size()), SQLITE_TRANSIENT);
+        }
+      },
+      parameter);
+  }
+} // namespace
 
 SqliteClient::SqliteClient(const char* databaseName)
 {
@@ -47,11 +74,16 @@ SqliteClient& SqliteClient::getInstance(const worm::connection::ConnectionConfig
   return instance;
 }
 
-worm::core::ResultSet SqliteClient::executeQuery(const std::string& query) const
+worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& statementData) const
 {
   std::vector<worm::core::ResultRow> rows;
   sqlite3_stmt* statement = nullptr;
-  int resultCode = sqlite3_prepare_v2(connection_, query.c_str(), static_cast<int>(query.size()), &statement, nullptr);
+  int resultCode = sqlite3_prepare_v2(
+    connection_,
+    statementData.sql.c_str(),
+    static_cast<int>(statementData.sql.size()),
+    &statement,
+    nullptr);
 
   if (resultCode != SQLITE_OK) {
     std::cerr << sqlite3_errmsg(connection_) << std::endl;
@@ -62,7 +94,16 @@ worm::core::ResultSet SqliteClient::executeQuery(const std::string& query) const
     return {};
   }
 
-  if (isSelect(query)) {
+  for (std::size_t i = 0; i < statementData.parameters.size(); i++) {
+    resultCode = bindParameter(statement, static_cast<int>(i + 1), statementData.parameters[i]);
+
+    if (resultCode != SQLITE_OK) {
+      handleError(ErrorHandlingAction::FinalizeStatement, statement);
+      return {};
+    }
+  }
+
+  if (isSelect(statementData.sql)) {
     int columnCount = sqlite3_column_count(statement);
 
     while ((resultCode = sqlite3_step(statement)) == SQLITE_ROW) {
@@ -97,6 +138,8 @@ worm::core::ResultSet SqliteClient::executeQuery(const std::string& query) const
 
       rows.push_back({columns});
     }
+  } else {
+    resultCode = sqlite3_step(statement);
   }
 
   if (resultCode != SQLITE_DONE)

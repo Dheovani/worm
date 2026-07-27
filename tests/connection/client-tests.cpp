@@ -15,7 +15,7 @@ namespace
       return isSelect(query);
     }
 
-    worm::core::ResultSet executeQuery(const std::string&) const override
+    worm::core::ResultSet executeQuery(const worm::core::Statement&) const override
     {
       return {};
     }

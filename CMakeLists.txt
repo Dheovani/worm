@@ -24,8 +24,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Existing headers use project-rooted includes such as <core/entity.hpp>.
 set(PROJECT_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/src")
 
-option(WORM_BUILD_APP "Build the Worm example executable" ON)
-
 include(CTest)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
