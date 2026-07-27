@@ -3,8 +3,6 @@
 #include <errors/invalid-arg-exception.hpp>
 
 #include <cstddef>
-#include <functional>
-#include <initializer_list>
 #include <string>
 #include <utility>
 
@@ -44,25 +42,6 @@ namespace worm::core
       throw worm::InvalidArgException("Unsupported comparison operator.");
     }
 
-    std::vector<Parameter> extractParameters(
-      std::initializer_list<std::reference_wrapper<const std::vector<Parameter>>> params)
-    {
-      std::vector<Parameter> parameters;
-      std::size_t size = 0;
-
-      for (const auto& param : params) {
-        size += param.get().size();
-      }
-
-      parameters.reserve(size);
-
-      for (const auto& param : params) {
-        parameters.insert(parameters.end(), param.get().begin(), param.get().end());
-      }
-
-      return parameters;
-    }
-
     Expression membershipExpression(
       std::string_view column,
       std::vector<Parameter> values,
@@ -86,6 +65,36 @@ namespace worm::core
 
       sql += ')';
       return {std::move(sql), std::move(values)};
+    }
+
+    Expression logicalExpression(
+      const std::vector<Expression>& expressions,
+      std::string_view logicalOperator)
+    {
+      if (expressions.empty()) {
+        throw worm::InvalidArgException("Logical expressions require at least one expression.");
+      }
+
+      std::string sql;
+      std::vector<Parameter> parameters;
+
+      for (const auto& expression : expressions) {
+        parameters.insert(parameters.end(), expression.parameters.begin(), expression.parameters.end());
+      }
+
+      for (std::size_t index = 0; index < expressions.size(); ++index) {
+        if (index != 0) {
+          sql += " ";
+          sql += logicalOperator;
+          sql += " ";
+        }
+
+        sql += "(";
+        sql += expressions[index].sql;
+        sql += ")";
+      }
+
+      return {std::move(sql), std::move(parameters)};
     }
   } // namespace
 
@@ -128,18 +137,31 @@ namespace worm::core
     return membershipExpression(column, std::move(values), " NOT IN");
   }
 
-  Expression Predicate::all(const Expression& left, const Expression& right)
+  Expression Predicate::not_(const Expression& expression)
   {
     return {
-      left.sql + " and " + right.sql,
-      extractParameters({std::cref(left.parameters), std::cref(right.parameters)})};
+      "not (" + expression.sql + ")",
+      expression.parameters};
+  }
+
+  Expression Predicate::all(const Expression& left, const Expression& right)
+  {
+    return all({left, right});
+  }
+
+  Expression Predicate::all(const std::vector<Expression>& expressions)
+  {
+    return logicalExpression(expressions, "and");
   }
 
   Expression Predicate::any(const Expression& left, const Expression& right)
   {
-    return {
-      left.sql + " or " + right.sql,
-      extractParameters({std::cref(left.parameters), std::cref(right.parameters)})};
+    return any({left, right});
+  }
+
+  Expression Predicate::any(const std::vector<Expression>& expressions)
+  {
+    return logicalExpression(expressions, "or");
   }
 
 } // namespace worm::core

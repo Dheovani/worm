@@ -33,10 +33,19 @@ namespace worm::core
     static Expression notIn(std::string_view column, std::vector<Parameter> values);
 
     [[nodiscard]]
+    static Expression not_(const Expression& expression);
+
+    [[nodiscard]]
     static Expression all(const Expression& left, const Expression& right);
 
     [[nodiscard]]
+    static Expression all(const std::vector<Expression>& expressions);
+
+    [[nodiscard]]
     static Expression any(const Expression& left, const Expression& right);
+
+    [[nodiscard]]
+    static Expression any(const std::vector<Expression>& expressions);
   };
 
 } // namespace worm::core

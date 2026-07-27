@@ -15,7 +15,7 @@ int main()
 
   const auto& expression = filter.expression();
 
-  if (expression.sql != "age >= ? and active = ? or deleted_at IS NULL") {
+  if (expression.sql != "((age >= ?) and (active = ?)) or (deleted_at IS NULL)") {
     std::cerr << "Filter did not compose its predicate SQL correctly.\n";
     return 1;
   }

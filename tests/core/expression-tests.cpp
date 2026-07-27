@@ -65,16 +65,32 @@ int main()
   auto right = Predicate::equal("active", true);
   const auto conjunction = Predicate::all(left, right);
   const auto disjunction = Predicate::any(left, right);
+  const auto negation = Predicate::not_(disjunction);
+  const auto third = Predicate::isNull("deleted_at");
+  const auto compoundConjunction = Predicate::all({left, right, third});
+  const auto compoundDisjunction = Predicate::any({left, right, third});
 
-  if (conjunction.sql != "age >= ? and active = ?" || disjunction.sql != "age >= ? or active = ?" ||
-      conjunction.parameters.size() != 2 || disjunction.parameters.size() != 2) {
+  if (conjunction.sql != "(age >= ?) and (active = ?)" ||
+      disjunction.sql != "(age >= ?) or (active = ?)" ||
+      negation.sql != "not ((age >= ?) or (active = ?))" ||
+      conjunction.parameters.size() != 2 || disjunction.parameters.size() != 2 ||
+      negation.parameters.size() != 2) {
     std::cerr << "Expression logical composition is invalid.\n";
+    return 1;
+  }
+
+  if (compoundConjunction.sql != "(age >= ?) and (active = ?) and (deleted_at IS NULL)" ||
+      compoundDisjunction.sql != "(age >= ?) or (active = ?) or (deleted_at IS NULL)" ||
+      compoundConjunction.parameters.size() != 2 || compoundDisjunction.parameters.size() != 2) {
+    std::cerr << "Expression variadic logical composition is invalid.\n";
     return 1;
   }
 
   if (!ThrowsInvalidArgument([&] { static_cast<void>(Predicate::compare("", Comparison::Equal, true)); }) ||
       !ThrowsInvalidArgument([&] { static_cast<void>(Predicate::in("id", {})); }) ||
-      !ThrowsInvalidArgument([&] { static_cast<void>(Predicate::notIn("id", {})); })) {
+      !ThrowsInvalidArgument([&] { static_cast<void>(Predicate::notIn("id", {})); }) ||
+      !ThrowsInvalidArgument([&] { static_cast<void>(Predicate::all({})); }) ||
+      !ThrowsInvalidArgument([&] { static_cast<void>(Predicate::any({})); })) {
     std::cerr << "Expression accepted invalid input.\n";
     return 1;
   }

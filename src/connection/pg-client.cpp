@@ -17,10 +17,10 @@ PgClient::~PgClient()
 PgClient& PgClient::getInstance(const worm::connection::ConnectionConfig& databaseConfig)
 {
   std::string connectionData =
-    " host=" + databaseConfig.host
-    " port=" + databaseConfig.port
-    " dbname=" + databaseConfig.dbname
-    " user=" + databaseConfig.username
+    " host=" + databaseConfig.host +
+    " port=" + databaseConfig.port +
+    " dbname=" + databaseConfig.dbname +
+    " user=" + databaseConfig.username +
     " password=" + databaseConfig.password;
 
   static PgClient instance(connectionData);
