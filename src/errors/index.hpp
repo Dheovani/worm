@@ -5,6 +5,7 @@
 #include <errors/database-exception.hpp>
 #include <errors/hydration-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
+#include <errors/invalid-arg-type-exception.hpp>
 #include <errors/mapping-exception.hpp>
 #include <errors/missing-configuration-exception.hpp>
 #include <errors/query-execution-exception.hpp>

@@ -30,7 +30,18 @@ namespace worm::utils
   {};
 
   template <typename Type>
-  inline constexpr bool is_string = is_string_impl<std::decay_t<Type>>::value;
+  inline constexpr bool is_string_like = is_string_impl<std::decay_t<Type>>::value;
+
+  template <typename T>
+  struct is_optional : std::false_type
+  {};
+
+  template <typename T>
+  struct is_optional<std::optional<T>> : std::true_type
+  {};
+
+  template <typename T>
+  inline constexpr bool is_optional_v = is_optional<std::remove_cvref_t<T>>::value;
 
   template <typename Base, typename Derived>
   inline constexpr bool instance_of = std::is_base_of_v<Base, std::remove_pointer_t<Derived>>;

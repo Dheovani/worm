@@ -26,6 +26,12 @@ add_worm_error_test(
 )
 
 add_worm_error_test(
+  WormInvalidArgTypeExceptionTests
+  invalid-arg-type-exception-tests.cpp
+  Worm.Errors.InvalidArgTypeException
+)
+
+add_worm_error_test(
   WormConfigurationExceptionTests
   configuration-exception-tests.cpp
   Worm.Errors.ConfigurationException

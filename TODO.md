@@ -61,11 +61,12 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 
 ### Tipos e hidratação
 
-- [ ] Definir codecs entre tipos C++ e SQL.
-- [ ] Cobrir números, booleanos, texto, `std::optional`, datas e enums.
-- [ ] Diferenciar corretamente `NULL`, string vazia e valor padrão.
+- [x] Definir codecs entre tipos C++ e SQL.
+- [x] Cobrir números, booleanos, texto, `std::optional` e enums.
+- [ ] Cobrir datas nos codecs entre tipos C++ e SQL.
+- [x] Diferenciar corretamente `NULL`, string vazia e valor padrão.
 - [ ] Hidratar resultados em entidades refletidas com diagnóstico de coluna inválida.
-- [ ] Tratar conversões inválidas sem perda silenciosa de dados.
+- [x] Tratar conversões inválidas sem perda silenciosa de dados.
 
 ### Persistência
 

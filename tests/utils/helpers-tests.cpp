@@ -27,10 +27,10 @@ int main()
 {
   namespace utils = worm::utils;
 
-  static_assert(utils::is_string<std::string>);
-  static_assert(utils::is_string<std::string_view>);
-  static_assert(utils::is_string<const char*>);
-  static_assert(!utils::is_string<int>);
+  static_assert(utils::is_string_like<std::string>);
+  static_assert(utils::is_string_like<std::string_view>);
+  static_assert(utils::is_string_like<const char*>);
+  static_assert(!utils::is_string_like<int>);
   static_assert(utils::instance_of<Base, Derived>);
   static_assert(utils::instance_of<Base, Derived*>);
   static_assert(utils::is_attribute<decltype(&Derived::value)>);
