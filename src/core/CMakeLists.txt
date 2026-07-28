@@ -1,10 +1,10 @@
 add_library(
   WormCore
-  dialect.cpp
-  filter.cpp
-  predicate.cpp
-  sql-builder.cpp
-  result-set.cpp
+  query/dialect.cpp
+  query/filter.cpp
+  query/predicate.cpp
+  query/sql-builder.cpp
+  output/result-set.cpp
 )
 add_library(Worm::Core ALIAS WormCore)
 

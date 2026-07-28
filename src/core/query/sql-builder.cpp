@@ -1,4 +1,4 @@
-#include <core/sql-builder.hpp>
+#include <core/query/sql-builder.hpp>
 
 #include <connection/client.hpp>
 #include <errors/sql-build-exception.hpp>

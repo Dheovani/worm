@@ -1,4 +1,4 @@
-#include <core/statement.hpp>
+#include <core/query/statement.hpp>
 
 #include <cstdint>
 #include <iostream>

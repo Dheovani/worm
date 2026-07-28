@@ -1,4 +1,4 @@
-#include <core/expression.hpp>
+#include <core/query/expression.hpp>
 
 #include <cstdint>
 #include <iostream>

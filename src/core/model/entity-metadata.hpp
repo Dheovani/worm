@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/entity.hpp>
+#include <core/model/entity.hpp>
 #include <reflection/visit.hpp>
 
 #include <cstddef>

@@ -1,4 +1,4 @@
-#include <core/result-set.hpp>
+#include <core/output/result-set.hpp>
 
 #include <utility>
 

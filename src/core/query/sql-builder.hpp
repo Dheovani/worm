@@ -10,11 +10,11 @@
 #include <utility>
 #include <vector>
 
-#include <core/expression.hpp>
-#include <core/filter.hpp>
-#include <core/ordering.hpp>
-#include <core/source.hpp>
-#include <core/statement.hpp>
+#include <core/query/expression.hpp>
+#include <core/query/filter.hpp>
+#include <core/query/ordering.hpp>
+#include <core/query/source.hpp>
+#include <core/query/statement.hpp>
 
 namespace worm::core
 {

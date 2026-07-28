@@ -1,4 +1,4 @@
-#include <core/ordering.hpp>
+#include <core/query/ordering.hpp>
 
 #include <errors/invalid-arg-exception.hpp>
 

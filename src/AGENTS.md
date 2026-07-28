@@ -31,6 +31,6 @@ Estas regras complementam o `AGENTS.md` da raiz para todo o conteúdo de `src/`.
 ## Módulos
 
 - Headers internos devem incluir caminhos a partir de `src`, como
-  `<core/expression.hpp>`.
+  `<core/query/expression.hpp>`.
 - Um módulo não deve depender de executáveis de exemplo ou ferramentas locais.
 - Dependências entre módulos devem ser expressas com targets `Worm::*` no CMake.

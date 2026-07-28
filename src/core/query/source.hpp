@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/expression.hpp>
+#include <core/query/expression.hpp>
 
 #include <optional>
 #include <string_view>

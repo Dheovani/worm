@@ -21,7 +21,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Existing headers use project-rooted includes such as <core/entity.hpp>.
+# Existing headers use project-rooted includes such as <core/model/entity.hpp>.
 set(PROJECT_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/src")
 
 include(CTest)

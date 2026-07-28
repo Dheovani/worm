@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <core/expression.hpp>
+#include <core/query/expression.hpp>
 
 namespace worm::core
 {

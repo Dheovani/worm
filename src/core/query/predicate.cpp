@@ -1,4 +1,4 @@
-#include <core/predicate.hpp>
+#include <core/query/predicate.hpp>
 
 #include <errors/sql-build-exception.hpp>
 

@@ -1,4 +1,4 @@
-#include <core/entity-metadata.hpp>
+#include <core/model/entity-metadata.hpp>
 
 #include <string>
 #include <tuple>

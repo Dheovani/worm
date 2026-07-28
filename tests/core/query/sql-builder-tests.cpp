@@ -1,6 +1,6 @@
-#include <core/sql-builder.hpp>
+#include <core/query/sql-builder.hpp>
 
-#include <core/predicate.hpp>
+#include <core/query/predicate.hpp>
 
 #include <chrono>
 #include <cstdint>

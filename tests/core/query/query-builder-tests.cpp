@@ -1,4 +1,4 @@
-#include <core/query-builder.hpp>
+#include <core/query/query-builder.hpp>
 
 #include <cstddef>
 #include <cstdint>

@@ -1,14 +1,14 @@
 #pragma once
 
-#include <core/dialect.hpp>
-#include <core/entity.hpp>
-#include <core/entity-metadata.hpp>
-#include <core/expression.hpp>
-#include <core/filter.hpp>
-#include <core/ordering.hpp>
-#include <core/predicate.hpp>
-#include <core/query-builder.hpp>
-#include <core/result-set.hpp>
-#include <core/source.hpp>
-#include <core/sql-builder.hpp>
-#include <core/statement.hpp>
+#include <core/model/entity.hpp>
+#include <core/model/entity-metadata.hpp>
+#include <core/output/result-set.hpp>
+#include <core/query/dialect.hpp>
+#include <core/query/expression.hpp>
+#include <core/query/filter.hpp>
+#include <core/query/ordering.hpp>
+#include <core/query/predicate.hpp>
+#include <core/query/query-builder.hpp>
+#include <core/query/source.hpp>
+#include <core/query/sql-builder.hpp>
+#include <core/query/statement.hpp>

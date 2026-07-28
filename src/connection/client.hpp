@@ -1,7 +1,7 @@
 #pragma once
 
-#include <core/result-set.hpp>
-#include <core/statement.hpp>
+#include <core/output/result-set.hpp>
+#include <core/query/statement.hpp>
 
 #include <cstdint>
 #include <map>

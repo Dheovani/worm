@@ -5,10 +5,10 @@
 #include <utility>
 #include <vector>
 
-#include <core/filter.hpp>
-#include <core/ordering.hpp>
-#include <core/source.hpp>
-#include <core/sql-builder.hpp>
+#include <core/query/filter.hpp>
+#include <core/query/ordering.hpp>
+#include <core/query/source.hpp>
+#include <core/query/sql-builder.hpp>
 
 namespace worm::core
 {

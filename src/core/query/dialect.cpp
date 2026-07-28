@@ -1,4 +1,4 @@
-#include <core/dialect.hpp>
+#include <core/query/dialect.hpp>
 
 namespace worm::core
 {

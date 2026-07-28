@@ -1,7 +1,7 @@
 #pragma once
 
-#include <core/expression.hpp>
-#include <core/predicate.hpp>
+#include <core/query/expression.hpp>
+#include <core/query/predicate.hpp>
 
 namespace worm::core
 {
