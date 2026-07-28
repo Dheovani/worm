@@ -107,6 +107,9 @@ namespace worm::core
     std::tuple_size_v<std::remove_cvref_t<decltype(primary_key_fields_of<T>())>>;
 
   template <Entity T>
+  inline constexpr bool has_single_primary_key = primary_key_count<T> == 1;
+
+  template <Entity T>
   [[nodiscard]]
   constexpr bool has_primary_key()
   {
@@ -117,7 +120,17 @@ namespace worm::core
   [[nodiscard]]
   constexpr bool is_valid_entity()
   {
-    return has_valid_table<T>() && persistent_field_count<T> > 0 && primary_key_count<T> == 1;
+    return has_valid_table<T>() && persistent_field_count<T> > 0 && has_single_primary_key<T>;
+  }
+
+  template <typename T>
+  concept PersistableEntity = Entity<T> && is_valid_entity<std::remove_cvref_t<T>>();
+
+  template <PersistableEntity T>
+  [[nodiscard]]
+  constexpr auto primary_key_field_of()
+  {
+    return std::get<0>(primary_key_fields_of<T>());
   }
 
 } // namespace worm::core

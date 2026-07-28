@@ -142,9 +142,11 @@ int main()
   static_assert(users == sameUsers);
   static_assert(!(users == orders));
   static_assert(std::is_empty_v<decltype(users)> == false);
+  static_assert(worm::core::EntityState::Transient != worm::core::EntityState::Managed);
 
   static_assert(worm::core::Entity<User>);
   static_assert(worm::core::Entity<const User&>);
+  static_assert(worm::core::Entity<MissingPrimaryKey>);
   static_assert(!worm::core::Entity<MissingTable>);
   static_assert(!worm::core::Entity<InvalidTableReturn>);
   static_assert(User::table() == users);
@@ -154,12 +156,19 @@ int main()
   static_assert(std::tuple_size_v<decltype(worm::core::fields_of<User>())> == 3);
   static_assert(worm::core::persistent_field_count<User> == 2);
   static_assert(worm::core::primary_key_count<User> == 1);
+  static_assert(worm::core::has_single_primary_key<User>);
   static_assert(worm::core::has_primary_key<User>());
   static_assert(worm::core::is_valid_entity<User>());
+  static_assert(worm::core::PersistableEntity<User>);
+  static_assert(worm::core::primary_key_field_of<User>().name() == "id");
   static_assert(!worm::core::is_valid_entity<EmptyTable>());
   static_assert(!worm::core::is_valid_entity<MissingPrimaryKey>());
   static_assert(!worm::core::is_valid_entity<DuplicatedPrimaryKey>());
   static_assert(!worm::core::is_valid_entity<IgnoredPrimaryKey>());
+  static_assert(!worm::core::PersistableEntity<EmptyTable>);
+  static_assert(!worm::core::PersistableEntity<MissingPrimaryKey>);
+  static_assert(!worm::core::PersistableEntity<DuplicatedPrimaryKey>);
+  static_assert(!worm::core::PersistableEntity<IgnoredPrimaryKey>);
   static_assert(worm::core::primary_key_count<IgnoredPrimaryKey> == 0);
 
   return 0;

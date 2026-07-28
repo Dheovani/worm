@@ -43,10 +43,10 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 
 ### Modelo de entidades
 
-- [ ] Definir metadados de entidade e tabela, separados dos metadados de campo.
-- [ ] Reintroduzir o núcleo de entidades sobre o subsistema de reflexão.
-- [ ] Validar em compile time, quando possível, chave primária ausente ou duplicada.
-- [ ] Definir uma convenção clara para entidades novas, persistidas e removidas.
+- [x] Definir metadados de entidade e tabela, separados dos metadados de campo.
+- [x] Reintroduzir o núcleo de entidades sobre o subsistema de reflexão.
+- [x] Validar em compile time, quando possível, chave primária ausente ou duplicada.
+- [x] Definir uma convenção clara para entidades novas, persistidas e removidas.
 
 ### SQL e parâmetros
 

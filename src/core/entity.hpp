@@ -42,6 +42,21 @@ namespace worm::core
     const std::string_view name_;
   };
 
+  enum class EntityState
+  {
+    // The object exists only in user code and is not tracked by the ORM yet.
+    Transient,
+
+    // The object has a known database identity and is tracked by the ORM.
+    Managed,
+
+    // The object is tracked and scheduled for deletion.
+    Removed,
+
+    // The object has a database identity but is not tracked by the current ORM context.
+    Detached
+  };
+
   namespace detail
   {
 
