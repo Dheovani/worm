@@ -36,10 +36,11 @@ namespace worm::reflection
     }
 
     template <typename Entity, typename Snapshot, typename Visitor, std::size_t... Indexes>
-    constexpr std::size_t for_each_changed_field_impl(const Entity& object,
-                                                      const Snapshot& snapshot,
-                                                      Visitor&& visitor,
-                                                      std::index_sequence<Indexes...>)
+    constexpr std::size_t for_each_changed_field_impl(
+      const Entity& object,
+      const Snapshot& snapshot,
+      Visitor&& visitor,
+      std::index_sequence<Indexes...>)
     {
       const auto fields = Entity::reflect();
       std::size_t changed = 0;

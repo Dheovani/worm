@@ -19,7 +19,8 @@ namespace worm::reflection
              (std::same_as<typename std::tuple_element_t<Indexes, Tuple>::owner_type, Type> && ...);
     }
 
-    template <typename T> consteval bool has_valid_reflection()
+    template <typename T>
+    consteval bool has_valid_reflection()
     {
       using Type = std::remove_cvref_t<T>;
 

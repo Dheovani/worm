@@ -2,19 +2,19 @@
 
 #include <concepts>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
-#include <vector>
+#include <utility>
 
 #include <reflection/concepts.hpp>
 #include <reflection/snapshot.hpp>
 
 namespace worm::core
 {
-
-  struct Table
+  class Table
   {
   public:
-    constexpr Table(std::string_view name) noexcept
+    explicit constexpr Table(std::string_view name) noexcept
       : name_(name)
     {}
 
@@ -24,20 +24,43 @@ namespace worm::core
       return name_;
     }
 
+    [[nodiscard]]
+    constexpr bool empty() const noexcept
+    {
+      return name_.empty();
+    }
+
+    [[nodiscard]]
+    friend constexpr bool operator==(
+      const Table& left,
+      const Table& right) noexcept
+    {
+      return left.name_ == right.name_;
+    }
+
   private:
     const std::string_view name_;
   };
 
-  template <typename Derived>
-  struct TableEntity : public Table
+  namespace detail
   {
-    using EntityType = Derived;
-  };
+
+    template <typename T>
+    consteval bool hasConstexprTable()
+    {
+      static_cast<void>(std::remove_cvref_t<T>::table());
+      return true;
+    }
+
+  } // namespace detail
 
   template <typename T>
   concept Entity =
-    std::derived_from<std::remove_cvref_t<T>, TableEntity<std::remove_cvref_t<T>>> &&
     reflection::Reflectable<std::remove_cvref_t<T>> &&
-    reflection::Snapshotable<std::remove_cvref_t<T>>;
+    reflection::Snapshotable<std::remove_cvref_t<T>> &&
+    requires {
+      { std::remove_cvref_t<T>::table() } -> std::same_as<Table>;
+      requires detail::hasConstexprTable<std::remove_cvref_t<T>>();
+    };
 
 } // namespace worm::core

@@ -9,22 +9,28 @@
 
 namespace worm::utils
 {
-  template <typename Type> struct is_string_impl : std::false_type
+  template <typename Type>
+  struct is_string_impl : std::false_type
   {};
 
-  template <> struct is_string_impl<std::string> : std::true_type
+  template <>
+  struct is_string_impl<std::string> : std::true_type
   {};
 
-  template <> struct is_string_impl<std::string_view> : std::true_type
+  template <>
+  struct is_string_impl<std::string_view> : std::true_type
   {};
 
-  template <> struct is_string_impl<const char*> : std::true_type
+  template <>
+  struct is_string_impl<const char*> : std::true_type
   {};
 
-  template <> struct is_string_impl<char*> : std::true_type
+  template <>
+  struct is_string_impl<char*> : std::true_type
   {};
 
-  template <typename Type> inline constexpr bool is_string = is_string_impl<std::decay_t<Type>>::value;
+  template <typename Type>
+  inline constexpr bool is_string = is_string_impl<std::decay_t<Type>>::value;
 
   template <typename Base, typename Derived>
   inline constexpr bool instance_of = std::is_base_of_v<Base, std::remove_pointer_t<Derived>>;
@@ -57,12 +63,14 @@ namespace worm::utils
   template <typename Type, typename Variant>
   inline constexpr bool holds_variant_option = get_variant_index<Type, Variant> != std::variant_npos;
 
-  template <typename Type, typename Class> struct remove_class_pointer
+  template <typename Type, typename Class>
+  struct remove_class_pointer
   {
     using type = Type;
   };
 
-  template <typename Type, typename Class> struct remove_class_pointer<Type Class::*, Class>
+  template <typename Type, typename Class>
+  struct remove_class_pointer<Type Class::*, Class>
   {
     using type = Type;
   };

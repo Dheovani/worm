@@ -7,7 +7,8 @@
 
 namespace worm::reflection
 {
-  template <typename Owner, typename Value> class FieldDescriptor
+  template <typename Owner, typename Value>
+  class FieldDescriptor
   {
   public:
     using owner_type = Owner;
@@ -18,52 +19,62 @@ namespace worm::reflection
       : name_(name), member_(member), metadata_(metadata)
     {}
 
-    [[nodiscard]] constexpr std::string_view name() const noexcept
+    [[nodiscard]]
+    constexpr std::string_view name() const noexcept
     {
       return name_;
     }
 
-    [[nodiscard]] constexpr member_pointer member() const noexcept
+    [[nodiscard]]
+    constexpr member_pointer member() const noexcept
     {
       return member_;
     }
 
-    [[nodiscard]] constexpr std::string_view columnName() const noexcept
+    [[nodiscard]]
+    constexpr std::string_view columnName() const noexcept
     {
       return metadata_.columnName.empty() ? name_ : metadata_.columnName;
     }
 
-    [[nodiscard]] constexpr bool isPrimaryKey() const noexcept
+    [[nodiscard]]
+    constexpr bool isPrimaryKey() const noexcept
     {
       return metadata_.primaryKey;
     }
 
-    [[nodiscard]] constexpr bool isGenerated() const noexcept
+    [[nodiscard]]
+    constexpr bool isGenerated() const noexcept
     {
       return metadata_.generated;
     }
 
-    [[nodiscard]] constexpr bool isIgnored() const noexcept
+    [[nodiscard]]
+    constexpr bool isIgnored() const noexcept
     {
       return metadata_.ignored;
     }
 
-    [[nodiscard]] constexpr bool isPersistent() const noexcept
+    [[nodiscard]]
+    constexpr bool isPersistent() const noexcept
     {
       return !metadata_.ignored;
     }
 
-    [[nodiscard]] constexpr const FieldMetadata& metadata() const noexcept
+    [[nodiscard]]
+    constexpr const FieldMetadata& metadata() const noexcept
     {
       return metadata_;
     }
 
-    [[nodiscard]] constexpr Value& get(Owner& object) const noexcept
+    [[nodiscard]]
+    constexpr Value& get(Owner& object) const noexcept
     {
       return object.*member_;
     }
 
-    [[nodiscard]] constexpr const Value& get(const Owner& object) const noexcept
+    [[nodiscard]]
+    constexpr const Value& get(const Owner& object) const noexcept
     {
       return object.*member_;
     }
@@ -78,7 +89,8 @@ namespace worm::reflection
   FieldDescriptor(std::string_view, Value Owner::*) -> FieldDescriptor<Owner, Value>;
 
   template <typename Owner, typename Value>
-  [[nodiscard]] constexpr auto field(std::string_view name, Value Owner::* member, FieldMetadata metadata = {}) noexcept
+  [[nodiscard]]
+  constexpr auto field(std::string_view name, Value Owner::* member, FieldMetadata metadata = {}) noexcept
   {
     return FieldDescriptor<Owner, Value>{name, member, metadata};
   }

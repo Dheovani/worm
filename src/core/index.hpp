@@ -2,6 +2,7 @@
 
 #include <core/dialect.hpp>
 #include <core/entity.hpp>
+#include <core/entity-metadata.hpp>
 #include <core/expression.hpp>
 #include <core/filter.hpp>
 #include <core/ordering.hpp>
