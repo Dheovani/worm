@@ -1,6 +1,8 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -42,6 +44,15 @@ namespace worm::utils
 
   template <typename T>
   inline constexpr bool is_optional_v = is_optional<std::remove_cvref_t<T>>::value;
+
+  template <typename T>
+  using remove_optional_t = typename std::remove_cvref_t<T>::value_type;
+
+  template <typename T>
+  inline constexpr bool is_date_type =
+    std::is_same_v<
+      std::remove_cvref_t<T>,
+      std::chrono::time_point<std::chrono::system_clock, std::chrono::days>>;
 
   template <typename Base, typename Derived>
   inline constexpr bool instance_of = std::is_base_of_v<Base, std::remove_pointer_t<Derived>>;

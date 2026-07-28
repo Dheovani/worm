@@ -4,9 +4,12 @@
 #include <utils/helpers.hpp>
 
 #include <concepts>
+#include <chrono>
 #include <cstdint>
+#include <iomanip>
 #include <limits>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -27,13 +30,11 @@ namespace worm::core
   namespace detail
   {
     template <typename T>
-    using remove_optional_t = typename std::remove_cvref_t<T>::value_type;
-
-    template <typename T>
     inline constexpr bool is_valid_parameter_type =
       std::is_enum_v<std::remove_cvref_t<T>> ||
       std::same_as<std::remove_cvref_t<T>, std::nullptr_t> ||
       std::same_as<std::remove_cvref_t<T>, bool> ||
+      utils::is_date_type<T> ||
       std::floating_point<std::remove_cvref_t<T>> ||
       (std::integral<std::remove_cvref_t<T>> && !std::same_as<std::remove_cvref_t<T>, bool>);
 
@@ -43,7 +44,7 @@ namespace worm::core
       if constexpr (is_valid_parameter_type<T> || utils::is_string_like<T>) {
         return true;
       } else if constexpr (utils::is_optional_v<T>) {
-        return is_encodable_parameter<remove_optional_t<T>>();
+        return is_encodable_parameter<utils::remove_optional_t<T>>();
       } else {
         return false;
       }
@@ -54,13 +55,70 @@ namespace worm::core
     {
       using Value = std::remove_cvref_t<T>;
 
-      if constexpr (is_valid_parameter_type<T> || std::same_as<Value, std::string> || std::same_as<Value, std::string_view>) {
+      if constexpr (
+        is_valid_parameter_type<T> ||
+        std::same_as<Value, std::string> ||
+        std::same_as<Value, std::string_view>) {
         return true;
       } else if constexpr (utils::is_optional_v<T>) {
-        return is_decodable_parameter<remove_optional_t<T>>();
+        return is_decodable_parameter<utils::remove_optional_t<T>>();
       } else {
         return false;
       }
+    }
+
+    [[nodiscard]]
+    inline std::string format_date(std::chrono::sys_days value)
+    {
+      const std::chrono::year_month_day date{value};
+      std::ostringstream output;
+      output << std::setw(4) << std::setfill('0') << static_cast<int>(date.year()) << '-'
+             << std::setw(2) << std::setfill('0') << static_cast<unsigned>(date.month()) << '-'
+             << std::setw(2) << std::setfill('0') << static_cast<unsigned>(date.day());
+
+      return output.str();
+    }
+
+    [[nodiscard]]
+    inline std::optional<std::chrono::sys_days> parse_date(std::string_view value)
+    {
+      if (value.size() != 10 || value[4] != '-' || value[7] != '-') {
+        return std::nullopt;
+      }
+
+      const auto digit = [](char character) -> std::optional<int>
+      {
+        if (character < '0' || character > '9') {
+          return std::nullopt;
+        }
+
+        return character - '0';
+      };
+
+      const auto year0 = digit(value[0]);
+      const auto year1 = digit(value[1]);
+      const auto year2 = digit(value[2]);
+      const auto year3 = digit(value[3]);
+      const auto month0 = digit(value[5]);
+      const auto month1 = digit(value[6]);
+      const auto day0 = digit(value[8]);
+      const auto day1 = digit(value[9]);
+      if (!year0 || !year1 || !year2 || !year3 || !month0 || !month1 || !day0 || !day1) {
+        return std::nullopt;
+      }
+
+      const int year = (*year0 * 1000) + (*year1 * 100) + (*year2 * 10) + *year3;
+      const unsigned month = static_cast<unsigned>((*month0 * 10) + *month1);
+      const unsigned day = static_cast<unsigned>((*day0 * 10) + *day1);
+      const std::chrono::year_month_day date{
+        std::chrono::year{year},
+        std::chrono::month{month},
+        std::chrono::day{day}};
+      if (!date.ok()) {
+        return std::nullopt;
+      }
+
+      return std::chrono::sys_days{date};
     }
   } // namespace detail
 
@@ -96,6 +154,8 @@ namespace worm::core
       return static_cast<std::int64_t>(value);
     } else if constexpr (std::floating_point<Value>) {
       return static_cast<double>(value);
+    } else if constexpr (utils::is_date_type<Value>) {
+      return detail::format_date(value);
     } else if constexpr (utils::is_string_like<T>) {
       return std::string{value};
     } else if constexpr (std::is_enum_v<Value>) {
@@ -185,6 +245,17 @@ namespace worm::core
           } else if constexpr (std::same_as<Value, std::string_view>) {
             if constexpr (std::same_as<Source, std::string>) {
               return std::string_view{stored};
+            } else {
+              return DecodeError::IncompatibleType;
+            }
+          } else if constexpr (utils::is_date_type<Value>) {
+            if constexpr (std::same_as<Source, std::string>) {
+              const std::optional<std::chrono::sys_days> date = detail::parse_date(stored);
+              if (!date) {
+                return DecodeError::IncompatibleType;
+              }
+
+              return *date;
             } else {
               return DecodeError::IncompatibleType;
             }

@@ -2,9 +2,11 @@
 
 #include <errors/configuration-exception.hpp>
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -31,6 +33,16 @@ int main()
   static_assert(utils::is_string_like<std::string_view>);
   static_assert(utils::is_string_like<const char*>);
   static_assert(!utils::is_string_like<int>);
+  static_assert(utils::is_optional<std::optional<int>>::value);
+  static_assert(utils::is_optional_v<std::optional<int>>);
+  static_assert(utils::is_optional_v<const std::optional<std::string>&>);
+  static_assert(!utils::is_optional_v<std::string>);
+  static_assert(std::is_same_v<utils::remove_optional_t<std::optional<int>>, int>);
+  static_assert(std::is_same_v<utils::remove_optional_t<const std::optional<std::string>&>, std::string>);
+  static_assert(utils::is_date_type<std::chrono::sys_days>);
+  static_assert(utils::is_date_type<const std::chrono::sys_days&>);
+  static_assert(!utils::is_date_type<std::chrono::system_clock::time_point>);
+  static_assert(!utils::is_date_type<std::string>);
   static_assert(utils::instance_of<Base, Derived>);
   static_assert(utils::instance_of<Base, Derived*>);
   static_assert(utils::is_attribute<decltype(&Derived::value)>);

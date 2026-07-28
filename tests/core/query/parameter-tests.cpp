@@ -1,5 +1,6 @@
 #include <core/query/expression.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -26,9 +27,11 @@ int main()
   static_assert(worm::core::EncodableParameter<int>);
   static_assert(worm::core::EncodableParameter<std::optional<std::string>>);
   static_assert(worm::core::EncodableParameter<Status>);
+  static_assert(worm::core::EncodableParameter<std::chrono::sys_days>);
   static_assert(worm::core::DecodableParameter<int>);
   static_assert(worm::core::DecodableParameter<std::optional<std::string>>);
   static_assert(worm::core::DecodableParameter<Status>);
+  static_assert(worm::core::DecodableParameter<std::chrono::sys_days>);
 
   const Parameter nullValue = nullptr;
   const Parameter integerValue = std::int64_t{42};
@@ -47,6 +50,8 @@ int main()
   const Parameter encodedOptionalNull = worm::core::encode(std::optional<std::string>{});
   const Parameter encodedOptionalText = worm::core::encode(std::optional<std::string>{"Ada"});
   const Parameter encodedEnum = worm::core::encode(Status::Active);
+  const Parameter encodedDate = worm::core::encode(
+    std::chrono::sys_days{std::chrono::year{2026} / std::chrono::July / std::chrono::day{28}});
 
   if (!std::holds_alternative<std::nullptr_t>(encodedNull) ||
       !std::holds_alternative<std::string>(encodedEmptyText) ||
@@ -55,7 +60,8 @@ int main()
       std::get<bool>(encodedFalse) != false ||
       !std::holds_alternative<std::nullptr_t>(encodedOptionalNull) ||
       std::get<std::string>(encodedOptionalText) != "Ada" ||
-      std::get<std::int64_t>(encodedEnum) != 1) {
+      std::get<std::int64_t>(encodedEnum) != 1 ||
+      std::get<std::string>(encodedDate) != "2026-07-28") {
     std::cerr << "Parameter encoding did not preserve distinct SQL values.\n";
     return 1;
   }
@@ -68,6 +74,8 @@ int main()
   const auto invalidNull = worm::core::decode<int>(Parameter{nullptr});
   const auto invalidType = worm::core::decode<int>(Parameter{std::string{"not an integer"}});
   const auto outOfRange = worm::core::decode<std::int8_t>(Parameter{std::int64_t{128}});
+  const auto decodedDate = worm::core::decode<std::chrono::sys_days>(Parameter{std::string{"2026-07-28"}});
+  const auto invalidDate = worm::core::decode<std::chrono::sys_days>(Parameter{std::string{"2026-02-31"}});
 
   if (std::get<int>(decodedInteger) != 7 ||
       !std::holds_alternative<std::nullptr_t>(decodedNull) ||
@@ -76,7 +84,10 @@ int main()
       std::get<Status>(decodedEnum) != Status::Active ||
       std::get<worm::core::DecodeError>(invalidNull) != worm::core::DecodeError::NullValue ||
       std::get<worm::core::DecodeError>(invalidType) != worm::core::DecodeError::IncompatibleType ||
-      std::get<worm::core::DecodeError>(outOfRange) != worm::core::DecodeError::OutOfRange) {
+      std::get<worm::core::DecodeError>(outOfRange) != worm::core::DecodeError::OutOfRange ||
+      std::get<std::chrono::sys_days>(decodedDate) !=
+        std::chrono::sys_days{std::chrono::year{2026} / std::chrono::July / std::chrono::day{28}} ||
+      std::get<worm::core::DecodeError>(invalidDate) != worm::core::DecodeError::IncompatibleType) {
     std::cerr << "Parameter decoding did not preserve type conversion semantics.\n";
     return 1;
   }

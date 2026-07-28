@@ -2,6 +2,7 @@
 
 #include <core/model/entity.hpp>
 #include <core/model/entity-metadata.hpp>
+#include <core/output/hydration.hpp>
 #include <core/output/result-set.hpp>
 #include <core/query/dialect.hpp>
 #include <core/query/expression.hpp>
