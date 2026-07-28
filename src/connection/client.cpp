@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <cctype>
 #include <connection/client.hpp>
-#include <errors/database-exception.hpp>
 #include <sstream>
 #include <string>
 

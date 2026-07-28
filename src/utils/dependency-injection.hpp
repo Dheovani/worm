@@ -1,7 +1,7 @@
 #pragma once
 
 #include <connection/configuration.hpp>
-#include <errors/database-exception.hpp>
+#include <errors/unsupported-database-exception.hpp>
 #include <utils/helpers.hpp>
 #include <utils/logger.hpp>
 
@@ -65,7 +65,12 @@ namespace worm
         .dbname = detail::envValue("dbname"),
         .port = detail::envValue("port")};
 
-      return connection::getInstance(config, connection::databaseTypes.at(database));
+      const auto type = connection::databaseTypes.find(database);
+      if (type == connection::databaseTypes.end()) {
+        throw UnsupportedDatabaseException("Unsupported database type: " + database);
+      }
+
+      return connection::getInstance(config, type->second);
     }
   };
 
@@ -78,7 +83,7 @@ namespace worm
       const std::string database = utils::env::getDatabaseType();
       const auto type = connection::databaseTypes.find(database);
       if (type == connection::databaseTypes.end()) {
-        throw DatabaseException("Unsupported database type.");
+        throw UnsupportedDatabaseException("Unsupported database type: " + database);
       }
 
       return type->second;

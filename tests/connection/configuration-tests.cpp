@@ -1,7 +1,7 @@
 #include <connection/configuration.hpp>
 
 #include <connection/sqlite-client.hpp>
-#include <errors/database-exception.hpp>
+#include <errors/unsupported-database-exception.hpp>
 
 #include <iostream>
 
@@ -19,7 +19,7 @@ int main()
 
   try {
     static_cast<void>(worm::connection::getInstance(config, static_cast<worm::connection::DatabaseType>(999)));
-  } catch (const worm::DatabaseException&) {
+  } catch (const worm::UnsupportedDatabaseException&) {
     return 0;
   } catch (...) {
     std::cerr << "Connection configuration threw an unexpected error type.\n";

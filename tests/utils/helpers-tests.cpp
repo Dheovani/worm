@@ -1,6 +1,6 @@
 #include <utils/helpers.hpp>
 
-#include <errors/invalid-arg-exception.hpp>
+#include <errors/configuration-exception.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -69,7 +69,7 @@ int main()
       static_cast<void>(utils::env::loadFromPath((root / "missing.env").string()));
       std::cerr << "loadFromPath accepted a missing file.\n";
       result = 1;
-    } catch (const worm::InvalidArgException&) {}
+    } catch (const worm::ConfigurationException&) {}
   } catch (const std::exception& error) {
     std::cerr << "Environment helper test failed: " << error.what() << '\n';
     result = 1;

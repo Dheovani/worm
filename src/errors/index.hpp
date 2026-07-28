@@ -1,0 +1,15 @@
+#pragma once
+
+#include <errors/configuration-exception.hpp>
+#include <errors/database-connection-exception.hpp>
+#include <errors/database-exception.hpp>
+#include <errors/hydration-exception.hpp>
+#include <errors/invalid-arg-exception.hpp>
+#include <errors/mapping-exception.hpp>
+#include <errors/missing-configuration-exception.hpp>
+#include <errors/query-execution-exception.hpp>
+#include <errors/reflection-exception.hpp>
+#include <errors/sql-build-exception.hpp>
+#include <errors/type-conversion-exception.hpp>
+#include <errors/unsupported-database-exception.hpp>
+#include <errors/worm-exception.hpp>

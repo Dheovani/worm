@@ -1,4 +1,5 @@
 #include <errors/database-exception.hpp>
+#include <errors/worm-exception.hpp>
 
 #include <exception>
 #include <iostream>
@@ -8,6 +9,7 @@
 int main()
 {
   static_assert(std::is_base_of_v<std::exception, worm::DatabaseException>);
+  static_assert(std::is_base_of_v<worm::WormException, worm::DatabaseException>);
 
   const std::string expected = "A meaningful database error";
   const worm::DatabaseException error(expected);

@@ -1,11 +1,11 @@
 #include <connection/mysql-client.hpp>
-#include <errors/database-exception.hpp>
+#include <errors/database-connection-exception.hpp>
+#include <errors/query-execution-exception.hpp>
 
 #include <algorithm>
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
-#include <iostream>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -101,13 +101,13 @@ MySqlClient::MySqlClient(const char* host, const char* user, const char* passwd,
   connection_ = mysql_init(nullptr);
 
   if (connection_ == nullptr) {
-    throw worm::DatabaseException("Unable to initialize the MySQL client.");
+    throw worm::DatabaseConnectionException("Unable to initialize the MySQL client.");
   }
 
   if (mysql_real_connect(connection_, host, user, passwd, db, port, nullptr, 0) == nullptr) {
     const char* msg = mysql_error(connection_);
     mysql_close(connection_);
-    throw worm::DatabaseException(msg);
+    throw worm::DatabaseConnectionException(msg);
   }
 }
 
@@ -139,7 +139,7 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
 
   if (statement.parameters.empty()) {
     if (mysql_query(connection_, statement.sql.c_str())) {
-      std::cerr << "Error executing query: " << mysql_error(connection_) << std::endl;
+      throw worm::QueryExecutionException(mysql_error(connection_));
     } else if (isSelect(statement.sql)) {
       res = mysql_store_result(connection_);
 
@@ -161,7 +161,7 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
 
         mysql_free_result(res);
       } else {
-        std::cerr << "Error fetching results: " << mysql_error(connection_) << std::endl;
+        throw worm::QueryExecutionException(mysql_error(connection_));
       }
     }
 
@@ -171,13 +171,13 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
   MYSQL_STMT* preparedStatement = mysql_stmt_init(connection_);
 
   if (preparedStatement == nullptr) {
-    throw worm::DatabaseException("Unable to initialize a MySQL prepared statement.");
+    throw worm::QueryExecutionException("Unable to initialize a MySQL prepared statement.");
   }
 
   if (mysql_stmt_prepare(preparedStatement, statement.sql.c_str(), static_cast<unsigned long>(statement.sql.size()))) {
     const std::string error = mysql_stmt_error(preparedStatement);
     mysql_stmt_close(preparedStatement);
-    throw worm::DatabaseException(error);
+    throw worm::QueryExecutionException(error);
   }
 
   std::vector<MySqlBoundParameter> parameters;
@@ -197,13 +197,13 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
   if (!binds.empty() && mysql_stmt_bind_param(preparedStatement, binds.data())) {
     const std::string error = mysql_stmt_error(preparedStatement);
     mysql_stmt_close(preparedStatement);
-    throw worm::DatabaseException(error);
+    throw worm::QueryExecutionException(error);
   }
 
   if (mysql_stmt_execute(preparedStatement)) {
     const std::string error = mysql_stmt_error(preparedStatement);
     mysql_stmt_close(preparedStatement);
-    throw worm::DatabaseException(error);
+    throw worm::QueryExecutionException(error);
   }
 
   if (!isSelect(statement.sql)) {
@@ -244,7 +244,7 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
     const std::string error = mysql_stmt_error(preparedStatement);
     mysql_free_result(res);
     mysql_stmt_close(preparedStatement);
-    throw worm::DatabaseException(error);
+    throw worm::QueryExecutionException(error);
   }
 
   while (mysql_stmt_fetch(preparedStatement) == 0) {

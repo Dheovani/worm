@@ -1,7 +1,8 @@
 #include <core/sql-builder.hpp>
 
 #include <connection/client.hpp>
-#include <errors/database-exception.hpp>
+#include <errors/sql-build-exception.hpp>
+#include <errors/unsupported-database-exception.hpp>
 #include <utils/dependency-injection.hpp>
 
 #include <cstddef>
@@ -354,7 +355,7 @@ namespace worm::core
     case worm::connection::DatabaseType::SQLite:
       return std::make_unique<SqliteBuilder>();
     default:
-      throw worm::DatabaseException("Unsupported database type.");
+      throw worm::UnsupportedDatabaseException("Unsupported database type.");
     }
   }
 

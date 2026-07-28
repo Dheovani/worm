@@ -4,7 +4,7 @@
 
 namespace worm
 {
-  class DatabaseException : public WormException
+  class ReflectionException : public WormException
   {
   public:
     using WormException::WormException;

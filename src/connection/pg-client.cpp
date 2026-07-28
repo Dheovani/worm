@@ -1,5 +1,8 @@
 #include <connection/pg-client.hpp>
 
+#include <errors/database-connection-exception.hpp>
+#include <errors/query-execution-exception.hpp>
+
 #include <type_traits>
 #include <variant>
 #include <vector>
@@ -34,7 +37,11 @@ namespace
 
 PgClient::PgClient(const std::string& connectionData)
 {
-  connection_ = new pqxx::connection(connectionData);
+  try {
+    connection_ = new pqxx::connection(connectionData);
+  } catch (const std::exception& error) {
+    throw worm::DatabaseConnectionException(error.what());
+  }
 }
 
 PgClient::~PgClient()
@@ -58,9 +65,15 @@ PgClient& PgClient::getInstance(const worm::connection::ConnectionConfig& databa
 worm::core::ResultSet PgClient::executeQuery(const worm::core::Statement& statement) const
 {
   std::vector<worm::core::ResultRow> rows;
-  pqxx::work worker = pqxx::work(*connection_);
-  pqxx::result response = worker.exec(statement.sql, pgParameters(statement.parameters));
-  worker.commit();
+  pqxx::result response;
+
+  try {
+    pqxx::work worker = pqxx::work(*connection_);
+    response = worker.exec(statement.sql, pgParameters(statement.parameters));
+    worker.commit();
+  } catch (const std::exception& error) {
+    throw worm::QueryExecutionException(error.what());
+  }
 
   if (isSelect(statement.sql)) {
     for (pqxx::result::size_type i = 0; i < response.size(); i++) {

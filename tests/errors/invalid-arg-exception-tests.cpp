@@ -1,4 +1,5 @@
 #include <errors/invalid-arg-exception.hpp>
+#include <errors/worm-exception.hpp>
 
 #include <exception>
 #include <iostream>
@@ -8,6 +9,7 @@
 int main()
 {
   static_assert(std::is_base_of_v<std::exception, worm::InvalidArgException>);
+  static_assert(std::is_base_of_v<worm::WormException, worm::InvalidArgException>);
 
   const std::string expected = "A meaningful invalid argument error";
   const worm::InvalidArgException error(expected);

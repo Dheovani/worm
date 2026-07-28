@@ -3,7 +3,7 @@
 #include <connection/mysql-client.hpp>
 #include <connection/pg-client.hpp>
 #include <connection/sqlite-client.hpp>
-#include <errors/database-exception.hpp>
+#include <errors/unsupported-database-exception.hpp>
 
 namespace worm::connection
 {
@@ -17,7 +17,7 @@ namespace worm::connection
     case DatabaseType::SQLite:
       return SqliteClient::getInstance(connectionData);
     default:
-      throw DatabaseException("Unsupported database type.");
+      throw UnsupportedDatabaseException("Unsupported database type.");
     }
   }
 } // namespace worm::connection

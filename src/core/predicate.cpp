@@ -1,6 +1,6 @@
 #include <core/predicate.hpp>
 
-#include <errors/invalid-arg-exception.hpp>
+#include <errors/sql-build-exception.hpp>
 
 #include <cstddef>
 #include <string>
@@ -14,7 +14,7 @@ namespace worm::core
     void validateColumn(std::string_view column)
     {
       if (column.empty()) {
-        throw worm::InvalidArgException("Expression column cannot be empty.");
+        throw worm::SqlBuildException("Expression column cannot be empty.");
       }
     }
 
@@ -39,7 +39,7 @@ namespace worm::core
         return " LIKE ";
       }
 
-      throw worm::InvalidArgException("Unsupported comparison operator.");
+      throw worm::SqlBuildException("Unsupported comparison operator.");
     }
 
     Expression membershipExpression(
@@ -49,7 +49,7 @@ namespace worm::core
     {
       validateColumn(column);
       if (values.empty()) {
-        throw worm::InvalidArgException("Membership expressions require at least one value.");
+        throw worm::SqlBuildException("Membership expressions require at least one value.");
       }
 
       std::string sql{column};
@@ -72,7 +72,7 @@ namespace worm::core
       std::string_view logicalOperator)
     {
       if (expressions.empty()) {
-        throw worm::InvalidArgException("Logical expressions require at least one expression.");
+        throw worm::SqlBuildException("Logical expressions require at least one expression.");
       }
 
       std::string sql;

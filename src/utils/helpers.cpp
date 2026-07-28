@@ -1,6 +1,7 @@
 #include <utils/helpers.hpp>
 
-#include <errors/invalid-arg-exception.hpp>
+#include <errors/configuration-exception.hpp>
+#include <errors/missing-configuration-exception.hpp>
 
 #include <cstdlib>
 #include <filesystem>
@@ -30,7 +31,7 @@ std::unordered_map<std::string, std::string> worm::utils::env::loadFromPath(cons
   std::ifstream file(path);
 
   if (!file.is_open())
-    throw InvalidArgException("Unable to open environment file: " + path);
+    throw ConfigurationException("Unable to open environment file: " + path);
 
   std::string line;
   while (std::getline(file, line)) {
@@ -64,12 +65,12 @@ std::string worm::utils::env::getDatabaseType()
 {
   const std::string path = findInProjectRoot();
   if (path.empty())
-    throw InvalidArgException("The project .env file was not found.");
+    throw MissingConfigurationException("The project .env file was not found.");
 
   const auto variables = loadFromPath(path);
   const auto databaseType = variables.find("database_type");
   if (databaseType == variables.end() || databaseType->second.empty())
-    throw InvalidArgException("The database_type environment variable is missing.");
+    throw MissingConfigurationException("The database_type environment variable is missing.");
 
   return databaseType->second;
 }

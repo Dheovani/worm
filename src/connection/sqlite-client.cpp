@@ -1,9 +1,9 @@
 #include <connection/sqlite-client.hpp>
-#include <errors/database-exception.hpp>
+#include <errors/database-connection-exception.hpp>
+#include <errors/query-execution-exception.hpp>
 
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -52,19 +52,16 @@ SqliteClient::~SqliteClient()
 
 void SqliteClient::handleError(ErrorHandlingAction action, sqlite3_stmt* statement) const
 {
-  try {
-    const char* message = sqlite3_errmsg(connection_);
+  const char* message = sqlite3_errmsg(connection_);
 
-    if (action == ErrorHandlingAction::CloseConnection) {
-      sqlite3_close(connection_);
-      throw worm::DatabaseException(message);
-    } else if (action == ErrorHandlingAction::FinalizeStatement && statement) {
-      sqlite3_finalize(statement);
-      std::cerr << message << std::endl;
-    }
-  } catch (const std::exception& e) {
+  if (action == ErrorHandlingAction::CloseConnection) {
     sqlite3_close(connection_);
-    throw worm::DatabaseException(e.what());
+    throw worm::DatabaseConnectionException(message);
+  }
+
+  if (action == ErrorHandlingAction::FinalizeStatement && statement) {
+    sqlite3_finalize(statement);
+    throw worm::QueryExecutionException(message);
   }
 }
 
@@ -86,12 +83,10 @@ worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& st
     nullptr);
 
   if (resultCode != SQLITE_OK) {
-    std::cerr << sqlite3_errmsg(connection_) << std::endl;
-
     if (statement)
       handleError(ErrorHandlingAction::FinalizeStatement, statement);
 
-    return {};
+    throw worm::QueryExecutionException(sqlite3_errmsg(connection_));
   }
 
   for (std::size_t i = 0; i < statementData.parameters.size(); i++) {
@@ -99,7 +94,6 @@ worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& st
 
     if (resultCode != SQLITE_OK) {
       handleError(ErrorHandlingAction::FinalizeStatement, statement);
-      return {};
     }
   }
 
@@ -142,8 +136,11 @@ worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& st
     resultCode = sqlite3_step(statement);
   }
 
-  if (resultCode != SQLITE_DONE)
-    std::cerr << sqlite3_errmsg(connection_) << std::endl;
+  if (resultCode != SQLITE_DONE) {
+    const std::string message = sqlite3_errmsg(connection_);
+    sqlite3_finalize(statement);
+    throw worm::QueryExecutionException(message);
+  }
 
   sqlite3_finalize(statement);
   return worm::core::ResultSet{rows};
