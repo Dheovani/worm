@@ -3,6 +3,7 @@
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
+#include <cstdint>
 #include <type_traits>
 #include <variant>
 #include <vector>
@@ -94,5 +95,5 @@ worm::core::ResultSet PgClient::executeQuery(const worm::core::Statement& statem
     }
   }
 
-  return worm::core::ResultSet{rows};
+  return worm::core::ResultSet{rows, static_cast<std::uint64_t>(response.affected_rows())};
 }

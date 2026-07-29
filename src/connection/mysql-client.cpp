@@ -165,7 +165,11 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
       }
     }
 
-    return worm::core::ResultSet{rows};
+    const std::uint64_t affectedRows = isSelect(statement.sql)
+      ? 0
+      : static_cast<std::uint64_t>(mysql_affected_rows(connection_));
+
+    return worm::core::ResultSet{rows, affectedRows};
   }
 
   MYSQL_STMT* preparedStatement = mysql_stmt_init(connection_);
@@ -207,8 +211,9 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
   }
 
   if (!isSelect(statement.sql)) {
+    const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));
     mysql_stmt_close(preparedStatement);
-    return worm::core::ResultSet{rows};
+    return worm::core::ResultSet{rows, affectedRows};
   }
 
   res = mysql_stmt_result_metadata(preparedStatement);

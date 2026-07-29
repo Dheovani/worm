@@ -9,7 +9,10 @@
 int main()
 {
   const worm::core::ResultSet emptyResult;
-  if (!emptyResult.empty() || emptyResult.rowCount() != 0 || emptyResult.begin() != emptyResult.end()) {
+  if (!emptyResult.empty() ||
+      emptyResult.rowCount() != 0 ||
+      emptyResult.affectedRows() != 0 ||
+      emptyResult.begin() != emptyResult.end()) {
     std::cerr << "Empty ResultSet did not expose an empty container contract.\n";
     return 1;
   }
@@ -24,8 +27,14 @@ int main()
         }},
     }};
 
-  if (result.empty() || result.rowCount() != 1) {
+  if (result.empty() || result.rowCount() != 1 || result.affectedRows() != 0) {
     std::cerr << "ResultSet did not preserve rows.\n";
+    return 1;
+  }
+
+  const worm::core::ResultSet commandResult{std::uint64_t{3}};
+  if (!commandResult.empty() || commandResult.rowCount() != 0 || commandResult.affectedRows() != 3) {
+    std::cerr << "ResultSet did not preserve affected rows for command results.\n";
     return 1;
   }
 

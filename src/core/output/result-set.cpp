@@ -14,8 +14,13 @@ namespace worm::core
     return columns.size();
   }
 
-  ResultSet::ResultSet(std::vector<ResultRow> rows)
-    : rows_(std::move(rows))
+  ResultSet::ResultSet(std::vector<ResultRow> rows, std::uint64_t affectedRows)
+    : rows_(std::move(rows)),
+      affectedRows_(affectedRows)
+  {}
+
+  ResultSet::ResultSet(std::uint64_t affectedRows)
+    : affectedRows_(affectedRows)
   {}
 
   bool ResultSet::empty() const noexcept
@@ -26,6 +31,11 @@ namespace worm::core
   std::size_t ResultSet::rowCount() const noexcept
   {
     return rows_.size();
+  }
+
+  std::uint64_t ResultSet::affectedRows() const noexcept
+  {
+    return affectedRows_;
   }
 
   const std::vector<ResultRow>& ResultSet::rows() const noexcept

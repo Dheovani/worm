@@ -136,6 +136,10 @@ worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& st
     resultCode = sqlite3_step(statement);
   }
 
+  const std::uint64_t affectedRows = isSelect(statementData.sql)
+    ? 0
+    : static_cast<std::uint64_t>(sqlite3_changes(connection_));
+
   if (resultCode != SQLITE_DONE) {
     const std::string message = sqlite3_errmsg(connection_);
     sqlite3_finalize(statement);
@@ -143,5 +147,5 @@ worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& st
   }
 
   sqlite3_finalize(statement);
-  return worm::core::ResultSet{rows};
+  return worm::core::ResultSet{rows, affectedRows};
 }

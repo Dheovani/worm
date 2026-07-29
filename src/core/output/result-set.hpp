@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -33,13 +34,18 @@ namespace worm::core
 
     ResultSet() = default;
 
-    explicit ResultSet(std::vector<ResultRow> rows);
+    explicit ResultSet(std::vector<ResultRow> rows, std::uint64_t affectedRows = 0);
+
+    explicit ResultSet(std::uint64_t affectedRows);
 
     [[nodiscard]]
     bool empty() const noexcept;
 
     [[nodiscard]]
     std::size_t rowCount() const noexcept;
+
+    [[nodiscard]]
+    std::uint64_t affectedRows() const noexcept;
 
     [[nodiscard]]
     const std::vector<ResultRow>& rows() const noexcept;
@@ -52,6 +58,7 @@ namespace worm::core
 
   private:
     std::vector<ResultRow> rows_;
+    std::uint64_t affectedRows_{0};
   };
 
 } // namespace worm::core
