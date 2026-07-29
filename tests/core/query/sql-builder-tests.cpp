@@ -1,6 +1,7 @@
 #include <core/query/sql-builder.hpp>
 
 #include <core/query/predicate.hpp>
+#include <errors/sql-build-exception.hpp>
 
 #include <chrono>
 #include <cstdint>
@@ -228,6 +229,18 @@ int main()
 
   if (pgUpdate.parameters != std::vector<worm::core::Parameter>{std::string{"Ada"}, true, true}) {
     std::cerr << "Update builder did not preserve column parameters before filter parameters.\n";
+    return 1;
+  }
+
+  bool emptyUpdateFailed = false;
+  try {
+    static_cast<void>(pgBuilder.update(users, {}, filter));
+  } catch (const worm::SqlBuildException&) {
+    emptyUpdateFailed = true;
+  }
+
+  if (!emptyUpdateFailed) {
+    std::cerr << "Update builder accepted an update without columns.\n";
     return 1;
   }
 

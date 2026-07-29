@@ -46,9 +46,22 @@ int main()
     return 1;
   }
 
-  client.executeQuery({"CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)"});
-  client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Ada"}, true}});
-  client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Grace"}, false}});
+  const worm::core::ResultSet createResponse =
+    client.executeQuery({"CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)"});
+  const worm::core::ResultSet insertAdaResponse =
+    client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Ada"}, true}});
+  const worm::core::ResultSet insertGraceResponse =
+    client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Grace"}, false}});
+
+  if (!createResponse.empty() ||
+      createResponse.affectedRows() != 0 ||
+      !insertAdaResponse.empty() ||
+      insertAdaResponse.affectedRows() != 1 ||
+      !insertGraceResponse.empty() ||
+      insertGraceResponse.affectedRows() != 1) {
+    std::cerr << "SqliteClient did not report command feedback correctly.\n";
+    return 1;
+  }
 
   const worm::core::ResultSet filteredResponse =
     client.executeQuery({"SELECT name, active FROM people WHERE active = ?", {true}});
@@ -62,6 +75,22 @@ int main()
   if (std::get<std::string>(filteredRow.columns[0].value) != "Ada" ||
       std::get<std::int64_t>(filteredRow.columns[1].value) != 1) {
     std::cerr << "SqliteClient returned unexpected values for a parameterized query.\n";
+    return 1;
+  }
+
+  const worm::core::ResultSet updateResponse =
+    client.executeQuery({"UPDATE people SET active = ? WHERE name = ?", {true, std::string{"Grace"}}});
+
+  if (!updateResponse.empty() || updateResponse.affectedRows() != 1) {
+    std::cerr << "SqliteClient did not report update feedback correctly.\n";
+    return 1;
+  }
+
+  const worm::core::ResultSet deleteResponse =
+    client.executeQuery({"DELETE FROM people WHERE name = ?", {std::string{"Grace"}}});
+
+  if (!deleteResponse.empty() || deleteResponse.affectedRows() != 1) {
+    std::cerr << "SqliteClient did not report delete feedback correctly.\n";
     return 1;
   }
 

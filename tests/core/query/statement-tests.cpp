@@ -24,11 +24,25 @@ int main()
   }
 
   const worm::core::Statement fromStatement =
-    worm::core::Statement::from("select * from users where email = ? and active = ?", {std::string{"ada@example.com"}, true});
+    worm::core::Statement::prepare("select * from users where email = ? and active = ?", {std::string{"ada@example.com"}, true});
 
   if (fromStatement.sql != "select * from users where email = ? and active = ?" ||
       fromStatement.parameters != std::vector<worm::core::Parameter>{std::string{"ada@example.com"}, true}) {
     std::cerr << "Statement factory did not preserve manual SQL and bound parameters.\n";
+    return 1;
+  }
+
+  if (!worm::core::hasFilterWhere("delete from users where users.id = ?", "users") ||
+      !worm::core::hasFilterWhere("delete from users u where u.id = ?", "u") ||
+      !worm::core::hasFilterWhere("delete from `users` `u` where `u`.`id` = ?", "u")) {
+    std::cerr << "Statement filter detection did not accept qualified DELETE filters.\n";
+    return 1;
+  }
+
+  if (worm::core::hasFilterWhere("delete from users", "users") ||
+      worm::core::hasFilterWhere("delete from users where true", "users") ||
+      worm::core::hasFilterWhere("delete from users u where users.id = ?", "u")) {
+    std::cerr << "Statement filter detection accepted unsafe DELETE filters.\n";
     return 1;
   }
 

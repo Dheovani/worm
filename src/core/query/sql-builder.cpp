@@ -181,6 +181,37 @@ namespace worm::core
     return sql;
   }
 
+  Statement SqlBuilder::selectAll(
+    const Source& source,
+    const std::vector<Relation>& relations,
+    const std::optional<Filter>& filter,
+    const std::vector<Ordering>& ordering) const
+  {
+    const std::string fieldsList = std::string{source.alias.value_or(source.name)} + ".*";
+    const std::string sourceName = std::string{source.name} + " " + std::string{source.alias.value_or("")};
+    const std::string _relations = buildRelations(relations);
+    std::string sql = "select " + fieldsList + " from " + sourceName + " " + _relations;
+
+    if (filter.has_value()) {
+      std::size_t parameterIndex = 1;
+      for (const auto& relation : relations) {
+        parameterIndex += relation.condition.parameters.size();
+      }
+
+      sql += " where ";
+      sql += renderFilter(filter.value(), parameterIndex);
+    }
+
+    sql += renderOrdering(ordering);
+
+    std::vector<Parameter> parameters = relationParameters(relations);
+    if (filter.has_value()) {
+      appendParameters(parameters, filter.value().expression().parameters);
+    }
+
+    return {std::move(sql), std::move(parameters)};
+  }
+
   Statement SqlBuilder::select(
     const std::vector<worm::core::Field>& fields,
     const Source& source,
@@ -282,6 +313,10 @@ namespace worm::core
     const std::vector<std::pair<std::string, Parameter>>& columns,
     const std::optional<Filter>& filter) const
   {
+    if (columns.empty()) {
+      throw worm::SqlBuildException("UPDATE operation must receive at least one column.");
+    }
+
     std::string sql = "update " + std::string{source.name};
 
     if (source.alias.has_value()) {

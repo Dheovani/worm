@@ -50,6 +50,24 @@ add_worm_error_test(
 )
 
 add_worm_error_test(
+  WormDependencyInjectionExceptionTests
+  dependency-injection-exception-tests.cpp
+  Worm.Errors.DependencyInjectionException
+)
+
+add_worm_error_test(
+  WormDependencyResolutionExceptionTests
+  dependency-resolution-exception-tests.cpp
+  Worm.Errors.DependencyResolutionException
+)
+
+add_worm_error_test(
+  WormUnregisteredDependencyExceptionTests
+  unregistered-dependency-exception-tests.cpp
+  Worm.Errors.UnregisteredDependencyException
+)
+
+add_worm_error_test(
   WormDatabaseConnectionExceptionTests
   database-connection-exception-tests.cpp
   Worm.Errors.DatabaseConnectionException

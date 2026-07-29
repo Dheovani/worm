@@ -15,6 +15,7 @@ add_worm_utils_test(
   dependency-injection-tests.cpp
   Worm.Utils.DependencyInjection
 )
+target_link_libraries(WormDependencyInjectionTests PRIVATE Worm::Core)
 
 set_tests_properties(
   Worm.Utils.Helpers

@@ -1,10 +1,15 @@
 #pragma once
 
+#include <connection/client.hpp>
 #include <connection/configuration.hpp>
+#include <core/query/dialect.hpp>
+#include <core/query/sql-builder.hpp>
+#include <errors/unregistered-dependency-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 #include <utils/helpers.hpp>
 #include <utils/logger.hpp>
 
+#include <concepts>
 #include <cstddef>
 #include <cstdlib>
 #include <string>
@@ -18,6 +23,7 @@
 
 namespace worm
 {
+
   namespace detail
   {
     [[nodiscard]]
@@ -31,16 +37,22 @@ namespace worm
     }
   } // namespace detail
 
-  template <typename Type> class DependencyInjector
+  template <typename Type>
+  class DependencyInjector
   {
   public:
     [[nodiscard]] Type get() const
     {
-      return Type{};
+      if constexpr (std::default_initializable<Type>) {
+        return Type{};
+      } else {
+        throw UnregisteredDependencyException("Dependency is not registered: " + std::string{typeid(Type).name()});
+      }
     }
   };
 
-  template <> class DependencyInjector<Logger>
+  template <>
+  class DependencyInjector<Logger>
   {
   public:
     template <typename Class, std::size_t Index>
@@ -51,30 +63,24 @@ namespace worm
     }
   };
 
-  template <> class DependencyInjector<connection::Client>
+  template <>
+  class DependencyInjector<connection::ConnectionConfig>
   {
   public:
     [[nodiscard]]
-    connection::Client& get() const
+    connection::ConnectionConfig get() const
     {
-      const std::string database = utils::env::getDatabaseType();
-      const connection::ConnectionConfig config = {
+      return {
         .host = detail::envValue("host"),
         .username = detail::envValue("username"),
         .password = detail::envValue("password"),
         .dbname = detail::envValue("dbname"),
         .port = detail::envValue("port")};
-
-      const auto type = connection::databaseTypes.find(database);
-      if (type == connection::databaseTypes.end()) {
-        throw UnsupportedDatabaseException("Unsupported database type: " + database);
-      }
-
-      return connection::getInstance(config, type->second);
     }
   };
 
-  template <> class DependencyInjector<connection::DatabaseType>
+  template <>
+  class DependencyInjector<connection::DatabaseType>
   {
   public:
     [[nodiscard]]
@@ -89,4 +95,74 @@ namespace worm
       return type->second;
     }
   };
+
+  template <>
+  class DependencyInjector<connection::Client>
+  {
+  public:
+    [[nodiscard]]
+    connection::Client& get() const
+    {
+      return connection::getInstance(
+        DependencyInjector<connection::ConnectionConfig>().get(),
+        DependencyInjector<connection::DatabaseType>().get());
+    }
+  };
+
+  template <>
+  class DependencyInjector<core::Dialect>
+  {
+  public:
+    [[nodiscard]]
+    const core::Dialect& get() const
+    {
+      const auto dbType = DependencyInjector<connection::DatabaseType>().get();
+
+      if (dbType == connection::DatabaseType::PostgreSQL) {
+        static const core::PostgresDialect dialect{};
+        return dialect;
+      }
+
+      if (dbType == connection::DatabaseType::MySQL) {
+        static const core::MySqlDialect dialect{};
+        return dialect;
+      }
+
+      if (dbType == connection::DatabaseType::SQLite) {
+        static const core::SqliteDialect dialect{};
+        return dialect;
+      }
+
+      throw UnsupportedDatabaseException("Unsupported database type.");
+    }
+  };
+
+  template <>
+  class DependencyInjector<core::SqlBuilder>
+  {
+  public:
+    [[nodiscard]]
+    const core::SqlBuilder& get() const
+    {
+      const auto dbType = DependencyInjector<connection::DatabaseType>().get();
+
+      if (dbType == connection::DatabaseType::PostgreSQL) {
+        static const core::PgBuilder builder{};
+        return builder;
+      }
+
+      if (dbType == connection::DatabaseType::MySQL) {
+        static const core::MySqlBuilder builder{};
+        return builder;
+      }
+
+      if (dbType == connection::DatabaseType::SQLite) {
+        static const core::SqliteBuilder builder{};
+        return builder;
+      }
+
+      throw UnsupportedDatabaseException("Unsupported database type.");
+    }
+  };
+
 } // namespace worm

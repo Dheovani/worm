@@ -23,6 +23,13 @@ namespace worm::core
   {
   public:
     [[nodiscard]]
+    virtual Statement selectAll(
+      const Source& source,
+      const std::vector<Relation>& relations,
+      const std::optional<Filter>& filter = std::nullopt,
+      const std::vector<Ordering>& ordering = {}) const;
+    
+    [[nodiscard]]
     virtual Statement select(
       const std::vector<worm::core::Field>& fields,
       const Source& source,

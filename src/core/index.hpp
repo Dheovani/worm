@@ -13,3 +13,4 @@
 #include <core/query/source.hpp>
 #include <core/query/sql-builder.hpp>
 #include <core/query/statement.hpp>
+#include <core/repository.hpp>

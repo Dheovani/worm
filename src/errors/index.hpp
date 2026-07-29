@@ -3,6 +3,8 @@
 #include <errors/configuration-exception.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/database-exception.hpp>
+#include <errors/dependency-injection-exception.hpp>
+#include <errors/dependency-resolution-exception.hpp>
 #include <errors/hydration-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/invalid-arg-type-exception.hpp>
@@ -12,5 +14,6 @@
 #include <errors/reflection-exception.hpp>
 #include <errors/sql-build-exception.hpp>
 #include <errors/type-conversion-exception.hpp>
+#include <errors/unregistered-dependency-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 #include <errors/worm-exception.hpp>

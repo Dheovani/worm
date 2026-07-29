@@ -4,6 +4,7 @@ add_library(
   query/filter.cpp
   query/predicate.cpp
   query/sql-builder.cpp
+  query/statement.cpp
   output/result-set.cpp
  "query/validator.cpp"
 )
