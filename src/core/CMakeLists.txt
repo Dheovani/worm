@@ -5,6 +5,7 @@ add_library(
   query/predicate.cpp
   query/sql-builder.cpp
   output/result-set.cpp
+ "query/validator.cpp"
 )
 add_library(Worm::Core ALIAS WormCore)
 

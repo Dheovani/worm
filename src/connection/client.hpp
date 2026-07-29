@@ -35,8 +35,5 @@ namespace worm::connection
 
   protected:
     Client() = default;
-
-    [[nodiscard]]
-    bool isSelect(const std::string& query) const;
   };
 } // namespace worm::connection

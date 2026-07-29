@@ -1,4 +1,5 @@
 #include <connection/sqlite-client.hpp>
+#include <core/query/validator.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
@@ -97,7 +98,7 @@ worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& st
     }
   }
 
-  if (isSelect(statementData.sql)) {
+  if (core::isSelect(statementData.sql)) {
     int columnCount = sqlite3_column_count(statement);
 
     while ((resultCode = sqlite3_step(statement)) == SQLITE_ROW) {
@@ -136,7 +137,7 @@ worm::core::ResultSet SqliteClient::executeQuery(const worm::core::Statement& st
     resultCode = sqlite3_step(statement);
   }
 
-  const std::uint64_t affectedRows = isSelect(statementData.sql)
+  const std::uint64_t affectedRows = core::isSelect(statementData.sql)
     ? 0
     : static_cast<std::uint64_t>(sqlite3_changes(connection_));
 

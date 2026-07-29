@@ -1,5 +1,6 @@
 #include <connection/pg-client.hpp>
 
+#include <core/query/validator.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
@@ -76,7 +77,7 @@ worm::core::ResultSet PgClient::executeQuery(const worm::core::Statement& statem
     throw worm::QueryExecutionException(error.what());
   }
 
-  if (isSelect(statement.sql)) {
+  if (core::isSelect(statement.sql)) {
     for (pqxx::result::size_type i = 0; i < response.size(); i++) {
       std::vector<worm::core::ResultColumn> columns;
 

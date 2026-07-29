@@ -1,6 +1,5 @@
 add_library(
   WormConnection
-  client.cpp
   configuration.cpp
   pg-client.cpp
   mysql-client.cpp

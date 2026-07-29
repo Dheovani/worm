@@ -1,4 +1,5 @@
 #include <connection/mysql-client.hpp>
+#include <core/query/validator.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
@@ -140,7 +141,7 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
   if (statement.parameters.empty()) {
     if (mysql_query(connection_, statement.sql.c_str())) {
       throw worm::QueryExecutionException(mysql_error(connection_));
-    } else if (isSelect(statement.sql)) {
+    } else if (core::isSelect(statement.sql)) {
       res = mysql_store_result(connection_);
 
       if (res) {
@@ -165,7 +166,7 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
       }
     }
 
-    const std::uint64_t affectedRows = isSelect(statement.sql)
+    const std::uint64_t affectedRows = core::isSelect(statement.sql)
       ? 0
       : static_cast<std::uint64_t>(mysql_affected_rows(connection_));
 
@@ -210,7 +211,7 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
     throw worm::QueryExecutionException(error);
   }
 
-  if (!isSelect(statement.sql)) {
+  if (!core::isSelect(statement.sql)) {
     const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));
     mysql_stmt_close(preparedStatement);
     return worm::core::ResultSet{rows, affectedRows};
