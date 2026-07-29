@@ -249,14 +249,28 @@ namespace worm::core
     try {
       const std::string alias = generateEntityAlias();
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
+      const bool shouldUseSnapshot = registry.instances<T>().hasSnapshot(id);
+      const std::vector<std::pair<std::string, Parameter>> fields =
+        shouldUseSnapshot
+          ? mapChangedFields(id, newStateEntity)
+          : mapFields(newStateEntity, core::Operation::Update);
+
+      if (fields.empty()) {
+        return 0;
+      }
+
       const Statement statement = queryBuilder.update(
         {T::table().name(), alias},
-        mapFields(newStateEntity, core::Operation::Update),
+        fields,
         Filter{Predicate::equal(column, encode(id))});
 
       const ResultSet resultSet = executeFiltered(statement, alias, "UPDATE");
       if (resultSet.affectedRows() > 0) {
-        registry.instances<T>().remove(id);
+        if (shouldUseSnapshot) {
+          synchronizeRegisteredInstance(id, newStateEntity);
+        } else {
+          registry.instances<T>().remove(id);
+        }
       }
 
       return resultSet.affectedRows();
@@ -334,8 +348,8 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    auto mapFields(const T& entity, core::Operation kind) const
-      -> std::vector<std::pair<std::string, Parameter>>
+    std::vector<std::pair<std::string, core::Parameter>>
+    mapFields(const T& entity, core::Operation kind) const
     {
       const std::size_t persistentFieldsCount = core::persistent_field_count<T>;
       std::vector<std::pair<std::string, Parameter>> result{};
@@ -354,6 +368,49 @@ namespace worm::core
         worm::core::persistent_fields_of<T>());
 
       return result;
+    }
+
+    template <EncodableParameter ID>
+    [[nodiscard]]
+    std::vector<std::pair<std::string, core::Parameter>>
+    mapChangedFields(const ID& id, const T& entity) const
+    {
+      std::vector<std::pair<std::string, Parameter>> result{};
+      result.reserve(registry.instances<T>().changedFieldCount(id, entity));
+
+      registry.instances<T>().forEachChangedField(
+        id,
+        entity,
+        [&](const auto& field, const auto&, const auto& currentValue) {
+          if (!field.isPrimaryKey() && !field.isGenerated()) {
+            result.emplace_back(std::string{field.columnName()}, encode(currentValue));
+          }
+        });
+
+      return result;
+    }
+
+    template <EncodableParameter ID>
+    void synchronizeRegisteredInstance(const ID& id, const T& newStateEntity) const
+    {
+      std::shared_ptr<T> registered = registry.instances<T>().get(id);
+      if (!registered) {
+        return;
+      }
+
+      std::apply(
+        [&](const auto&... fields) {
+          ([&] {
+            if (fields.isPrimaryKey() || fields.isGenerated()) {
+              return;
+            }
+
+            fields.get(*registered) = fields.get(newStateEntity);
+          }(), ...);
+        },
+        worm::core::persistent_fields_of<T>());
+
+      registry.instances<T>().refreshSnapshot(id);
     }
 
     [[nodiscard]]

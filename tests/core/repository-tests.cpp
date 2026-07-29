@@ -411,7 +411,12 @@ int main()
   const worm::core::Repository<User> updateRepository{updateClient, queryBuilder, sharedRegistry};
   const std::uint64_t updatedRows = updateRepository.update(std::int64_t{7}, User{.id = 99, .name = "Lovelace"});
 
-  if (updatedRows != 1 || updateClient.statements.size() != 1 || sharedRegistry.instances<User>().has(7)) {
+  if (updatedRows != 1 ||
+      updateClient.statements.size() != 1 ||
+      !sharedRegistry.instances<User>().has(7) ||
+      found->id != 7 ||
+      found->name != "Lovelace" ||
+      sharedRegistry.instances<User>().isDirty(7)) {
     std::cerr << "Repository update(id, entity) did not return affected rows from a single update query.\n";
     return 1;
   }
@@ -423,6 +428,16 @@ int main()
       updateStatement.sql.find("where " + std::string{builder.sourceAlias} + ".id = ?") == std::string::npos ||
       builder.updateColumnsCount != 1) {
     std::cerr << "Repository update(id, entity) did not map update fields safely.\n";
+    return 1;
+  }
+
+  RecordingClient unchangedUpdateClient{{worm::core::ResultSet{std::uint64_t{1}}}};
+  const worm::core::Repository<User> unchangedUpdateRepository{unchangedUpdateClient, queryBuilder, sharedRegistry};
+  const std::uint64_t unchangedUpdatedRows =
+    unchangedUpdateRepository.update(std::int64_t{7}, User{.id = 7, .name = "Lovelace"});
+
+  if (unchangedUpdatedRows != 0 || !unchangedUpdateClient.statements.empty()) {
+    std::cerr << "Repository update(id, entity) executed a query without changed fields.\n";
     return 1;
   }
 

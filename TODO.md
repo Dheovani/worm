@@ -72,7 +72,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 
 - [x] Implementar repositório tipado para operações básicas.
 - [x] Implementar mapa de identidade para evitar instâncias duplicadas da mesma linha.
-- [ ] Implementar unidade de trabalho usando snapshots para `UPDATE` parcial.
+- [x] Implementar unidade de trabalho usando snapshots para `UPDATE` parcial.
 - [ ] Implementar transações RAII com commit e rollback explícitos.
 - [ ] Criar um fluxo de erro consistente entre reflexão, SQL e drivers.
 

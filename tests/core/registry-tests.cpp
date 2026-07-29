@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -57,37 +58,58 @@ int main()
   }
 
   const std::shared_ptr<User> added = users.get(1);
-  if (!added || added->name != "Ada") {
+  if (!added || added->name != "Ada" || !users.hasSnapshot(1) || users.isDirty(1) || users.changedFieldCount(1) != 0) {
     std::cerr << "InstanceRegistry did not return the added entity.\n";
     return 1;
   }
 
+  added->name = "Byron";
+  std::vector<std::string> changedFields;
+  const std::size_t changedFieldsCount =
+    users.forEachChangedField(1, [&](const auto& descriptor, const auto&, const auto&) {
+      changedFields.emplace_back(descriptor.name());
+    });
+
+  if (!users.isDirty(1) ||
+      users.changedFieldCount(1) != 1 ||
+      changedFieldsCount != 1 ||
+      changedFields != std::vector<std::string>{"name"}) {
+    std::cerr << "InstanceRegistry did not detect changed fields against the stored snapshot.\n";
+    return 1;
+  }
+
+  users.refreshSnapshot(1);
+  if (users.isDirty(1) || users.changedFieldCount(1) != 0) {
+    std::cerr << "InstanceRegistry did not refresh the stored snapshot.\n";
+    return 1;
+  }
+
   users.add(1, User{.id = 1, .name = "Grace"});
-  if (users.get(1)->name != "Ada" || users.count() != 1) {
+  if (users.get(1)->name != "Byron" || users.count() != 1 || users.isDirty(1)) {
     std::cerr << "InstanceRegistry add replaced an existing entity.\n";
     return 1;
   }
 
   users.put(1, User{.id = 1, .name = "Grace"});
-  if (users.get(1)->name != "Grace" || users.count() != 1) {
+  if (users.get(1)->name != "Grace" || users.count() != 1 || users.isDirty(1)) {
     std::cerr << "InstanceRegistry put did not replace an existing entity.\n";
     return 1;
   }
 
   users.emplace(1, User{.id = 1, .name = "Lovelace"});
-  if (users.get(1)->name != "Grace" || users.count() != 1) {
+  if (users.get(1)->name != "Grace" || users.count() != 1 || users.isDirty(1)) {
     std::cerr << "InstanceRegistry emplace replaced an existing entity.\n";
     return 1;
   }
 
   users.emplace(2, User{.id = 2, .name = "Lovelace"});
-  if (!users.has(2) || users.get(2)->name != "Lovelace" || users.count() != 2) {
+  if (!users.has(2) || !users.hasSnapshot(2) || users.get(2)->name != "Lovelace" || users.count() != 2) {
     std::cerr << "InstanceRegistry emplace did not insert a missing entity.\n";
     return 1;
   }
 
   users.remove(1);
-  if (users.has(1) || users.get(1) != nullptr || users.count() != 1) {
+  if (users.has(1) || users.hasSnapshot(1) || users.get(1) != nullptr || users.count() != 1) {
     std::cerr << "InstanceRegistry remove did not erase the entity.\n";
     return 1;
   }

@@ -72,7 +72,9 @@ namespace worm::reflection
   using EntitySnapshot = decltype(detail::snapshot_type<std::remove_cvref_t<T>>(
     std::make_index_sequence<field_count<std::remove_cvref_t<T>>>{}));
 
-  template <Snapshotable T> [[nodiscard]] constexpr EntitySnapshot<T> make_snapshot(const T& object)
+  template <Snapshotable T>
+  [[nodiscard]]
+  constexpr EntitySnapshot<T> make_snapshot(const T& object)
   {
     using Entity = std::remove_cvref_t<T>;
     return detail::make_snapshot_impl<Entity>(object, std::make_index_sequence<field_count<Entity>>{});
@@ -87,12 +89,15 @@ namespace worm::reflection
   }
 
   template <Snapshotable T>
-  [[nodiscard]] constexpr std::size_t changed_field_count(const T& object, const EntitySnapshot<T>& snapshot)
+  [[nodiscard]]
+  constexpr std::size_t changed_field_count(const T& object, const EntitySnapshot<T>& snapshot)
   {
     return for_each_changed_field(object, snapshot, [](const auto&, const auto&, const auto&) {});
   }
 
-  template <Snapshotable T> [[nodiscard]] constexpr bool is_dirty(const T& object, const EntitySnapshot<T>& snapshot)
+  template <Snapshotable T>
+  [[nodiscard]]
+  constexpr bool is_dirty(const T& object, const EntitySnapshot<T>& snapshot)
   {
     return changed_field_count(object, snapshot) != 0;
   }
