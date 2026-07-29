@@ -10,7 +10,7 @@ namespace worm::core
   namespace
   {
     [[nodiscard]]
-    std::string extractFistWord(const std::string& query) noexcept
+    std::string extractFirstWord(const std::string& query) noexcept
     {
       std::istringstream iss(query);
       std::string firstWord;
@@ -26,26 +26,26 @@ namespace worm::core
 
   bool isInsert(const std::string& query) noexcept
   {
-    const std::string firstWord = extractFistWord(query);
-    return firstWord == insert_keyword;
+    const std::string firstWord = extractFirstWord(query);
+    return firstWord == insertKeyword;
   }
 
   bool isUpdate(const std::string& query) noexcept
   {
-    const std::string firstWord = extractFistWord(query);
-    return firstWord == update_keyword;
+    const std::string firstWord = extractFirstWord(query);
+    return firstWord == updateKeyword;
   }
 
   bool isDelete(const std::string& query) noexcept
   {
-    const std::string firstWord = extractFistWord(query);
-    return firstWord == delete_keyword;
+    const std::string firstWord = extractFirstWord(query);
+    return firstWord == deleteKeyword;
   }
 
   bool isSelect(const std::string& query) noexcept
   {
-    const std::string firstWord = extractFistWord(query);
-    return firstWord == select_keyword;
+    const std::string firstWord = extractFirstWord(query);
+    return firstWord == selectKeyword;
   }
 
 } // namespace worm::core

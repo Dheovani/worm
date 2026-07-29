@@ -1,6 +1,7 @@
 #include <core/repository.hpp>
 
 #include <connection/client.hpp>
+#include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
 #include <errors/sql-build-exception.hpp>
 #include <reflection/field.hpp>
@@ -29,6 +30,24 @@ namespace
       return std::tuple{
         worm::reflection::field("id", &User::id, {.primaryKey = true}),
         worm::reflection::field("name", &User::name)};
+    }
+  };
+
+  struct GeneratedUser
+  {
+    std::int64_t id{};
+    std::string name;
+
+    static constexpr worm::core::Table table() noexcept
+    {
+      return worm::core::Table{"users"};
+    }
+
+    static constexpr auto reflect() noexcept
+    {
+      return std::tuple{
+        worm::reflection::field("id", &GeneratedUser::id, {.primaryKey = true, .generated = true}),
+        worm::reflection::field("name", &GeneratedUser::name)};
     }
   };
 
@@ -71,6 +90,65 @@ namespace
       sourceAlias = source.alias.value_or("");
       hasFilter = filter.has_value();
       return {"select all users", filter ? filter->expression().parameters : std::vector<worm::core::Parameter>{}};
+    }
+
+    worm::core::Statement insert(
+      const worm::core::Source& source,
+      const std::vector<std::pair<std::string, worm::core::Parameter>>& columns) const override
+    {
+      sourceName = source.name;
+      insertColumnsCount = columns.size();
+
+      std::string sql = "insert into " + std::string{source.name} + " (";
+      std::string values = " values (";
+      std::vector<worm::core::Parameter> parameters;
+
+      for (std::size_t index = 0; index < columns.size(); ++index) {
+        sql += columns[index].first;
+        values += "?";
+        parameters.push_back(columns[index].second);
+
+        if (index + 1 < columns.size()) {
+          sql += ",";
+          values += ",";
+        }
+      }
+
+      sql += ")";
+      values += ")";
+
+      return {sql + values, std::move(parameters)};
+    }
+
+    worm::core::Statement insertFromSelect(
+      const worm::core::Source& target,
+      const std::vector<std::string>& targetColumns,
+      const worm::core::Statement& sourceStatement) const override
+    {
+      sourceName = target.name;
+      targetColumnsCount = targetColumns.size();
+      sourceQuery = sourceStatement.sql;
+      return {"insert into " + std::string{target.name} + " select delegated", sourceStatement.parameters};
+    }
+
+    worm::core::Statement insertFromSelect(
+      const worm::core::Source& target,
+      const std::vector<std::string>& targetColumns,
+      const std::vector<worm::core::Field>& selectedFields,
+      const worm::core::Source& source,
+      const std::vector<worm::core::Relation>& relations,
+      const std::optional<worm::core::Filter>& filter = std::nullopt,
+      const std::vector<worm::core::Ordering>& ordering = {}) const override
+    {
+      sourceName = source.name;
+      targetName = target.name;
+      targetColumnsCount = targetColumns.size();
+      selectedFieldsCount = selectedFields.size();
+      relationsCount = relations.size();
+      hasFilter = filter.has_value();
+      orderingCount = ordering.size();
+
+      return {"insert into " + std::string{target.name} + " structured select delegated"};
     }
 
     worm::core::Statement update(
@@ -124,9 +202,16 @@ namespace
     }
 
     mutable std::string sourceName;
+    mutable std::string targetName;
     mutable std::string sourceAlias;
     mutable bool hasFilter{false};
+    mutable std::size_t insertColumnsCount{0};
     mutable std::size_t updateColumnsCount{0};
+    mutable std::size_t targetColumnsCount{0};
+    mutable std::size_t selectedFieldsCount{0};
+    mutable std::size_t relationsCount{0};
+    mutable std::size_t orderingCount{0};
+    mutable std::string sourceQuery;
   };
 
   worm::core::ResultSet usersResult(
@@ -194,6 +279,114 @@ int main()
 
   if (!nonUniqueFailed) {
     std::cerr << "Repository findOne accepted a non-unique result.\n";
+    return 1;
+  }
+
+  RecordingClient insertClient{{worm::core::ResultSet{std::uint64_t{1}}, usersResult({{7, "Ada"}})}};
+  const worm::core::Repository<User> insertRepository{insertClient, queryBuilder};
+  const User inserted = insertRepository.insert(User{.id = 7, .name = "Ada"});
+
+  if (inserted.id != 7 ||
+      inserted.name != "Ada" ||
+      insertClient.statements.size() != 2 ||
+      insertClient.statements.front().parameters !=
+        std::vector<worm::core::Parameter>{std::int64_t{7}, std::string{"Ada"}} ||
+      insertClient.statements.front().sql.find("insert into users") == std::string::npos ||
+      builder.insertColumnsCount != 2) {
+    std::cerr << "Repository insert(entity) did not map, execute, and return the created entity.\n";
+    return 1;
+  }
+
+  RecordingClient generatedInsertClient{{usersResult({{9, "Grace"}}, 1)}};
+  const worm::core::Repository<GeneratedUser> generatedInsertRepository{generatedInsertClient, queryBuilder};
+  const GeneratedUser generatedInserted = generatedInsertRepository.insert(GeneratedUser{.name = "Grace"});
+
+  if (generatedInserted.id != 9 ||
+      generatedInserted.name != "Grace" ||
+      generatedInsertClient.statements.size() != 1 ||
+      generatedInsertClient.lastStatement.parameters != std::vector<worm::core::Parameter>{std::string{"Grace"}} ||
+      builder.insertColumnsCount != 1) {
+    std::cerr << "Repository insert(entity) did not use returned rows for generated primary keys.\n";
+    return 1;
+  }
+
+  bool missingGeneratedIdFailed = false;
+  try {
+    RecordingClient missingGeneratedIdClient{{worm::core::ResultSet{std::uint64_t{1}}}};
+    const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{missingGeneratedIdClient, queryBuilder};
+    static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Missing"}));
+  } catch (const worm::MappingException&) {
+    missingGeneratedIdFailed = true;
+  }
+
+  if (!missingGeneratedIdFailed) {
+    std::cerr << "Repository insert(entity) accepted a generated primary key without a returned row.\n";
+    return 1;
+  }
+
+  RecordingClient manyInsertClient{{
+    worm::core::ResultSet{std::uint64_t{1}},
+    usersResult({{1, "Ada"}}),
+    worm::core::ResultSet{std::uint64_t{1}},
+    usersResult({{2, "Grace"}})}};
+  const worm::core::Repository<User> manyInsertRepository{manyInsertClient, queryBuilder};
+  const std::uint64_t manyInsertedRows =
+    manyInsertRepository.insert(std::vector<User>{{.id = 1, .name = "Ada"}, {.id = 2, .name = "Grace"}});
+
+  if (manyInsertedRows != 2 || manyInsertClient.statements.size() != 4) {
+    std::cerr << "Repository insert(vector) did not aggregate affected rows.\n";
+    return 1;
+  }
+
+  RecordingClient statementInsertClient{{worm::core::ResultSet{std::uint64_t{3}}}};
+  const worm::core::Repository<User> statementInsertRepository{statementInsertClient, queryBuilder};
+  const std::uint64_t statementInsertedRows =
+    statementInsertRepository.insert({"insert into users (id,name) values (?,?)", {std::int64_t{7}, std::string{"Ada"}}});
+
+  if (statementInsertedRows != 3 || statementInsertClient.statements.size() != 1) {
+    std::cerr << "Repository insert(statement) did not return affected rows.\n";
+    return 1;
+  }
+
+  bool invalidInsertFailed = false;
+  try {
+    RecordingClient invalidInsertClient{{worm::core::ResultSet{std::uint64_t{1}}}};
+    const worm::core::Repository<User> invalidInsertRepository{invalidInsertClient, queryBuilder};
+    static_cast<void>(invalidInsertRepository.insert({"select * from users"}));
+  } catch (const worm::InvalidOperationException&) {
+    invalidInsertFailed = true;
+  }
+
+  if (!invalidInsertFailed) {
+    std::cerr << "Repository insert(statement) accepted a non-insert statement.\n";
+    return 1;
+  }
+
+  RecordingClient insertFromSelectClient{{worm::core::ResultSet{std::uint64_t{4}}}};
+  const worm::core::Repository<User> insertFromSelectRepository{insertFromSelectClient, queryBuilder};
+  const std::uint64_t insertFromSelectRows = insertFromSelectRepository.insertFromSelect(
+    {"id", "name"},
+    {"select id,name from archived_users where active = ?", {true}});
+
+  if (insertFromSelectRows != 4 ||
+      insertFromSelectClient.statements.size() != 1 ||
+      builder.targetColumnsCount != 2 ||
+      builder.sourceQuery.find("select id,name") == std::string::npos) {
+    std::cerr << "Repository insertFromSelect(statement) did not execute a generated insert statement.\n";
+    return 1;
+  }
+
+  bool invalidInsertFromSelectFailed = false;
+  try {
+    RecordingClient invalidInsertFromSelectClient{{worm::core::ResultSet{std::uint64_t{1}}}};
+    const worm::core::Repository<User> invalidInsertFromSelectRepository{invalidInsertFromSelectClient, queryBuilder};
+    static_cast<void>(invalidInsertFromSelectRepository.insertFromSelect({"id", "name"}, {"delete from users"}));
+  } catch (const worm::InvalidOperationException&) {
+    invalidInsertFromSelectFailed = true;
+  }
+
+  if (!invalidInsertFromSelectFailed) {
+    std::cerr << "Repository insertFromSelect(statement) accepted a non-select source statement.\n";
     return 1;
   }
 

@@ -11,6 +11,7 @@
 #include <core/query/source.hpp>
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
+#include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/sql-build-exception.hpp>
@@ -33,11 +34,9 @@ namespace worm::core
   template <PersistableEntity T>
   class Repository final
   {
-    UseDependencyInjectionWorm
-
   public:
     explicit Repository()
-      : dbClient(getDependencyInjector<connection::Client>().get()),
+      : dbClient(worm::DependencyInjector<connection::Client>().get()),
         queryBuilder()
     {}
 
@@ -67,7 +66,10 @@ namespace worm::core
     [[nodiscard]]
     std::optional<T> findOne(const Statement& statement) const
     try {
-      // TODO: Validar o statement
+      if (!isOperationValid(statement, core::Operation::Select)) {
+        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
+      }
+
       const ResultSet resultSet = dbClient.executeQuery(statement);
       const std::size_t rowCount = resultSet.rowCount();
 
@@ -89,7 +91,10 @@ namespace worm::core
     [[nodiscard]]
     std::vector<T> findAll(const Statement& statement) const
     try {
-      // TODO: Validar o statement
+      if (!isOperationValid(statement, core::Operation::Select)) {
+        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
+      }
+
       const ResultSet resultSet = dbClient.executeQuery(statement);
 
       if (resultSet.empty()) {
@@ -111,24 +116,115 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    const T insert(const T& entity) const
+    T insert(const T& entity) const
     try {
       const std::string alias = generateEntityAlias();
       const Statement statement =
         queryBuilder.insert({T::table().name(), alias}, mapFields(entity, core::Operation::Insert));
       const ResultSet resultSet = execute(statement);
 
-      return hydrate<T>(resultSet.rows().front());
+      if (resultSet.rowCount() == 1) {
+        return hydrate<T>(resultSet.rows().front());
+      }
+
+      if (resultSet.rowCount() > 1) {
+        throw worm::MappingException("More than one row returned for a single-result insert operation.");
+      }
+
+      if (primaryKey.isGenerated()) {
+        throw worm::MappingException(
+          "Insert operation did not return the generated primary key required to hydrate the created entity.");
+      }
+
+      const std::optional<T> createdEntity = find(primaryKey.get(entity));
+      if (!createdEntity.has_value()) {
+        throw worm::MappingException("Inserted entity could not be retrieved by its primary key.");
+      }
+
+      return createdEntity.value();
     } catch (const worm::WormException&) {
       throw;
     } catch (const std::exception& error) {
       throw worm::QueryExecutionException(error.what());
     }
 
-    // insert a partir das propriedades do select
-    // insert a partir de um select statement
-    // insert a partir de statement
-    // insert a partir de vetor de entidades
+    [[nodiscard]]
+    std::uint64_t insert(const std::vector<T>& entities) const
+    try {
+      std::uint64_t affectedRows = 0;
+
+      for (const T& entity : entities) {
+        static_cast<void>(insert(entity));
+        ++affectedRows;
+      }
+
+      return affectedRows;
+    } catch (const worm::WormException&) {
+      throw;
+    } catch (const std::exception& error) {
+      throw worm::QueryExecutionException(error.what());
+    }
+
+    [[nodiscard]]
+    std::uint64_t insert(const Statement& statement) const
+    try {
+      if (!isOperationValid(statement, core::Operation::Insert)) {
+        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
+      }
+
+      const ResultSet resultSet = execute(statement);
+      return resultSet.affectedRows();
+    } catch (const worm::WormException&) {
+      throw;
+    } catch (const std::exception& error) {
+      throw worm::QueryExecutionException(error.what());
+    }
+
+    [[nodiscard]]
+    std::uint64_t insertFromSelect(
+      const std::vector<std::string>& targetColumns,
+      const Statement& sourceStatement) const
+    try {
+      if (!isOperationValid(sourceStatement, core::Operation::Select)) {
+        throw worm::InvalidOperationException("The provided source statement performs an invalid operation.");
+      }
+
+      const Statement statement = queryBuilder.insertFromSelect(
+        {T::table().name()},
+        targetColumns,
+        sourceStatement);
+
+      return insert(statement);
+    } catch (const worm::WormException&) {
+      throw;
+    } catch (const std::exception& error) {
+      throw worm::QueryExecutionException(error.what());
+    }
+
+    [[nodiscard]]
+    std::uint64_t insertFromSelect(
+      const std::vector<std::string>& targetColumns,
+      const std::vector<Field>& selectedFields,
+      const Source& source,
+      const std::vector<Relation>& relations = {},
+      const std::optional<Filter>& filter = std::nullopt,
+      const std::vector<Ordering>& ordering = {}) const
+    try {
+      const Statement statement = queryBuilder.insertFromSelect(
+        {T::table().name()},
+        targetColumns,
+        selectedFields,
+        source,
+        relations,
+        filter,
+        ordering);
+
+      return insert(statement);
+    } catch (const worm::WormException&) {
+      throw;
+    } catch (const std::exception& error) {
+      throw worm::QueryExecutionException(error.what());
+    }
 
     template <EncodableParameter ID>
     [[nodiscard]]
@@ -152,7 +248,10 @@ namespace worm::core
     [[nodiscard]]
     std::uint64_t update(const Statement& statement) const
     try {
-      // TODO: Validar o statement
+      if (!isOperationValid(statement, core::Operation::Update)) {
+        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
+      }
+
       const ResultSet resultSet = executeFiltered(statement, T::table().name(), "UPDATE");
       return resultSet.affectedRows();
     } catch (const worm::WormException&) {
@@ -178,7 +277,10 @@ namespace worm::core
 
     void delete_(const Statement& statement) const
     {
-      // TODO: Validar o statement
+      if (!isOperationValid(statement, core::Operation::Delete)) {
+        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
+      }
+
       delete_(statement, T::table().name());
     }
 
@@ -255,7 +357,10 @@ namespace worm::core
 
     void delete_(const Statement& statement, std::string_view filterQualifier) const
     try {
-      // TODO: Validar o statement
+      if (!isOperationValid(statement, core::Operation::Delete)) {
+        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
+      }
+
       static_cast<void>(executeFiltered(statement, filterQualifier, "DELETE"));
     } catch (const worm::WormException&) {
       throw;

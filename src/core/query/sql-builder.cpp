@@ -248,6 +248,10 @@ namespace worm::core
     const Source& source,
     const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
+    if (columns.empty()) {
+      throw worm::SqlBuildException("INSERT operation must receive at least one column.");
+    }
+
     std::string fields = "(",
                 values = "(";
 
@@ -276,6 +280,10 @@ namespace worm::core
     const std::vector<std::string>& targetColumns,
     const Statement& sourceStatement) const
   {
+    if (targetColumns.empty()) {
+      throw worm::SqlBuildException("INSERT FROM SELECT operation must receive at least one target column.");
+    }
+
     std::string columns = "(";
 
     for (std::size_t index = 0; index < targetColumns.size(); ++index) {

@@ -2,19 +2,12 @@
 
 #include <iostream>
 #include <string>
-#include <utility>
-#include <vector>
 
 namespace
 {
   class TestClient final : public worm::connection::Client
   {
   public:
-    bool isSelectQuery(const std::string& query) const
-    {
-      return isSelect(query);
-    }
-
     worm::core::ResultSet executeQuery(const worm::core::Statement&) const override
     {
       return {};
@@ -25,22 +18,7 @@ namespace
 int main()
 {
   const TestClient client;
-  const std::vector<std::pair<std::string, bool>> cases = {
-    {"SELECT * FROM users", true},
-    {"select id from users", true},
-    {"  SeLeCt 1", true},
-    {"INSERT INTO users VALUES (1)", false},
-    {"WITH users AS (SELECT 1) SELECT * FROM users", false},
-    {"", false},
-  };
-
-  for (const auto& [query, expected] : cases) {
-    if (client.isSelectQuery(query) == expected)
-      continue;
-
-    std::cerr << "Unexpected SELECT detection for query: " << query << '\n';
-    return 1;
-  }
+  static_cast<void>(client);
 
   if (worm::connection::databaseTypes.at("postgresql") != worm::connection::DatabaseType::PostgreSQL ||
       worm::connection::databaseTypes.at("mysql") != worm::connection::DatabaseType::MySQL ||

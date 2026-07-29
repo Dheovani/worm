@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <string_view>
 
 namespace worm::core
 {
@@ -14,10 +13,10 @@ namespace worm::core
     Select
   };
 
-  constexpr std::string_view insert_keyword = "INSERT";
-  constexpr std::string_view update_keyword = "UPDATE";
-  constexpr std::string_view delete_keyword = "DELETE";
-  constexpr std::string_view select_keyword = "SELECT";
+  inline constexpr const char* insertKeyword = "INSERT";
+  inline constexpr const char* updateKeyword = "UPDATE";
+  inline constexpr const char* deleteKeyword = "DELETE";
+  inline constexpr const char* selectKeyword = "SELECT";
 
   [[nodiscard]]
   bool isInsert(const std::string& query) noexcept;

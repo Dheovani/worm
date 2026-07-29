@@ -15,12 +15,6 @@
 #include <string>
 #include <typeinfo>
 
-#define UseDependencyInjectionWorm                                                                                     \
-  template <typename Type> auto getDependencyInjector() noexcept                                                       \
-  {                                                                                                                    \
-    return worm::DependencyInjector<Type>();                                                                           \
-  }
-
 namespace worm
 {
 
