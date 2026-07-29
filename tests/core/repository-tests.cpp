@@ -240,7 +240,7 @@ int main()
   worm::core::Registry sharedRegistry;
   RecordingClient findClient{{usersResult({{7, "Ada"}})}};
   const worm::core::Repository<User> repository{findClient, queryBuilder, sharedRegistry};
-  const std::optional<User> found = repository.find(std::int64_t{7});
+  const std::shared_ptr<User> found = repository.find(std::int64_t{7});
 
   if (!found ||
       found->id != 7 ||
@@ -254,31 +254,31 @@ int main()
     return 1;
   }
 
-  const std::optional<User> cached = repository.find(std::int64_t{7});
-  if (!cached || cached->name != "Ada" || findClient.statements.size() != 1) {
+  const std::shared_ptr<User> cached = repository.find(std::int64_t{7});
+  if (!cached || cached != found || cached->name != "Ada" || findClient.statements.size() != 1) {
     std::cerr << "Repository find(id) did not reuse the registered entity.\n";
     return 1;
   }
 
   RecordingClient sharedFindClient{{usersResult({{8, "Grace"}})}};
   const worm::core::Repository<User> sharedRepository{sharedFindClient, queryBuilder, sharedRegistry};
-  const std::optional<User> sharedFound = sharedRepository.find(std::int64_t{7});
-  if (!sharedFound || sharedFound->name != "Ada" || !sharedFindClient.statements.empty()) {
+  const std::shared_ptr<User> sharedFound = sharedRepository.find(std::int64_t{7});
+  if (!sharedFound || sharedFound != found || sharedFound->name != "Ada" || !sharedFindClient.statements.empty()) {
     std::cerr << "Repository did not reuse entities registered by another repository.\n";
     return 1;
   }
 
   RecordingClient emptyClient{{worm::core::ResultSet{}}};
   const worm::core::Repository<User> emptyRepository{emptyClient, queryBuilder};
-  if (emptyRepository.findOne({"select empty"}).has_value()) {
+  if (emptyRepository.findOne({"select empty"}) != nullptr) {
     std::cerr << "Repository findOne did not return nullopt for an empty result.\n";
     return 1;
   }
 
   RecordingClient allClient{{usersResult({{1, "Ada"}, {2, "Grace"}})}};
   const worm::core::Repository<User> allRepository{allClient, queryBuilder};
-  const std::vector<User> users = allRepository.findAll({"select many"});
-  if (users.size() != 2 || users[0].name != "Ada" || users[1].name != "Grace") {
+  const std::vector<std::shared_ptr<User>> users = allRepository.findAll({"select many"});
+  if (users.size() != 2 || users[0]->name != "Ada" || users[1]->name != "Grace") {
     std::cerr << "Repository findAll did not hydrate all rows.\n";
     return 1;
   }
@@ -299,10 +299,11 @@ int main()
 
   RecordingClient insertClient{{worm::core::ResultSet{std::uint64_t{1}}, usersResult({{7, "Ada"}})}};
   const worm::core::Repository<User> insertRepository{insertClient, queryBuilder};
-  const User inserted = insertRepository.insert(User{.id = 7, .name = "Ada"});
+  const std::shared_ptr<User> inserted = insertRepository.insert(User{.id = 7, .name = "Ada"});
 
-  if (inserted.id != 7 ||
-      inserted.name != "Ada" ||
+  if (!inserted ||
+      inserted->id != 7 ||
+      inserted->name != "Ada" ||
       insertClient.statements.size() != 2 ||
       insertClient.statements.front().parameters !=
         std::vector<worm::core::Parameter>{std::int64_t{7}, std::string{"Ada"}} ||
@@ -314,10 +315,11 @@ int main()
 
   RecordingClient generatedInsertClient{{usersResult({{9, "Grace"}}, 1)}};
   const worm::core::Repository<GeneratedUser> generatedInsertRepository{generatedInsertClient, queryBuilder};
-  const GeneratedUser generatedInserted = generatedInsertRepository.insert(GeneratedUser{.name = "Grace"});
+  const std::shared_ptr<GeneratedUser> generatedInserted = generatedInsertRepository.insert(GeneratedUser{.name = "Grace"});
 
-  if (generatedInserted.id != 9 ||
-      generatedInserted.name != "Grace" ||
+  if (!generatedInserted ||
+      generatedInserted->id != 9 ||
+      generatedInserted->name != "Grace" ||
       generatedInsertClient.statements.size() != 1 ||
       generatedInsertClient.lastStatement.parameters != std::vector<worm::core::Parameter>{std::string{"Grace"}} ||
       builder.insertColumnsCount != 1) {

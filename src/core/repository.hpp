@@ -60,10 +60,10 @@ namespace worm::core
 
     template <EncodableParameter ID>
     [[nodiscard]]
-    std::optional<T> find(const ID& id) const
+    std::shared_ptr<T> find(const ID& id) const
     try {
       if (std::shared_ptr<T> registered = registry.instances<T>().get(id)) {
-        return *registered;
+        return registered;
       }
 
       const std::string alias = generateEntityAlias();
@@ -81,7 +81,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::optional<T> findOne(const Statement& statement) const
+    std::shared_ptr<T> findOne(const Statement& statement) const
     try {
       if (!isOperationValid(statement, core::Operation::Select)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
@@ -91,7 +91,7 @@ namespace worm::core
       const std::size_t rowCount = resultSet.rowCount();
 
       if (rowCount == 0) {
-        return std::nullopt;
+        return nullptr;
       }
 
       if (rowCount > 1) {
@@ -106,7 +106,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::vector<T> findAll(const Statement& statement) const
+    std::vector<std::shared_ptr<T>> findAll(const Statement& statement) const
     try {
       if (!isOperationValid(statement, core::Operation::Select)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
@@ -115,10 +115,10 @@ namespace worm::core
       const ResultSet resultSet = dbClient.executeQuery(statement);
 
       if (resultSet.empty()) {
-        return std::vector<T>{};
+        return std::vector<std::shared_ptr<T>>{};
       }
 
-      std::vector<T> results;
+      std::vector<std::shared_ptr<T>> results;
       results.reserve(resultSet.rowCount());
 
       for (const ResultRow& row : resultSet) {
@@ -133,7 +133,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    T insert(const T& entity) const
+    std::shared_ptr<T> insert(const T& entity) const
     try {
       const std::string alias = generateEntityAlias();
       const Statement statement =
@@ -153,12 +153,12 @@ namespace worm::core
           "Insert operation did not return the generated primary key required to hydrate the created entity.");
       }
 
-      const std::optional<T> createdEntity = find(primaryKey.get(entity));
-      if (!createdEntity.has_value()) {
+      const std::shared_ptr<T> createdEntity = find(primaryKey.get(entity));
+      if (!createdEntity) {
         throw worm::MappingException("Inserted entity could not be retrieved by its primary key.");
       }
 
-      return createdEntity.value();
+      return createdEntity;
     } catch (const worm::WormException&) {
       throw;
     } catch (const std::exception& error) {
@@ -307,11 +307,11 @@ namespace worm::core
     }
 
   private:
-    T hydrateAndRegister(const ResultRow& row) const
+    std::shared_ptr<T> hydrateAndRegister(const ResultRow& row) const
     {
       T entity = hydrate<T>(row);
       registry.instances<T>().put(primaryKey.get(entity), entity);
-      return entity;
+      return registry.instances<T>().get(primaryKey.get(entity));
     }
 
     [[nodiscard]]
