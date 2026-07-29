@@ -237,8 +237,9 @@ int main()
   const RecordingBuilder builder;
   const worm::core::QueryBuilder queryBuilder{builder};
 
+  worm::core::Registry sharedRegistry;
   RecordingClient findClient{{usersResult({{7, "Ada"}})}};
-  const worm::core::Repository<User> repository{findClient, queryBuilder};
+  const worm::core::Repository<User> repository{findClient, queryBuilder, sharedRegistry};
   const std::optional<User> found = repository.find(std::int64_t{7});
 
   if (!found ||
@@ -250,6 +251,20 @@ int main()
       builder.sourceAlias.empty() ||
       !builder.hasFilter) {
     std::cerr << "Repository find(id) did not query by primary key and hydrate one entity.\n";
+    return 1;
+  }
+
+  const std::optional<User> cached = repository.find(std::int64_t{7});
+  if (!cached || cached->name != "Ada" || findClient.statements.size() != 1) {
+    std::cerr << "Repository find(id) did not reuse the registered entity.\n";
+    return 1;
+  }
+
+  RecordingClient sharedFindClient{{usersResult({{8, "Grace"}})}};
+  const worm::core::Repository<User> sharedRepository{sharedFindClient, queryBuilder, sharedRegistry};
+  const std::optional<User> sharedFound = sharedRepository.find(std::int64_t{7});
+  if (!sharedFound || sharedFound->name != "Ada" || !sharedFindClient.statements.empty()) {
+    std::cerr << "Repository did not reuse entities registered by another repository.\n";
     return 1;
   }
 
@@ -391,10 +406,10 @@ int main()
   }
 
   RecordingClient updateClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-  const worm::core::Repository<User> updateRepository{updateClient, queryBuilder};
+  const worm::core::Repository<User> updateRepository{updateClient, queryBuilder, sharedRegistry};
   const std::uint64_t updatedRows = updateRepository.update(std::int64_t{7}, User{.id = 99, .name = "Lovelace"});
 
-  if (updatedRows != 1 || updateClient.statements.size() != 1) {
+  if (updatedRows != 1 || updateClient.statements.size() != 1 || sharedRegistry.instances<User>().has(7)) {
     std::cerr << "Repository update(id, entity) did not return affected rows from a single update query.\n";
     return 1;
   }
@@ -442,11 +457,14 @@ int main()
   }
 
   RecordingClient deleteClient{{worm::core::ResultSet{}}};
-  const worm::core::Repository<User> deleteRepository{deleteClient, queryBuilder};
+  worm::core::Registry deleteRegistry;
+  deleteRegistry.instances<User>().put(7, User{.id = 7, .name = "Ada"});
+  const worm::core::Repository<User> deleteRepository{deleteClient, queryBuilder, deleteRegistry};
   deleteRepository.delete_(std::int64_t{7});
 
   if (deleteClient.lastStatement.parameters != std::vector<worm::core::Parameter>{std::int64_t{7}} ||
-      deleteClient.lastStatement.sql.find("where " + std::string{builder.sourceAlias} + ".id = ?") == std::string::npos) {
+      deleteClient.lastStatement.sql.find("where " + std::string{builder.sourceAlias} + ".id = ?") == std::string::npos ||
+      deleteRegistry.instances<User>().has(7)) {
     std::cerr << "Repository delete_(id) did not execute a safe aliased delete statement.\n";
     return 1;
   }

@@ -11,6 +11,7 @@
 #include <core/query/source.hpp>
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
+#include <core/registry.hpp>
 #include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
 #include <errors/query-execution-exception.hpp>
@@ -21,6 +22,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -37,18 +39,33 @@ namespace worm::core
   public:
     explicit Repository()
       : dbClient(worm::DependencyInjector<connection::Client>().get()),
-        queryBuilder()
+        queryBuilder(),
+        ownedRegistry(std::make_unique<Registry>()),
+        registry(*ownedRegistry)
     {}
 
-    explicit Repository(const connection::Client& dbClient, const QueryBuilder& queryBuilder) noexcept
+    explicit Repository(const connection::Client& dbClient, const QueryBuilder& queryBuilder)
       : dbClient(dbClient),
-        queryBuilder(queryBuilder)
+        queryBuilder(queryBuilder),
+        ownedRegistry(std::make_unique<Registry>()),
+        registry(*ownedRegistry)
+    {}
+
+    explicit Repository(const connection::Client& dbClient, const QueryBuilder& queryBuilder, Registry& registry) noexcept
+      : dbClient(dbClient),
+        queryBuilder(queryBuilder),
+        ownedRegistry(nullptr),
+        registry(registry)
     {}
 
     template <EncodableParameter ID>
     [[nodiscard]]
     std::optional<T> find(const ID& id) const
     try {
+      if (std::shared_ptr<T> registered = registry.instances<T>().get(id)) {
+        return *registered;
+      }
+
       const std::string alias = generateEntityAlias();
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
       const Statement statement = queryBuilder.selectAll(
@@ -81,7 +98,7 @@ namespace worm::core
         throw worm::MappingException("More than one row returned for a single-result repository query.");
       }
 
-      return hydrate<T>(resultSet.rows().front());
+      return hydrateAndRegister(resultSet.rows().front());
     } catch (const worm::WormException&) {
       throw;
     } catch (const std::exception& error) {
@@ -105,7 +122,7 @@ namespace worm::core
       results.reserve(resultSet.rowCount());
 
       for (const ResultRow& row : resultSet) {
-        results.push_back(hydrate<T>(row));
+        results.push_back(hydrateAndRegister(row));
       }
 
       return results;
@@ -124,7 +141,7 @@ namespace worm::core
       const ResultSet resultSet = execute(statement);
 
       if (resultSet.rowCount() == 1) {
-        return hydrate<T>(resultSet.rows().front());
+        return hydrateAndRegister(resultSet.rows().front());
       }
 
       if (resultSet.rowCount() > 1) {
@@ -238,6 +255,10 @@ namespace worm::core
         Filter{Predicate::equal(column, encode(id))});
 
       const ResultSet resultSet = executeFiltered(statement, alias, "UPDATE");
+      if (resultSet.affectedRows() > 0) {
+        registry.instances<T>().remove(id);
+      }
+
       return resultSet.affectedRows();
     } catch (const worm::WormException&) {
       throw;
@@ -269,6 +290,7 @@ namespace worm::core
         queryBuilder.delete_({T::table().name(), alias}, Filter{Predicate::equal(column, encode(id))});
 
       delete_(statement, alias);
+      registry.instances<T>().remove(id);
     } catch (const worm::WormException&) {
       throw;
     } catch (const std::exception& error) {
@@ -285,6 +307,13 @@ namespace worm::core
     }
 
   private:
+    T hydrateAndRegister(const ResultRow& row) const
+    {
+      T entity = hydrate<T>(row);
+      registry.instances<T>().put(primaryKey.get(entity), entity);
+      return entity;
+    }
+
     [[nodiscard]]
     bool isOperationValid(const Statement& statement, core::Operation kind) const
     {
@@ -383,6 +412,8 @@ namespace worm::core
 
     const connection::Client& dbClient;
     const QueryBuilder queryBuilder;
+    std::unique_ptr<Registry> ownedRegistry;
+    Registry& registry;
 
     static constexpr auto primaryKey = primary_key_field_of<T>();
   };
