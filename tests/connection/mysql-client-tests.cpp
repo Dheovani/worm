@@ -1,7 +1,6 @@
 #include <connection/mysql-client.hpp>
 
 #include <type_traits>
-#include <utility>
 
 int main()
 {
@@ -11,8 +10,7 @@ int main()
   static_assert(std::is_final_v<Client>);
   static_assert(!std::is_copy_constructible_v<Client>);
   static_assert(!std::is_copy_assignable_v<Client>);
-  static_assert(
-    std::is_same_v<decltype(Client::getInstance(std::declval<const worm::connection::ConnectionConfig&>())), Client&>);
+  static_assert(std::is_constructible_v<Client, const worm::connection::ConnectionConfig&>);
 
   return 0;
 }

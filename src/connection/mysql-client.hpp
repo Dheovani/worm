@@ -4,23 +4,26 @@
 #include <connection/configuration.hpp>
 #include <mysql/mysql.h>
 
+#include <memory>
+
 namespace worm::connection
 {
   class MySqlClient final : public Client
   {
-  private:
-    MYSQL* connection_;
-
-    MySqlClient(const char* host, const char* user, const char* passwd, const char* db, unsigned int port);
+  public:
+    explicit MySqlClient(const ConnectionConfig& databaseConfig);
+    ~MySqlClient() override = default;
 
     MySqlClient(const MySqlClient&) = delete;
     MySqlClient& operator=(const MySqlClient&) = delete;
 
-  public:
-    ~MySqlClient();
+    [[nodiscard]]
+    core::ResultSet execute(const core::Statement& statement) override;
 
-    static MySqlClient& getInstance(const ConnectionConfig& databaseConfig);
+    [[nodiscard]]
+    DatabaseType type() const noexcept override;
 
-    core::ResultSet executeQuery(const core::Statement& statement) const override;
+  private:
+    std::unique_ptr<MYSQL, decltype(&mysql_close)> connection_;
   };
 } // namespace worm::connection

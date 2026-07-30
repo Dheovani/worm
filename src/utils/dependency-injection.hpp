@@ -12,6 +12,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <typeinfo>
 
@@ -97,9 +98,11 @@ namespace worm
     [[nodiscard]]
     connection::Client& get() const
     {
-      return connection::getInstance(
+      static std::unique_ptr<connection::Client> client = connection::makeClient(
         DependencyInjector<connection::ConnectionConfig>().get(),
         DependencyInjector<connection::DatabaseType>().get());
+
+      return *client;
     }
   };
 

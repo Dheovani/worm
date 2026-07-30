@@ -19,15 +19,14 @@ int main()
     .dbname = ":memory:",
   };
 
-  Client& client = Client::getInstance(config);
-  Client& sameClient = Client::getInstance(config);
+  Client client{config};
 
-  if (&client != &sameClient) {
-    std::cerr << "SqliteClient did not preserve its singleton instance.\n";
+  if (client.type() != worm::connection::DatabaseType::SQLite) {
+    std::cerr << "SqliteClient returned the wrong database type.\n";
     return 1;
   }
 
-  const worm::core::ResultSet response = client.executeQuery({"SELECT 42 AS answer, NULL AS missing"});
+  const worm::core::ResultSet response = client.execute({"SELECT 42 AS answer, NULL AS missing"});
 
   if (response.rowCount() != 1) {
     std::cerr << "SqliteClient returned an unexpected row count.\n";
@@ -47,11 +46,11 @@ int main()
   }
 
   const worm::core::ResultSet createResponse =
-    client.executeQuery({"CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)"});
+    client.execute({"CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)"});
   const worm::core::ResultSet insertAdaResponse =
-    client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Ada"}, true}});
+    client.execute({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Ada"}, true}});
   const worm::core::ResultSet insertGraceResponse =
-    client.executeQuery({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Grace"}, false}});
+    client.execute({"INSERT INTO people (name, active) VALUES (?, ?)", {std::string{"Grace"}, false}});
 
   if (!createResponse.empty() ||
       createResponse.affectedRows() != 0 ||
@@ -64,7 +63,7 @@ int main()
   }
 
   const worm::core::ResultSet filteredResponse =
-    client.executeQuery({"SELECT name, active FROM people WHERE active = ?", {true}});
+    client.execute({"SELECT name, active FROM people WHERE active = ?", {true}});
 
   if (filteredResponse.rowCount() != 1) {
     std::cerr << "SqliteClient did not bind parameters in the filtered query.\n";
@@ -79,7 +78,7 @@ int main()
   }
 
   const worm::core::ResultSet updateResponse =
-    client.executeQuery({"UPDATE people SET active = ? WHERE name = ?", {true, std::string{"Grace"}}});
+    client.execute({"UPDATE people SET active = ? WHERE name = ?", {true, std::string{"Grace"}}});
 
   if (!updateResponse.empty() || updateResponse.affectedRows() != 1) {
     std::cerr << "SqliteClient did not report update feedback correctly.\n";
@@ -87,7 +86,7 @@ int main()
   }
 
   const worm::core::ResultSet deleteResponse =
-    client.executeQuery({"DELETE FROM people WHERE name = ?", {std::string{"Grace"}}});
+    client.execute({"DELETE FROM people WHERE name = ?", {std::string{"Grace"}}});
 
   if (!deleteResponse.empty() || deleteResponse.affectedRows() != 1) {
     std::cerr << "SqliteClient did not report delete feedback correctly.\n";

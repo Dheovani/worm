@@ -8,16 +8,21 @@ namespace
   class TestClient final : public worm::connection::Client
   {
   public:
-    worm::core::ResultSet executeQuery(const worm::core::Statement&) const override
+    worm::core::ResultSet execute(const worm::core::Statement&) override
     {
       return {};
+    }
+
+    worm::connection::DatabaseType type() const noexcept override
+    {
+      return worm::connection::DatabaseType::SQLite;
     }
   };
 } // namespace
 
 int main()
 {
-  const TestClient client;
+  TestClient client;
   static_cast<void>(client);
 
   if (worm::connection::databaseTypes.at("postgresql") != worm::connection::DatabaseType::PostgreSQL ||

@@ -58,7 +58,7 @@ namespace
       : responses_(std::move(responses))
     {}
 
-    worm::core::ResultSet executeQuery(const worm::core::Statement& statement) const override
+    worm::core::ResultSet execute(const worm::core::Statement& statement) override
     {
       lastStatement = statement;
       statements.push_back(statement);
@@ -67,6 +67,11 @@ namespace
       }
 
       return responses_[nextResponse_++];
+    }
+
+    worm::connection::DatabaseType type() const noexcept override
+    {
+      return worm::connection::DatabaseType::SQLite;
     }
 
     mutable worm::core::Statement lastStatement;

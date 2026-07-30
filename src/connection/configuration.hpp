@@ -2,6 +2,7 @@
 
 #include <connection/client.hpp>
 
+#include <memory>
 #include <string>
 
 namespace worm::connection
@@ -16,5 +17,5 @@ namespace worm::connection
   };
 
   [[nodiscard]]
-  Client& getInstance(const ConnectionConfig& connectionData, DatabaseType type);
+  std::unique_ptr<Client> makeClient(const ConnectionConfig& connectionData, DatabaseType type);
 } // namespace worm::connection

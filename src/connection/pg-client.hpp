@@ -4,23 +4,27 @@
 #include <connection/configuration.hpp>
 #include <pqxx/pqxx>
 
+#include <memory>
+#include <string>
+
 namespace worm::connection
 {
   class PgClient final : public Client
   {
-  private:
-    pqxx::connection* connection_;
-
-    PgClient(const std::string& data);
+  public:
+    explicit PgClient(const ConnectionConfig& databaseConfig);
+    ~PgClient() override = default;
 
     PgClient(const PgClient&) = delete;
     PgClient& operator=(const PgClient&) = delete;
 
-  public:
-    ~PgClient();
+    [[nodiscard]]
+    core::ResultSet execute(const core::Statement& statement) override;
 
-    static PgClient& getInstance(const ConnectionConfig& connectionData);
+    [[nodiscard]]
+    DatabaseType type() const noexcept override;
 
-    core::ResultSet executeQuery(const core::Statement& statement) const override;
+  private:
+    std::unique_ptr<pqxx::connection> connection_;
   };
 } // namespace worm::connection

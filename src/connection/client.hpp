@@ -31,7 +31,10 @@ namespace worm::connection
     Client& operator=(const Client&) = delete;
 
     [[nodiscard]]
-    virtual core::ResultSet executeQuery(const core::Statement& statement) const = 0;
+    virtual core::ResultSet execute(const core::Statement& statement) = 0;
+
+    [[nodiscard]]
+    virtual DatabaseType type() const noexcept = 0;
 
   protected:
     Client() = default;

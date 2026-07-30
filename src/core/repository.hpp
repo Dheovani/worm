@@ -44,14 +44,14 @@ namespace worm::core
         registry(*ownedRegistry)
     {}
 
-    explicit Repository(const connection::Client& dbClient, const QueryBuilder& queryBuilder)
+    explicit Repository(connection::Client& dbClient, const QueryBuilder& queryBuilder)
       : dbClient(dbClient),
         queryBuilder(queryBuilder),
         ownedRegistry(std::make_unique<Registry>()),
         registry(*ownedRegistry)
     {}
 
-    explicit Repository(const connection::Client& dbClient, const QueryBuilder& queryBuilder, Registry& registry) noexcept
+    explicit Repository(connection::Client& dbClient, const QueryBuilder& queryBuilder, Registry& registry) noexcept
       : dbClient(dbClient),
         queryBuilder(queryBuilder),
         ownedRegistry(nullptr),
@@ -87,7 +87,7 @@ namespace worm::core
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
 
-      const ResultSet resultSet = dbClient.executeQuery(statement);
+      const ResultSet resultSet = dbClient.execute(statement);
       const std::size_t rowCount = resultSet.rowCount();
 
       if (rowCount == 0) {
@@ -112,7 +112,7 @@ namespace worm::core
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
 
-      const ResultSet resultSet = dbClient.executeQuery(statement);
+      const ResultSet resultSet = dbClient.execute(statement);
 
       if (resultSet.empty()) {
         return std::vector<std::shared_ptr<T>>{};
@@ -416,7 +416,7 @@ namespace worm::core
     [[nodiscard]]
     core::ResultSet execute(const Statement& statement) const
     try {
-      return dbClient.executeQuery(statement);
+      return dbClient.execute(statement);
     } catch (const worm::WormException&) {
       throw;
     } catch (const std::exception& error) {
@@ -467,7 +467,7 @@ namespace worm::core
       return alias;
     }
 
-    const connection::Client& dbClient;
+    connection::Client& dbClient;
     const QueryBuilder queryBuilder;
     std::unique_ptr<Registry> ownedRegistry;
     Registry& registry;

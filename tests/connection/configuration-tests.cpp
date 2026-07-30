@@ -4,6 +4,7 @@
 #include <errors/unsupported-database-exception.hpp>
 
 #include <iostream>
+#include <memory>
 
 int main()
 {
@@ -11,14 +12,17 @@ int main()
     .dbname = ":memory:",
   };
 
-  worm::connection::Client& client = worm::connection::getInstance(config, worm::connection::DatabaseType::SQLite);
-  if (dynamic_cast<worm::connection::SqliteClient*>(&client) == nullptr) {
+  std::unique_ptr<worm::connection::Client> client =
+    worm::connection::makeClient(config, worm::connection::DatabaseType::SQLite);
+
+  if (dynamic_cast<worm::connection::SqliteClient*>(client.get()) == nullptr ||
+      client->type() != worm::connection::DatabaseType::SQLite) {
     std::cerr << "Connection configuration returned the wrong SQLite client type.\n";
     return 1;
   }
 
   try {
-    static_cast<void>(worm::connection::getInstance(config, static_cast<worm::connection::DatabaseType>(999)));
+    static_cast<void>(worm::connection::makeClient(config, static_cast<worm::connection::DatabaseType>(999)));
   } catch (const worm::UnsupportedDatabaseException&) {
     return 0;
   } catch (...) {

@@ -1,6 +1,5 @@
 #include <connection/pg-client.hpp>
 
-#include <core/query/validator.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
@@ -9,10 +8,18 @@
 #include <variant>
 #include <vector>
 
-using worm::connection::PgClient;
-
 namespace
 {
+  std::string pgConnectionData(const worm::connection::ConnectionConfig& databaseConfig)
+  {
+    return
+      " host=" + databaseConfig.host +
+      " port=" + databaseConfig.port +
+      " dbname=" + databaseConfig.dbname +
+      " user=" + databaseConfig.username +
+      " password=" + databaseConfig.password;
+  }
+
   pqxx::params pgParameters(const std::vector<worm::core::Parameter>& parameters)
   {
     pqxx::params values;
@@ -37,53 +44,35 @@ namespace
   }
 } // namespace
 
-PgClient::PgClient(const std::string& connectionData)
+namespace worm::connection
 {
-  try {
-    connection_ = new pqxx::connection(connectionData);
-  } catch (const std::exception& error) {
-    throw worm::DatabaseConnectionException(error.what());
-  }
-}
-
-PgClient::~PgClient()
-{
-  delete connection_;
-}
-
-PgClient& PgClient::getInstance(const worm::connection::ConnectionConfig& databaseConfig)
-{
-  std::string connectionData =
-    " host=" + databaseConfig.host +
-    " port=" + databaseConfig.port +
-    " dbname=" + databaseConfig.dbname +
-    " user=" + databaseConfig.username +
-    " password=" + databaseConfig.password;
-
-  static PgClient instance(connectionData);
-  return instance;
-}
-
-worm::core::ResultSet PgClient::executeQuery(const worm::core::Statement& statement) const
-{
-  std::vector<worm::core::ResultRow> rows;
-  pqxx::result response;
-
-  try {
-    pqxx::work worker = pqxx::work(*connection_);
-    response = worker.exec(statement.sql, pgParameters(statement.parameters));
-    worker.commit();
-  } catch (const std::exception& error) {
-    throw worm::QueryExecutionException(error.what());
+  PgClient::PgClient(const ConnectionConfig& databaseConfig)
+  try
+    : connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig)))
+  {}
+  catch (const std::exception& error) {
+    throw DatabaseConnectionException(error.what());
   }
 
-  if (core::isSelect(statement.sql)) {
+  worm::core::ResultSet PgClient::execute(const worm::core::Statement& statement)
+  {
+    std::vector<worm::core::ResultRow> rows;
+    pqxx::result response;
+
+    try {
+      pqxx::work worker = pqxx::work(*connection_);
+      response = worker.exec(statement.sql, pgParameters(statement.parameters));
+      worker.commit();
+    } catch (const std::exception& error) {
+      throw QueryExecutionException(error.what());
+    }
+
     for (pqxx::result::size_type i = 0; i < response.size(); i++) {
-      std::vector<worm::core::ResultColumn> columns;
+      std::vector<core::ResultColumn> columns;
 
       for (pqxx::result::size_type j = 0; j < response[i].size(); j++) {
         const std::string columnName = response[i][j].name();
-        worm::core::Parameter columnValue = nullptr;
+        core::Parameter columnValue = nullptr;
 
         if (!response[i][j].is_null()) {
           columnValue = response[i][j].c_str();
@@ -94,7 +83,12 @@ worm::core::ResultSet PgClient::executeQuery(const worm::core::Statement& statem
 
       rows.push_back({columns});
     }
+
+    return core::ResultSet{rows, static_cast<std::uint64_t>(response.affected_rows())};
   }
 
-  return worm::core::ResultSet{rows, static_cast<std::uint64_t>(response.affected_rows())};
-}
+  DatabaseType PgClient::type() const noexcept
+  {
+    return DatabaseType::PostgreSQL;
+  }
+} // namespace worm::connection

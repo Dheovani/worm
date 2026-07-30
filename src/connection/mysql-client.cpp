@@ -1,5 +1,4 @@
 #include <connection/mysql-client.hpp>
-#include <core/query/validator.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
@@ -11,8 +10,6 @@
 #include <type_traits>
 #include <variant>
 #include <vector>
-
-using worm::connection::MySqlClient;
 
 namespace
 {
@@ -97,61 +94,53 @@ namespace
   }
 } // namespace
 
-MySqlClient::MySqlClient(const char* host, const char* user, const char* passwd, const char* db, unsigned int port)
+namespace worm::connection
 {
-  connection_ = mysql_init(nullptr);
+  MySqlClient::MySqlClient(const ConnectionConfig& databaseConfig)
+    : connection_(mysql_init(nullptr), mysql_close)
+  {
+    const unsigned int port = static_cast<unsigned int>(std::stoul(databaseConfig.port));
 
-  if (connection_ == nullptr) {
-    throw worm::DatabaseConnectionException("Unable to initialize the MySQL client.");
+    if (connection_ == nullptr) {
+      throw DatabaseConnectionException("Unable to initialize the MySQL client.");
+    }
+
+    if (mysql_real_connect(
+          connection_.get(),
+          databaseConfig.host.c_str(),
+          databaseConfig.username.c_str(),
+          databaseConfig.password.c_str(),
+          databaseConfig.dbname.c_str(),
+          port,
+          nullptr,
+          0) == nullptr) {
+      throw DatabaseConnectionException(mysql_error(connection_.get()));
+    }
   }
 
-  if (mysql_real_connect(connection_, host, user, passwd, db, port, nullptr, 0) == nullptr) {
-    const char* msg = mysql_error(connection_);
-    mysql_close(connection_);
-    throw worm::DatabaseConnectionException(msg);
-  }
-}
+  worm::core::ResultSet MySqlClient::execute(const worm::core::Statement& statement)
+  {
+    std::vector<core::ResultRow> rows;
+    std::vector<MYSQL_FIELD> fields;
 
-MySqlClient::~MySqlClient()
-{
-  mysql_close(connection_);
-}
+    MYSQL_RES* res;
+    MYSQL_ROW row;
 
-MySqlClient& MySqlClient::getInstance(const worm::connection::ConnectionConfig& databaseConfig)
-{
-  const unsigned int port = static_cast<unsigned int>(std::stoul(databaseConfig.port));
+    if (statement.parameters.empty()) {
+      if (mysql_query(connection_.get(), statement.sql.c_str())) {
+        throw QueryExecutionException(mysql_error(connection_.get()));
+      }
 
-  static MySqlClient instance(
-    databaseConfig.host.c_str(),
-    databaseConfig.username.c_str(),
-    databaseConfig.password.c_str(),
-    databaseConfig.dbname.c_str(),
-    port);
-  return instance;
-}
+      res = mysql_store_result(connection_.get());
 
-worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& statement) const
-{
-  std::vector<worm::core::ResultRow> rows;
-  std::vector<MYSQL_FIELD> fields;
-
-  MYSQL_RES* res;
-  MYSQL_ROW row;
-
-  if (statement.parameters.empty()) {
-    if (mysql_query(connection_, statement.sql.c_str())) {
-      throw worm::QueryExecutionException(mysql_error(connection_));
-    } else if (core::isSelect(statement.sql)) {
-      res = mysql_store_result(connection_);
-
-      if (res) {
+      if (res != nullptr) {
         MYSQL_FIELD* field;
         while ((field = mysql_fetch_field(res))) {
           fields.push_back(*field);
         }
 
         while ((row = mysql_fetch_row(res))) {
-          std::vector<worm::core::ResultColumn> columns;
+          std::vector<core::ResultColumn> columns;
 
           for (unsigned int i = 0; i < mysql_num_fields(res); ++i) {
             columns.push_back({fields[i].name, mysqlValue(fields[i], row[i])});
@@ -161,115 +150,115 @@ worm::core::ResultSet MySqlClient::executeQuery(const worm::core::Statement& sta
         }
 
         mysql_free_result(res);
-      } else {
-        throw worm::QueryExecutionException(mysql_error(connection_));
+      } else if (mysql_field_count(connection_.get()) != 0) {
+        throw QueryExecutionException(mysql_error(connection_.get()));
       }
+
+      const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_affected_rows(connection_.get()));
+
+      return core::ResultSet{rows, affectedRows};
     }
 
-    const std::uint64_t affectedRows = core::isSelect(statement.sql)
-      ? 0
-      : static_cast<std::uint64_t>(mysql_affected_rows(connection_));
+    MYSQL_STMT* preparedStatement = mysql_stmt_init(connection_.get());
 
-    return worm::core::ResultSet{rows, affectedRows};
-  }
+    if (preparedStatement == nullptr) {
+      throw QueryExecutionException("Unable to initialize a MySQL prepared statement.");
+    }
 
-  MYSQL_STMT* preparedStatement = mysql_stmt_init(connection_);
+    if (mysql_stmt_prepare(preparedStatement, statement.sql.c_str(), static_cast<unsigned long>(statement.sql.size()))) {
+      const std::string error = mysql_stmt_error(preparedStatement);
+      mysql_stmt_close(preparedStatement);
+      throw QueryExecutionException(error);
+    }
 
-  if (preparedStatement == nullptr) {
-    throw worm::QueryExecutionException("Unable to initialize a MySQL prepared statement.");
-  }
+    std::vector<MySqlBoundParameter> parameters;
+    parameters.reserve(statement.parameters.size());
 
-  if (mysql_stmt_prepare(preparedStatement, statement.sql.c_str(), static_cast<unsigned long>(statement.sql.size()))) {
-    const std::string error = mysql_stmt_error(preparedStatement);
-    mysql_stmt_close(preparedStatement);
-    throw worm::QueryExecutionException(error);
-  }
+    for (const core::Parameter& parameter : statement.parameters) {
+      parameters.push_back(mysqlParameter(parameter));
+    }
 
-  std::vector<MySqlBoundParameter> parameters;
-  parameters.reserve(statement.parameters.size());
+    std::vector<MYSQL_BIND> binds;
+    binds.reserve(parameters.size());
 
-  for (const worm::core::Parameter& parameter : statement.parameters) {
-    parameters.push_back(mysqlParameter(parameter));
-  }
+    for (MySqlBoundParameter& parameter : parameters) {
+      binds.push_back(parameter.bind);
+    }
 
-  std::vector<MYSQL_BIND> binds;
-  binds.reserve(parameters.size());
+    if (!binds.empty() && mysql_stmt_bind_param(preparedStatement, binds.data())) {
+      const std::string error = mysql_stmt_error(preparedStatement);
+      mysql_stmt_close(preparedStatement);
+      throw QueryExecutionException(error);
+    }
 
-  for (MySqlBoundParameter& parameter : parameters) {
-    binds.push_back(parameter.bind);
-  }
+    if (mysql_stmt_execute(preparedStatement)) {
+      const std::string error = mysql_stmt_error(preparedStatement);
+      mysql_stmt_close(preparedStatement);
+      throw QueryExecutionException(error);
+    }
 
-  if (!binds.empty() && mysql_stmt_bind_param(preparedStatement, binds.data())) {
-    const std::string error = mysql_stmt_error(preparedStatement);
-    mysql_stmt_close(preparedStatement);
-    throw worm::QueryExecutionException(error);
-  }
+    res = mysql_stmt_result_metadata(preparedStatement);
 
-  if (mysql_stmt_execute(preparedStatement)) {
-    const std::string error = mysql_stmt_error(preparedStatement);
-    mysql_stmt_close(preparedStatement);
-    throw worm::QueryExecutionException(error);
-  }
+    if (res == nullptr) {
+      const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));
+      mysql_stmt_close(preparedStatement);
+      return core::ResultSet{rows, affectedRows};
+    }
 
-  if (!core::isSelect(statement.sql)) {
-    const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));
-    mysql_stmt_close(preparedStatement);
-    return worm::core::ResultSet{rows, affectedRows};
-  }
+    MYSQL_FIELD* field;
+    while ((field = mysql_fetch_field(res))) {
+      fields.push_back(*field);
+    }
 
-  res = mysql_stmt_result_metadata(preparedStatement);
-
-  if (res == nullptr) {
-    mysql_stmt_close(preparedStatement);
-    return worm::core::ResultSet{rows};
-  }
-
-  MYSQL_FIELD* field;
-  while ((field = mysql_fetch_field(res))) {
-    fields.push_back(*field);
-  }
-
-  const unsigned int columnCount = mysql_num_fields(res);
-  std::vector<std::string> buffers(columnCount, std::string(resultBufferSize, '\0'));
-  std::vector<unsigned long> lengths(columnCount);
-  std::vector<MySqlBoolFlag> isNull(columnCount);
-  std::vector<MySqlBoolFlag> errors(columnCount);
-  std::vector<MYSQL_BIND> resultBinds(columnCount);
-
-  for (unsigned int i = 0; i < columnCount; i++) {
-    std::memset(&resultBinds[i], 0, sizeof(resultBinds[i]));
-    resultBinds[i].buffer_type = MYSQL_TYPE_STRING;
-    resultBinds[i].buffer = buffers[i].data();
-    resultBinds[i].buffer_length = resultBufferSize;
-    resultBinds[i].length = &lengths[i];
-    resultBinds[i].is_null = &isNull[i].value;
-    resultBinds[i].error = &errors[i].value;
-  }
-
-  if (mysql_stmt_bind_result(preparedStatement, resultBinds.data())) {
-    const std::string error = mysql_stmt_error(preparedStatement);
-    mysql_free_result(res);
-    mysql_stmt_close(preparedStatement);
-    throw worm::QueryExecutionException(error);
-  }
-
-  while (mysql_stmt_fetch(preparedStatement) == 0) {
-    std::vector<worm::core::ResultColumn> columns;
+    const unsigned int columnCount = mysql_num_fields(res);
+    std::vector<std::string> buffers(columnCount, std::string(resultBufferSize, '\0'));
+    std::vector<unsigned long> lengths(columnCount);
+    std::vector<MySqlBoolFlag> isNull(columnCount);
+    std::vector<MySqlBoolFlag> errors(columnCount);
+    std::vector<MYSQL_BIND> resultBinds(columnCount);
 
     for (unsigned int i = 0; i < columnCount; i++) {
-      if (isNull[i].value) {
-        columns.push_back({fields[i].name, nullptr});
-        continue;
-      }
-
-      buffers[i][(std::min)(lengths[i], resultBufferSize - 1)] = '\0';
-      columns.push_back({fields[i].name, mysqlValue(fields[i], buffers[i].c_str())});
+      std::memset(&resultBinds[i], 0, sizeof(resultBinds[i]));
+      resultBinds[i].buffer_type = MYSQL_TYPE_STRING;
+      resultBinds[i].buffer = buffers[i].data();
+      resultBinds[i].buffer_length = resultBufferSize;
+      resultBinds[i].length = &lengths[i];
+      resultBinds[i].is_null = &isNull[i].value;
+      resultBinds[i].error = &errors[i].value;
     }
 
-    rows.push_back({columns});
+    if (mysql_stmt_bind_result(preparedStatement, resultBinds.data())) {
+      const std::string error = mysql_stmt_error(preparedStatement);
+      mysql_free_result(res);
+      mysql_stmt_close(preparedStatement);
+      throw QueryExecutionException(error);
+    }
+
+    while (mysql_stmt_fetch(preparedStatement) == 0) {
+      std::vector<core::ResultColumn> columns;
+
+      for (unsigned int i = 0; i < columnCount; i++) {
+        if (isNull[i].value) {
+          columns.push_back({fields[i].name, nullptr});
+          continue;
+        }
+
+        buffers[i][(std::min)(lengths[i], resultBufferSize - 1)] = '\0';
+        columns.push_back({fields[i].name, mysqlValue(fields[i], buffers[i].c_str())});
+      }
+
+      rows.push_back({columns});
+    }
+
+    const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));
+
+    mysql_free_result(res);
+    mysql_stmt_close(preparedStatement);
+    return core::ResultSet{rows, affectedRows};
   }
 
-  mysql_free_result(res);
-  mysql_stmt_close(preparedStatement);
-  return worm::core::ResultSet{rows};
-}
+  DatabaseType MySqlClient::type() const noexcept
+  {
+    return DatabaseType::MySQL;
+  }
+} // namespace worm::connection

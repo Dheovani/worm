@@ -4,31 +4,34 @@
 #include <connection/configuration.hpp>
 #include <sqlite3.h>
 
+#include <memory>
+
 namespace worm::connection
 {
   class SqliteClient final : public Client
   {
-  private:
-    enum class ErrorHandlingAction
-    {
-      CloseConnection,
-      FinalizeStatement
-    };
-
-    sqlite3* connection_;
-
-    explicit SqliteClient(const char* databaseName);
+  public:
+    explicit SqliteClient(const ConnectionConfig& databaseConfig);
+    ~SqliteClient() override = default;
 
     SqliteClient(const SqliteClient&) = delete;
     SqliteClient& operator=(const SqliteClient&) = delete;
 
-    void handleError(ErrorHandlingAction action, sqlite3_stmt* statement = nullptr) const;
+    [[nodiscard]]
+    core::ResultSet execute(const core::Statement& statement) override;
 
-  public:
-    ~SqliteClient();
+    [[nodiscard]]
+    DatabaseType type() const noexcept override;
 
-    static SqliteClient& getInstance(const ConnectionConfig& databaseConfig);
+  private:
+    struct ConnectionDeleter
+    {
+      void operator()(sqlite3* connection) const noexcept;
+    };
 
-    core::ResultSet executeQuery(const core::Statement& statement) const override;
+    void throwConnectionError();
+    void throwStatementError(sqlite3_stmt* statement) const;
+
+    std::unique_ptr<sqlite3, ConnectionDeleter> connection_;
   };
 } // namespace worm::connection

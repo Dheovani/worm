@@ -7,15 +7,15 @@
 
 namespace worm::connection
 {
-  Client& getInstance(const ConnectionConfig& connectionData, DatabaseType type)
+  std::unique_ptr<Client> makeClient(const ConnectionConfig& connectionData, DatabaseType type)
   {
     switch (type) {
     case DatabaseType::PostgreSQL:
-      return PgClient::getInstance(connectionData);
+      return std::make_unique<PgClient>(connectionData);
     case DatabaseType::MySQL:
-      return MySqlClient::getInstance(connectionData);
+      return std::make_unique<MySqlClient>(connectionData);
     case DatabaseType::SQLite:
-      return SqliteClient::getInstance(connectionData);
+      return std::make_unique<SqliteClient>(connectionData);
     default:
       throw UnsupportedDatabaseException("Unsupported database type.");
     }
