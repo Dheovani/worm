@@ -2,6 +2,7 @@
 
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
+#include <errors/transaction-exception.hpp>
 
 #include <cstdint>
 #include <type_traits>
@@ -48,7 +49,8 @@ namespace worm::connection
 {
   PgClient::PgClient(const ConnectionConfig& databaseConfig)
   try
-    : connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig)))
+    : connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig))),
+      innerTransaction_(nullptr)
   {}
   catch (const std::exception& error) {
     throw DatabaseConnectionException(error.what());
@@ -60,9 +62,13 @@ namespace worm::connection
     pqxx::result response;
 
     try {
-      pqxx::work worker = pqxx::work(*connection_);
-      response = worker.exec(statement.sql, pgParameters(statement.parameters));
-      worker.commit();
+      if (innerTransaction_) {
+        response = innerTransaction_->exec(statement.sql, pgParameters(statement.parameters));
+      } else {
+        pqxx::work worker = pqxx::work(*connection_);
+        response = worker.exec(statement.sql, pgParameters(statement.parameters));
+        worker.commit();
+      }
     } catch (const std::exception& error) {
       throw QueryExecutionException(error.what());
     }
@@ -90,5 +96,42 @@ namespace worm::connection
   DatabaseType PgClient::type() const noexcept
   {
     return DatabaseType::PostgreSQL;
+  }
+
+  void PgClient::beginTransactionImpl()
+  {
+    if (innerTransaction_) {
+      throw worm::TransactionException("A PostgreSQL transaction is already active.");
+    }
+
+    innerTransaction_ = std::make_unique<pqxx::work>(*connection_);
+  }
+
+  void PgClient::commitTransaction()
+  {
+    if (!innerTransaction_) {
+      throw worm::TransactionException("There is no active PostgreSQL transaction to commit.");
+    }
+
+    try {
+      innerTransaction_->commit();
+      innerTransaction_.reset();
+    } catch (const std::exception& error) {
+      throw worm::QueryExecutionException(error.what());
+    }
+  }
+
+  void PgClient::rollbackTransaction()
+  {
+    if (!innerTransaction_) {
+      throw worm::TransactionException("There is no active PostgreSQL transaction to rollback.");
+    }
+
+    try {
+      innerTransaction_->abort();
+      innerTransaction_.reset();
+    } catch (const std::exception& error) {
+      throw worm::QueryExecutionException(error.what());
+    }
   }
 } // namespace worm::connection

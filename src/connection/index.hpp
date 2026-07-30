@@ -8,6 +8,7 @@
 
 #include <connection/configuration.hpp>
 #include <connection/client.hpp>
+#include <connection/transaction.hpp>
 #include <connection/mysql-client.hpp>
 #include <connection/pg-client.hpp>
 #include <connection/sqlite-client.hpp>

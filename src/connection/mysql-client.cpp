@@ -1,6 +1,7 @@
 #include <connection/mysql-client.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
+#include <errors/transaction-exception.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -260,5 +261,44 @@ namespace worm::connection
   DatabaseType MySqlClient::type() const noexcept
   {
     return DatabaseType::MySQL;
+  }
+
+  void MySqlClient::beginTransactionImpl()
+  {
+    if (transactionActive_) {
+      throw worm::TransactionException("A MySQL transaction is already active.");
+    }
+
+    if (mysql_query(connection_.get(), "START TRANSACTION")) {
+      throw QueryExecutionException(mysql_error(connection_.get()));
+    }
+
+    transactionActive_ = true;
+  }
+
+  void MySqlClient::commitTransaction()
+  {
+    if (!transactionActive_) {
+      throw worm::TransactionException("There is no active MySQL transaction to commit.");
+    }
+
+    if (mysql_query(connection_.get(), "COMMIT")) {
+      throw QueryExecutionException(mysql_error(connection_.get()));
+    }
+
+    transactionActive_ = false;
+  }
+
+  void MySqlClient::rollbackTransaction()
+  {
+    if (!transactionActive_) {
+      throw worm::TransactionException("There is no active MySQL transaction to rollback.");
+    }
+
+    if (mysql_query(connection_.get(), "ROLLBACK")) {
+      throw QueryExecutionException(mysql_error(connection_.get()));
+    }
+
+    transactionActive_ = false;
   }
 } // namespace worm::connection

@@ -9,6 +9,7 @@
 
 namespace worm::connection
 {
+
   class PgClient final : public Client
   {
   public:
@@ -26,5 +27,11 @@ namespace worm::connection
 
   private:
     std::unique_ptr<pqxx::connection> connection_;
+    std::unique_ptr<pqxx::work> innerTransaction_;
+
+    void beginTransactionImpl() override;
+    void rollbackTransaction() override;
+    void commitTransaction() override;
   };
+
 } // namespace worm::connection

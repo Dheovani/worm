@@ -20,6 +20,12 @@ add_worm_connection_test(
 )
 
 add_worm_connection_test(
+  WormTransactionTests
+  transaction-tests.cpp
+  Worm.Connection.Transaction
+)
+
+add_worm_connection_test(
   WormMySqlClientTests
   mysql-client-tests.cpp
   Worm.Connection.MySqlClient

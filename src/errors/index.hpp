@@ -14,6 +14,7 @@
 #include <errors/query-execution-exception.hpp>
 #include <errors/reflection-exception.hpp>
 #include <errors/sql-build-exception.hpp>
+#include <errors/transaction-exception.hpp>
 #include <errors/type-conversion-exception.hpp>
 #include <errors/unregistered-dependency-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>

@@ -78,6 +78,15 @@ namespace
     mutable std::vector<worm::core::Statement> statements;
 
   private:
+    void beginTransactionImpl() override
+    {}
+
+    void rollbackTransaction() override
+    {}
+
+    void commitTransaction() override
+    {}
+
     std::vector<worm::core::ResultSet> responses_;
     mutable std::size_t nextResponse_{0};
   };

@@ -4,6 +4,7 @@ add_library(
   pg-client.cpp
   mysql-client.cpp
   sqlite-client.cpp
+  transaction.cpp
 )
 add_library(Worm::Connection ALIAS WormConnection)
 

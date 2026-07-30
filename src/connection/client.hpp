@@ -9,6 +9,8 @@
 
 namespace worm::connection
 {
+  class Transaction;
+
   enum class DatabaseType : std::uint8_t
   {
     PostgreSQL,
@@ -24,6 +26,8 @@ namespace worm::connection
 
   class Client
   {
+    friend class Transaction;
+
   public:
     virtual ~Client() = default;
 
@@ -36,7 +40,15 @@ namespace worm::connection
     [[nodiscard]]
     virtual DatabaseType type() const noexcept = 0;
 
+    [[nodiscard]]
+    Transaction beginTransaction();
+
   protected:
     Client() = default;
+
+    virtual void beginTransactionImpl() = 0;
+    virtual void rollbackTransaction() = 0;
+    virtual void commitTransaction() = 0;
   };
+
 } // namespace worm::connection

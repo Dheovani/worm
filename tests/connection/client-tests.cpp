@@ -17,6 +17,16 @@ namespace
     {
       return worm::connection::DatabaseType::SQLite;
     }
+
+  private:
+    void beginTransactionImpl() override
+    {}
+
+    void rollbackTransaction() override
+    {}
+
+    void commitTransaction() override
+    {}
   };
 } // namespace
 

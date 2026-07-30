@@ -8,6 +8,7 @@
 
 namespace worm::connection
 {
+
   class SqliteClient final : public Client
   {
   public:
@@ -31,7 +32,14 @@ namespace worm::connection
 
     void throwConnectionError();
     void throwStatementError(sqlite3_stmt* statement) const;
+    void executeTransactionCommand(const char* sql);
 
     std::unique_ptr<sqlite3, ConnectionDeleter> connection_;
+    bool transactionActive_{false};
+
+    void beginTransactionImpl() override;
+    void rollbackTransaction() override;
+    void commitTransaction() override;
   };
+
 } // namespace worm::connection

@@ -8,6 +8,7 @@
 
 namespace worm::connection
 {
+
   class MySqlClient final : public Client
   {
   public:
@@ -25,5 +26,11 @@ namespace worm::connection
 
   private:
     std::unique_ptr<MYSQL, decltype(&mysql_close)> connection_;
+    bool transactionActive_{false};
+
+    void beginTransactionImpl() override;
+    void rollbackTransaction() override;
+    void commitTransaction() override;
   };
+
 } // namespace worm::connection
