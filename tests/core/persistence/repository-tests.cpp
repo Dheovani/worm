@@ -1,14 +1,16 @@
-#include <core/repository.hpp>
+#include <core/persistence/repository.hpp>
 
 #include <connection/client.hpp>
 #include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
+#include <errors/query-execution-exception.hpp>
 #include <errors/sql-build-exception.hpp>
 #include <reflection/field.hpp>
 
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -54,12 +56,19 @@ namespace
   class RecordingClient final : public worm::connection::Client
   {
   public:
-    explicit RecordingClient(std::vector<worm::core::ResultSet> responses)
-      : responses_(std::move(responses))
+    explicit RecordingClient(
+      std::vector<worm::core::ResultSet> responses,
+      bool shouldThrowUnexpectedError = false)
+      : responses_(std::move(responses)),
+        shouldThrowUnexpectedError_(shouldThrowUnexpectedError)
     {}
 
     worm::core::ResultSet execute(const worm::core::Statement& statement) override
     {
+      if (shouldThrowUnexpectedError_) {
+        throw std::runtime_error("driver failure");
+      }
+
       lastStatement = statement;
       statements.push_back(statement);
       if (nextResponse_ >= responses_.size()) {
@@ -88,6 +97,7 @@ namespace
     {}
 
     std::vector<worm::core::ResultSet> responses_;
+    bool shouldThrowUnexpectedError_;
     mutable std::size_t nextResponse_{0};
   };
 
@@ -308,6 +318,23 @@ int main()
 
   if (!nonUniqueFailed) {
     std::cerr << "Repository findOne accepted a non-unique result.\n";
+    return 1;
+  }
+
+  bool driverFailureWrapped = false;
+  try {
+    RecordingClient failingClient{std::vector<worm::core::ResultSet>{}, true};
+    const worm::core::Repository<User> failingRepository{failingClient, queryBuilder};
+    static_cast<void>(failingRepository.findOne({"select failing"}));
+  } catch (const worm::QueryExecutionException& error) {
+    driverFailureWrapped = std::string{error.what()} == "driver failure";
+  } catch (const std::exception& error) {
+    std::cerr << "Repository leaked a raw standard exception from the driver: " << error.what() << "\n";
+    return 1;
+  }
+
+  if (!driverFailureWrapped) {
+    std::cerr << "Repository did not wrap unexpected driver failures as query execution errors.\n";
     return 1;
   }
 

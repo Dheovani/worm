@@ -27,19 +27,19 @@ add_worm_connection_test(
 
 add_worm_connection_test(
   WormMySqlClientTests
-  mysql-client-tests.cpp
+  drivers/mysql-client-tests.cpp
   Worm.Connection.MySqlClient
 )
 
 add_worm_connection_test(
   WormPgClientTests
-  pg-client-tests.cpp
+  drivers/pg-client-tests.cpp
   Worm.Connection.PgClient
 )
 
 add_worm_connection_test(
   WormSqliteClientTests
-  sqlite-client-tests.cpp
+  drivers/sqlite-client-tests.cpp
   Worm.Connection.SqliteClient
 )
 

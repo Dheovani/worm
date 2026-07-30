@@ -1,12 +1,12 @@
 #pragma once
 
-#include <errors/worm-exception.hpp>
+#include <errors/database-exception.hpp>
 
 namespace worm
 {
-  class TransactionException : public WormException
+  class TransactionException : public DatabaseException
   {
   public:
-    using WormException::WormException;
+    using DatabaseException::DatabaseException;
   };
 } // namespace worm

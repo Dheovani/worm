@@ -1,8 +1,8 @@
 #include <connection/configuration.hpp>
 
-#include <connection/mysql-client.hpp>
-#include <connection/pg-client.hpp>
-#include <connection/sqlite-client.hpp>
+#include <connection/drivers/mysql-client.hpp>
+#include <connection/drivers/pg-client.hpp>
+#include <connection/drivers/sqlite-client.hpp>
 #include <errors/unsupported-database-exception.hpp>
 
 namespace worm::connection

@@ -1,4 +1,4 @@
-#include <connection/sqlite-client.hpp>
+#include <connection/drivers/sqlite-client.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/transaction-exception.hpp>

@@ -1,6 +1,6 @@
 #include <connection/configuration.hpp>
 
-#include <connection/sqlite-client.hpp>
+#include <connection/drivers/sqlite-client.hpp>
 #include <errors/unsupported-database-exception.hpp>
 
 #include <iostream>

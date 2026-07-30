@@ -11,7 +11,7 @@
 #include <core/query/source.hpp>
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
-#include <core/registry.hpp>
+#include <core/persistence/registry.hpp>
 #include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
 #include <errors/query-execution-exception.hpp>
@@ -76,8 +76,6 @@ namespace worm::core
       return findOne(statement);
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -87,7 +85,7 @@ namespace worm::core
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
 
-      const ResultSet resultSet = dbClient.execute(statement);
+      const ResultSet resultSet = execute(statement);
       const std::size_t rowCount = resultSet.rowCount();
 
       if (rowCount == 0) {
@@ -101,8 +99,6 @@ namespace worm::core
       return hydrateAndRegister(resultSet.rows().front());
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -112,7 +108,7 @@ namespace worm::core
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
 
-      const ResultSet resultSet = dbClient.execute(statement);
+      const ResultSet resultSet = execute(statement);
 
       if (resultSet.empty()) {
         return std::vector<std::shared_ptr<T>>{};
@@ -128,8 +124,6 @@ namespace worm::core
       return results;
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -161,8 +155,6 @@ namespace worm::core
       return createdEntity;
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -178,8 +170,6 @@ namespace worm::core
       return affectedRows;
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -193,8 +183,6 @@ namespace worm::core
       return resultSet.affectedRows();
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -214,8 +202,6 @@ namespace worm::core
       return insert(statement);
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -239,8 +225,6 @@ namespace worm::core
       return insert(statement);
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     template <EncodableParameter ID>
@@ -276,8 +260,6 @@ namespace worm::core
       return resultSet.affectedRows();
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]
@@ -291,8 +273,6 @@ namespace worm::core
       return resultSet.affectedRows();
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     template <EncodableParameter ID>
@@ -307,8 +287,6 @@ namespace worm::core
       registry.instances<T>().remove(id);
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     void delete_(const Statement& statement) const
@@ -437,8 +415,6 @@ namespace worm::core
       return execute(statement);
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     void delete_(const Statement& statement, std::string_view filterQualifier) const
@@ -450,8 +426,6 @@ namespace worm::core
       static_cast<void>(executeFiltered(statement, filterQualifier, "DELETE"));
     } catch (const worm::WormException&) {
       throw;
-    } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
     }
 
     [[nodiscard]]

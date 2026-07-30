@@ -34,3 +34,8 @@ Estas regras complementam o `AGENTS.md` da raiz para todo o conteúdo de `src/`.
   `<core/query/expression.hpp>`.
 - Um módulo não deve depender de executáveis de exemplo ou ferramentas locais.
 - Dependências entre módulos devem ser expressas com targets `Worm::*` no CMake.
+- Implementações concretas de bancos devem ficar em `connection/drivers/`; a raiz
+  de `connection/` fica reservada para contrato, configuração, factory e
+  transações.
+- Componentes de persistência do ORM, como repositório, registry e futuros mapas
+  de unidade de trabalho, devem ficar em `core/persistence/`.

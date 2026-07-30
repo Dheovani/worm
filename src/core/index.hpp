@@ -13,5 +13,5 @@
 #include <core/query/source.hpp>
 #include <core/query/sql-builder.hpp>
 #include <core/query/statement.hpp>
-#include <core/registry.hpp>
-#include <core/repository.hpp>
+#include <core/persistence/registry.hpp>
+#include <core/persistence/repository.hpp>

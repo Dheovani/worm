@@ -80,6 +80,12 @@ add_worm_error_test(
 )
 
 add_worm_error_test(
+  WormTransactionExceptionTests
+  transaction-exception-tests.cpp
+  Worm.Errors.TransactionException
+)
+
+add_worm_error_test(
   WormSqlBuildExceptionTests
   sql-build-exception-tests.cpp
   Worm.Errors.SqlBuildException

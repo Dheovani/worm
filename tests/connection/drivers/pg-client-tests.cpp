@@ -1,10 +1,10 @@
-#include <connection/mysql-client.hpp>
+#include <connection/drivers/pg-client.hpp>
 
 #include <type_traits>
 
 int main()
 {
-  using Client = worm::connection::MySqlClient;
+  using Client = worm::connection::PgClient;
 
   static_assert(std::is_base_of_v<worm::connection::Client, Client>);
   static_assert(std::is_final_v<Client>);

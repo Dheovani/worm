@@ -1,4 +1,4 @@
-#include <core/registry.hpp>
+#include <core/persistence/registry.hpp>
 
 #include <reflection/field.hpp>
 

@@ -74,7 +74,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [x] Implementar mapa de identidade para evitar instâncias duplicadas da mesma linha.
 - [x] Implementar unidade de trabalho usando snapshots para `UPDATE` parcial.
 - [x] Implementar transações RAII com commit e rollback explícitos.
-- [ ] Criar um fluxo de erro consistente entre reflexão, SQL e drivers.
+- [x] Criar um fluxo de erro consistente entre reflexão, SQL e drivers.
 
 ## Marco 2 — Conexões confiáveis e portáveis
 
@@ -118,7 +118,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [ ] Definir como preservar customizações manuais em entidades geradas novamente.
 - [ ] Adicionar testes com esquemas pequenos para validar os dois sentidos: banco → entidade e entidade → banco.
 
-## Experiência do desenvolvedor
+## Marco 5 - Experiência do desenvolvedor
 
 - [ ] Criar um quick start que funcione em menos de dez minutos.
 - [ ] Manter exemplos completos para CRUD, transações, consultas e relações.
@@ -128,7 +128,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [ ] Publicar um guia de arquitetura e decisões técnicas relevantes.
 - [ ] Adicionar changelog e guia de migração para mudanças incompatíveis.
 
-## Qualidade, segurança e desempenho
+## Marco 6 - Qualidade, segurança e desempenho
 
 - [ ] Executar formatação e análise estática automaticamente na CI.
 - [ ] Ativar warnings rigorosos e tratar warnings do projeto como erros na CI.
@@ -139,7 +139,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [ ] Definir uma política de segurança e canal responsável para vulnerabilidades.
 - [ ] Auditar logs e exceções para nunca expor senhas ou parâmetros sensíveis.
 
-## Portabilidade e distribuição
+## Marco 7 - Portabilidade e distribuição
 
 - [ ] Configurar CI para Windows e Linux com MSVC, GCC e Clang.
 - [ ] Testar versões mínimas e atuais dos compiladores suportados.
@@ -149,7 +149,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [ ] Definir e seguir versionamento semântico.
 - [ ] Estabelecer critérios objetivos para versões alpha, beta e `1.0.0`.
 
-## Comunidade e sustentabilidade
+## Marco 8 - Comunidade e sustentabilidade
 
 - [x] Adotar a licença MIT.
 - [ ] Criar `CONTRIBUTING.md` com setup, testes e critérios de revisão.

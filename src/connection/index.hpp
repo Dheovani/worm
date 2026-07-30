@@ -9,6 +9,6 @@
 #include <connection/configuration.hpp>
 #include <connection/client.hpp>
 #include <connection/transaction.hpp>
-#include <connection/mysql-client.hpp>
-#include <connection/pg-client.hpp>
-#include <connection/sqlite-client.hpp>
+#include <connection/drivers/mysql-client.hpp>
+#include <connection/drivers/pg-client.hpp>
+#include <connection/drivers/sqlite-client.hpp>

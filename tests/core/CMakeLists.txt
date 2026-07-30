@@ -19,5 +19,5 @@ add_worm_core_test(WormQueryBuilderTests query/query-builder-tests.cpp Worm.Core
 add_worm_core_test(WormFilterTests query/filter-tests.cpp Worm.Core.Filter)
 add_worm_core_test(WormResultSetTests output/result-set-tests.cpp Worm.Core.ResultSet)
 add_worm_core_test(WormHydrationTests output/hydration-tests.cpp Worm.Core.Hydration)
-add_worm_core_test(WormRegistryTests registry-tests.cpp Worm.Core.Registry)
-add_worm_core_test(WormRepositoryTests repository-tests.cpp Worm.Core.Repository)
+add_worm_core_test(WormRegistryTests persistence/registry-tests.cpp Worm.Core.Registry)
+add_worm_core_test(WormRepositoryTests persistence/repository-tests.cpp Worm.Core.Repository)

@@ -1,4 +1,4 @@
-#include <connection/sqlite-client.hpp>
+#include <connection/drivers/sqlite-client.hpp>
 
 #include <cstdint>
 #include <iostream>
