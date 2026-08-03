@@ -78,7 +78,7 @@ try
 
   resetSchema(config);
 
-  worm::connection::MySqlClient client{config};
+  const auto client = std::make_shared<worm::connection::MySqlClient>(config);
   const worm::core::MySqlBuilder sqlBuilder;
 
   worm::tests::runDriverContract(

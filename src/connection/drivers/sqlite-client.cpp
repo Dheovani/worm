@@ -1,7 +1,6 @@
 #include <connection/drivers/sqlite-client.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
-#include <errors/transaction-exception.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -87,7 +86,7 @@ namespace worm::connection
     throw QueryExecutionException(message);
   }
 
-  worm::core::ResultSet SqliteClient::execute(const worm::core::Statement& statementData)
+  worm::core::ResultSet SqliteClient::executeImpl(const worm::core::Statement& statementData)
   {
     std::vector<core::ResultRow> rows;
     sqlite3_stmt* statement = nullptr;
@@ -169,31 +168,16 @@ namespace worm::connection
 
   void SqliteClient::beginTransactionImpl()
   {
-    if (transactionActive_) {
-      throw worm::TransactionException("A SQLite transaction is already active.");
-    }
-
     executeTransactionCommand("BEGIN TRANSACTION");
-    transactionActive_ = true;
   }
 
-  void SqliteClient::commitTransaction()
+  void SqliteClient::commitTransactionImpl()
   {
-    if (!transactionActive_) {
-      throw worm::TransactionException("There is no active SQLite transaction to commit.");
-    }
-
     executeTransactionCommand("COMMIT");
-    transactionActive_ = false;
   }
 
-  void SqliteClient::rollbackTransaction()
+  void SqliteClient::rollbackTransactionImpl()
   {
-    if (!transactionActive_) {
-      throw worm::TransactionException("There is no active SQLite transaction to rollback.");
-    }
-
     executeTransactionCommand("ROLLBACK");
-    transactionActive_ = false;
   }
 } // namespace worm::connection

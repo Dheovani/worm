@@ -45,11 +45,11 @@ namespace worm::tests
 
   template <typename Client, core::SqlBuilderI Builder>
   void runDriverContract(
-    Client& client,
+    const std::shared_ptr<Client>& client,
     const Builder& sqlBuilder,
     connection::DatabaseType expectedDatabaseType)
   {
-    requireContract(client.type() == expectedDatabaseType, "Driver returned the wrong database type.");
+    requireContract(client->type() == expectedDatabaseType, "Driver returned the wrong database type.");
 
     const core::QueryBuilder queryBuilder{sqlBuilder};
     const core::Repository<DriverContractEntity> repository{client, queryBuilder};
@@ -84,7 +84,7 @@ namespace worm::tests
       "Repository did not synchronize the entity after UPDATE.");
 
     {
-      auto transaction = client.beginTransaction();
+      auto transaction = client->beginTransaction();
       static_cast<void>(repository.insert({
         .id = "rolled-back",
         .label = "Rollback",
@@ -98,7 +98,7 @@ namespace worm::tests
       "Driver did not roll back an unfinished transaction.");
 
     {
-      auto transaction = client.beginTransaction();
+      auto transaction = client->beginTransaction();
       static_cast<void>(repository.insert({
         .id = "committed",
         .label = "Commit",

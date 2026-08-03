@@ -8,24 +8,24 @@ namespace
   class TestClient final : public worm::connection::Client
   {
   public:
-    worm::core::ResultSet execute(const worm::core::Statement&) override
-    {
-      return {};
-    }
-
     worm::connection::DatabaseType type() const noexcept override
     {
       return worm::connection::DatabaseType::SQLite;
     }
 
   private:
+    worm::core::ResultSet executeImpl(const worm::core::Statement&) override
+    {
+      return {};
+    }
+
     void beginTransactionImpl() override
     {}
 
-    void rollbackTransaction() override
+    void rollbackTransactionImpl() override
     {}
 
-    void commitTransaction() override
+    void commitTransactionImpl() override
     {}
   };
 } // namespace

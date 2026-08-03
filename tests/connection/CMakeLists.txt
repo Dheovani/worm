@@ -40,6 +40,8 @@ add_worm_connection_test(
   Worm.Connection.Transaction
 )
 
+set_tests_properties(Worm.Connection.Transaction PROPERTIES TIMEOUT 10)
+
 if(WORM_ENABLE_MYSQL)
   add_worm_connection_test(
     WormMySqlClientTests

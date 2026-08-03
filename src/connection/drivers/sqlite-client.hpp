@@ -32,14 +32,12 @@ namespace worm::connection
     void executeTransactionCommand(const char* sql);
 
     std::unique_ptr<sqlite3, ConnectionDeleter> connection_;
-    bool transactionActive_{false};
-
     void beginTransactionImpl() override;
-    void rollbackTransaction() override;
-    void commitTransaction() override;
+    void rollbackTransactionImpl() override;
+    void commitTransactionImpl() override;
 
     [[nodiscard]]
-    core::ResultSet execute(const core::Statement& statement) override;
+    core::ResultSet executeImpl(const core::Statement& statement) override;
   };
 
 } // namespace worm::connection

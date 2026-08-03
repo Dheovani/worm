@@ -19,7 +19,7 @@ namespace worm::core
   class QueryBuilder final
   {
   public:
-    QueryBuilder()
+    explicit QueryBuilder()
       : sqlBuilder(worm::DependencyInjector<SqlBuilder>().get())
     {}
 

@@ -1,6 +1,7 @@
 #include <connection/transaction.hpp>
 
 #include <connection/client.hpp>
+#include <errors/concurrent-access-exception.hpp>
 #include <errors/transaction-exception.hpp>
 
 #include <utility>
@@ -12,11 +13,51 @@ namespace worm::connection
     return Transaction(*this);
   }
 
+  void Client::startTransaction()
+  {
+    ensureThreadAffinity();
+    if (transactionActive_) {
+      throw worm::TransactionException("A transaction is already active for this client.");
+    }
+
+    beginTransactionImpl();
+    transactionActive_ = true;
+  }
+
+  void Client::commitActiveTransaction()
+  {
+    ensureThreadAffinity();
+    if (!transactionActive_) {
+      throw worm::TransactionException("There is no active transaction to commit.");
+    }
+
+    commitTransactionImpl();
+    transactionActive_ = false;
+  }
+
+  void Client::rollbackActiveTransaction()
+  {
+    ensureThreadAffinity();
+    if (!transactionActive_) {
+      throw worm::TransactionException("There is no active transaction to rollback.");
+    }
+
+    rollbackTransactionImpl();
+    transactionActive_ = false;
+  }
+
+  void Client::ensureThreadAffinity() const
+  {
+    if (std::this_thread::get_id() != ownerThread_) {
+      throw worm::ConcurrentAccessException("Client accessed from a different thread than it was created on.");
+    }
+  }
+
   Transaction::Transaction(Client& client)
     : client_(&client),
       active_(true)
   {
-    client_->beginTransactionImpl();
+    client_->startTransaction();
   }
 
   Transaction::~Transaction() noexcept
@@ -26,7 +67,7 @@ namespace worm::connection
     }
 
     try {
-      client_->rollbackTransaction();
+      client_->rollbackActiveTransaction();
     } catch (...) {}
   }
 
@@ -43,7 +84,7 @@ namespace worm::connection
 
     if (active_ && client_ != nullptr) {
       try {
-        client_->rollbackTransaction();
+        client_->rollbackActiveTransaction();
       } catch (...) {}
     }
 
@@ -56,14 +97,14 @@ namespace worm::connection
   void Transaction::commit()
   {
     ensureActive();
-    client_->commitTransaction();
+    client_->commitActiveTransaction();
     active_ = false;
   }
 
   void Transaction::rollback()
   {
     ensureActive();
-    client_->rollbackTransaction();
+    client_->rollbackActiveTransaction();
     active_ = false;
   }
 

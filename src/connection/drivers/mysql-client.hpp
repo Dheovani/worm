@@ -23,14 +23,12 @@ namespace worm::connection
 
   private:
     std::unique_ptr<MYSQL, decltype(&mysql_close)> connection_;
-    bool transactionActive_{false};
-
     void beginTransactionImpl() override;
-    void rollbackTransaction() override;
-    void commitTransaction() override;
+    void rollbackTransactionImpl() override;
+    void commitTransactionImpl() override;
 
     [[nodiscard]]
-    core::ResultSet execute(const core::Statement& statement) override;
+    core::ResultSet executeImpl(const core::Statement& statement) override;
   };
 
 } // namespace worm::connection

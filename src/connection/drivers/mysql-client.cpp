@@ -1,7 +1,6 @@
 #include <connection/drivers/mysql-client.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
-#include <errors/transaction-exception.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -119,7 +118,7 @@ namespace worm::connection
     }
   }
 
-  worm::core::ResultSet MySqlClient::execute(const worm::core::Statement& statement)
+  worm::core::ResultSet MySqlClient::executeImpl(const worm::core::Statement& statement)
   {
     std::vector<core::ResultRow> rows;
     std::vector<MYSQL_FIELD> fields;
@@ -265,40 +264,22 @@ namespace worm::connection
 
   void MySqlClient::beginTransactionImpl()
   {
-    if (transactionActive_) {
-      throw worm::TransactionException("A MySQL transaction is already active.");
-    }
-
     if (mysql_query(connection_.get(), "START TRANSACTION")) {
       throw QueryExecutionException(mysql_error(connection_.get()));
     }
-
-    transactionActive_ = true;
   }
 
-  void MySqlClient::commitTransaction()
+  void MySqlClient::commitTransactionImpl()
   {
-    if (!transactionActive_) {
-      throw worm::TransactionException("There is no active MySQL transaction to commit.");
-    }
-
     if (mysql_query(connection_.get(), "COMMIT")) {
       throw QueryExecutionException(mysql_error(connection_.get()));
     }
-
-    transactionActive_ = false;
   }
 
-  void MySqlClient::rollbackTransaction()
+  void MySqlClient::rollbackTransactionImpl()
   {
-    if (!transactionActive_) {
-      throw worm::TransactionException("There is no active MySQL transaction to rollback.");
-    }
-
     if (mysql_query(connection_.get(), "ROLLBACK")) {
       throw QueryExecutionException(mysql_error(connection_.get()));
     }
-
-    transactionActive_ = false;
   }
 } // namespace worm::connection

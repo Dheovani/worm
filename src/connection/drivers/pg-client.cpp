@@ -56,7 +56,7 @@ namespace worm::connection
     throw DatabaseConnectionException(error.what());
   }
 
-  worm::core::ResultSet PgClient::execute(const worm::core::Statement& statement)
+  worm::core::ResultSet PgClient::executeImpl(const worm::core::Statement& statement)
   {
     std::vector<worm::core::ResultRow> rows;
     pqxx::result response;
@@ -107,7 +107,7 @@ namespace worm::connection
     innerTransaction_ = std::make_unique<pqxx::work>(*connection_);
   }
 
-  void PgClient::commitTransaction()
+  void PgClient::commitTransactionImpl()
   {
     if (!innerTransaction_) {
       throw worm::TransactionException("There is no active PostgreSQL transaction to commit.");
@@ -121,7 +121,7 @@ namespace worm::connection
     }
   }
 
-  void PgClient::rollbackTransaction()
+  void PgClient::rollbackTransactionImpl()
   {
     if (!innerTransaction_) {
       throw worm::TransactionException("There is no active PostgreSQL transaction to rollback.");

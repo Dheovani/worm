@@ -2,11 +2,13 @@
 
 #include <core/model/entity.hpp>
 #include <core/model/entity-metadata.hpp>
+#include <errors/concurrent-access-exception.hpp>
 #include <reflection/snapshot.hpp>
 
 #include <map>
 #include <memory>
 #include <typeindex>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 
@@ -25,6 +27,11 @@ namespace worm::core
         snapshots_()
     {}
 
+    InstanceRegistry(const InstanceRegistry&) = delete;
+    InstanceRegistry& operator=(const InstanceRegistry&) = delete;
+    InstanceRegistry(InstanceRegistry&&) = delete;
+    InstanceRegistry& operator=(InstanceRegistry&&) = delete;
+
     [[nodiscard]]
     bool has(const T& instance) const
     {
@@ -34,6 +41,7 @@ namespace worm::core
     [[nodiscard]]
     bool has(const PK& key) const
     {
+      ensureThreadAffinity();
       return instances_.contains(key);
     }
 
@@ -48,6 +56,7 @@ namespace worm::core
 
     InstanceRegistry<T>& add(const PK& key, const T& entity)
     {
+      ensureThreadAffinity();
       auto instance = std::make_shared<T>(entity);
 
       const auto [_, inserted] = instances_.insert({key, instance});
@@ -60,6 +69,7 @@ namespace worm::core
 
     InstanceRegistry<T>& put(const PK& key, const T& entity)
     {
+      ensureThreadAffinity();
       auto instance = std::make_shared<T>(entity);
 
       instances_[key] = instance;
@@ -70,6 +80,7 @@ namespace worm::core
 
     InstanceRegistry<T>& emplace(const PK& key, const T& entity)
     {
+      ensureThreadAffinity();
       auto instance = std::make_shared<T>(entity);
 
       const auto [_, inserted] = instances_.try_emplace(key, instance);
@@ -82,13 +93,15 @@ namespace worm::core
 
     void remove(const PK& key)
     {
+      ensureThreadAffinity();
       instances_.erase(key);
       snapshots_.erase(key);
     }
 
     [[nodiscard]]
-    std::size_t count() const noexcept
+    std::size_t count() const
     {
+      ensureThreadAffinity();
       return instances_.size();
     }
 
@@ -101,6 +114,7 @@ namespace worm::core
     [[nodiscard]]
     bool hasSnapshot(const PK& key) const
     {
+      ensureThreadAffinity();
       return snapshots_.contains(key);
     }
 
@@ -122,6 +136,7 @@ namespace worm::core
     [[nodiscard]]
     bool isDirty(const PK& key, const T& instance) const
     {
+      ensureThreadAffinity();
       if (!hasSnapshot(key))
         return false;
 
@@ -146,6 +161,7 @@ namespace worm::core
     [[nodiscard]]
     std::size_t changedFieldCount(const PK& key, const T& instance) const
     {
+      ensureThreadAffinity();
       if (!hasSnapshot(key))
         return 0;
 
@@ -176,6 +192,7 @@ namespace worm::core
       const T& instance,
       Visitor&& visitor) const
     {
+      ensureThreadAffinity();
       if (!hasSnapshot(key))
         return 0;
 
@@ -189,6 +206,7 @@ namespace worm::core
 
     void refreshSnapshot(const PK& key)
     {
+      ensureThreadAffinity();
       if (!has(key))
         return;
 
@@ -196,7 +214,16 @@ namespace worm::core
     }
 
   private:
+    void ensureThreadAffinity() const
+    {
+      if (std::this_thread::get_id() != ownerThread_) {
+        throw worm::ConcurrentAccessException(
+          "InstanceRegistry accessed from a different thread than it was created on.");
+      }
+    }
+
     static constexpr auto primaryKey_ = primary_key_field_of<T>();
+    const std::thread::id ownerThread_ = std::this_thread::get_id();
     std::map<PK, std::shared_ptr<T>> instances_;
     std::map<PK, reflection::EntitySnapshot<T>> snapshots_;
   };
@@ -206,9 +233,15 @@ namespace worm::core
   public:
     Registry() = default;
 
+    Registry(const Registry&) = delete;
+    Registry& operator=(const Registry&) = delete;
+    Registry(Registry&&) = delete;
+    Registry& operator=(Registry&&) = delete;
+
     template <PersistableEntity T>
     InstanceRegistry<T>& instances()
     {
+      ensureThreadAffinity();
       const std::type_index key{typeid(T)};
 
       if (!registries_.contains(key)) {
@@ -219,6 +252,14 @@ namespace worm::core
     }
 
   private:
+    void ensureThreadAffinity() const
+    {
+      if (std::this_thread::get_id() != ownerThread_) {
+        throw worm::ConcurrentAccessException("Registry accessed from a different thread than it was created on.");
+      }
+    }
+
+    const std::thread::id ownerThread_ = std::this_thread::get_id();
     std::unordered_map<std::type_index, std::shared_ptr<void>> registries_;
   };
 

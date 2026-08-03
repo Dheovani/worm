@@ -94,10 +94,10 @@ const worm::connection::ConnectionConfig config{
   .dbname = "application.db",
 };
 
-worm::connection::SqliteClient client{config};
+const auto client = std::make_shared<worm::connection::SqliteClient>(config);
 const worm::core::SqliteBuilder sqlBuilder;
 const worm::core::QueryBuilder queryBuilder{sqlBuilder};
-worm::core::Registry registry;
+const auto registry = std::make_shared<worm::core::Registry>();
 const worm::core::Repository<User> users{client, queryBuilder, registry};
 ```
 
@@ -159,7 +159,7 @@ ativa, seu destrutor tenta executar rollback:
 
 ```cpp
 {
-  auto transaction = client.beginTransaction();
+  auto transaction = client->beginTransaction();
   static_cast<void>(users.insert(User{.id = 2, .name = "Grace"}));
   transaction.commit();
 }
@@ -184,12 +184,25 @@ try {
 }
 ```
 
-## Configuração automática
+## Contexto de persistência e lifetime
 
-O construtor padrão de `Repository<T>` usa o injetor e lê `.env`. As chaves estão
-documentadas em [`.env.example`](../.env.example). Essa forma mantém uma conexão
-estática por processo; prefira a construção explícita quando testes, múltiplos
-bancos ou controle de lifetime forem importantes.
+`PersistenceContext` centraliza o cliente, o identity map e os repositories. O tipo
+de banco é lido de `DATABASE_TYPE`, documentado em [`.env.example`](../.env.example):
+
+```cpp
+const worm::context::PersistenceContext context(config);
+const auto& users = context.repository<User>();
+```
+
+O contexto e os objetos associados pertencem à thread em que foram criados. O
+acesso por outra thread produz `ConcurrentAccessException`; use um contexto e uma
+conexão separados para cada fluxo concorrente. Uma transação ativa também precisa
+ser confirmada ou revertida na thread proprietária. Se sair de escopo ainda ativa,
+seu destrutor tenta executar rollback.
+
+O `Repository` mantém ownership compartilhado do cliente e do registry recebidos.
+Entidades retornadas como `shared_ptr` podem sobreviver ao contexto, mas o ponteiro
+compartilhado não sincroniza modificações feitas na própria entidade.
 
 ## Limitações atuais
 
@@ -197,6 +210,6 @@ bancos ou controle de lifetime forem importantes.
 - Chaves geradas pelo banco ainda não têm comportamento portátil entre drivers.
 - Relacionamentos, eager/lazy loading e detecção de N+1 ainda não existem.
 - Não existe pool de conexões nem cache de statements preparados.
-- `Client`, `Repository` e `Registry` não oferecem garantia de uso concorrente;
-  não compartilhe suas instâncias entre threads sem sincronização externa.
+- Um mesmo `Client`, `PersistenceContext`, `Repository` ou `Registry` não pode ser
+  compartilhado entre threads; crie contextos independentes para trabalho paralelo.
 - O contrato de instalação e `find_package(Worm)` ainda será definido.

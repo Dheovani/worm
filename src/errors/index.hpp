@@ -1,5 +1,6 @@
 #pragma once
 
+#include <errors/concurrent-access-exception.hpp>
 #include <errors/configuration-exception.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/database-exception.hpp>

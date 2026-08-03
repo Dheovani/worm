@@ -64,7 +64,7 @@ try
 
   resetSchema(config);
 
-  worm::connection::PgClient client{config};
+  const auto client = std::make_shared<worm::connection::PgClient>(config);
   const worm::core::PgBuilder sqlBuilder;
 
   worm::tests::runDriverContract(

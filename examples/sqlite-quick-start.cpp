@@ -100,10 +100,10 @@ try
     .dbname = database.path().string(),
   };
 
-  worm::connection::SqliteClient client{config};
+  const auto client = std::make_shared<worm::connection::SqliteClient>(config);
   const worm::core::SqliteBuilder sqlBuilder;
   const worm::core::QueryBuilder queryBuilder{sqlBuilder};
-  worm::core::Registry registry;
+  const auto registry = std::make_shared<worm::core::Registry>();
   const worm::core::Repository<User> users{client, queryBuilder, registry};
 
   const std::shared_ptr<User> ada = users.insert({
@@ -122,7 +122,7 @@ try
   const std::vector<std::shared_ptr<User>> matches = users.findAll(namedAda);
 
   {
-    auto transaction = client.beginTransaction();
+    auto transaction = client->beginTransaction();
     static_cast<void>(users.insert({
       .id = 2,
       .name = "Grace Hopper",

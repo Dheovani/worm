@@ -27,11 +27,11 @@ namespace worm::connection
     std::unique_ptr<pqxx::work> innerTransaction_;
 
     void beginTransactionImpl() override;
-    void rollbackTransaction() override;
-    void commitTransaction() override;
+    void rollbackTransactionImpl() override;
+    void commitTransactionImpl() override;
 
     [[nodiscard]]
-    core::ResultSet execute(const core::Statement& statement) override;
+    core::ResultSet executeImpl(const core::Statement& statement) override;
   };
 
 } // namespace worm::connection

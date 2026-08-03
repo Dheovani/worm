@@ -12,16 +12,18 @@
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
 #include <core/persistence/registry.hpp>
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/sql-build-exception.hpp>
 #include <errors/worm-exception.hpp>
-#include <utils/dependency-injection.hpp>
 #include <utils/hash.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <string>
+#include <utility>
 
 namespace worm::core
 {
@@ -30,32 +32,30 @@ namespace worm::core
   class Repository final
   {
   public:
-    explicit Repository()
-      : dbClient(worm::DependencyInjector<connection::Client>().get()),
-        queryBuilder(),
-        ownedRegistry(std::make_unique<Registry>()),
-        registry(*ownedRegistry)
-    {}
-
-    explicit Repository(connection::Client& dbClient, const QueryBuilder& queryBuilder)
-      : dbClient(dbClient),
+    explicit Repository(std::shared_ptr<connection::Client> dbClient, const QueryBuilder& queryBuilder)
+      : dbClient(std::move(dbClient)),
         queryBuilder(queryBuilder),
-        ownedRegistry(std::make_unique<Registry>()),
-        registry(*ownedRegistry)
-    {}
+        registry(std::make_shared<Registry>())
+    {
+      ensureDependencies();
+    }
 
-    explicit Repository(connection::Client& dbClient, const QueryBuilder& queryBuilder, Registry& registry) noexcept
-      : dbClient(dbClient),
+    explicit Repository(
+      std::shared_ptr<connection::Client> dbClient,
+      const QueryBuilder& queryBuilder,
+      std::shared_ptr<Registry> registry)
+      : dbClient(std::move(dbClient)),
         queryBuilder(queryBuilder),
-        ownedRegistry(nullptr),
-        registry(registry)
-    {}
+        registry(std::move(registry))
+    {
+      ensureDependencies();
+    }
 
     template <EncodableParameter ID>
     [[nodiscard]]
     std::shared_ptr<T> find(const ID& id) const
     try {
-      if (std::shared_ptr<T> registered = registry.instances<T>().get(id)) {
+      if (std::shared_ptr<T> registered = registry->instances<T>().get(id)) {
         return registered;
       }
 
@@ -226,7 +226,7 @@ namespace worm::core
     try {
       const std::string alias = generateEntityAlias();
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
-      const bool shouldUseSnapshot = registry.instances<T>().hasSnapshot(id);
+      const bool shouldUseSnapshot = registry->instances<T>().hasSnapshot(id);
       const std::vector<std::pair<std::string, Parameter>> fields =
         shouldUseSnapshot
           ? mapChangedFields(id, newStateEntity)
@@ -246,7 +246,7 @@ namespace worm::core
         if (shouldUseSnapshot) {
           synchronizeRegisteredInstance(id, newStateEntity);
         } else {
-          registry.instances<T>().remove(id);
+          registry->instances<T>().remove(id);
         }
       }
 
@@ -277,7 +277,7 @@ namespace worm::core
         queryBuilder.delete_({T::table().name(), alias}, Filter{Predicate::equal(column, encode(id))});
 
       delete_(statement, alias);
-      registry.instances<T>().remove(id);
+      registry->instances<T>().remove(id);
     } catch (const worm::WormException&) {
       throw;
     }
@@ -292,11 +292,22 @@ namespace worm::core
     }
 
   private:
+    void ensureDependencies() const
+    {
+      if (!dbClient) {
+        throw worm::InvalidArgException("Repository requires a valid client.");
+      }
+
+      if (!registry) {
+        throw worm::InvalidArgException("Repository requires a valid registry.");
+      }
+    }
+
     std::shared_ptr<T> hydrateAndRegister(const ResultRow& row) const
     {
       T entity = hydrate<T>(row);
-      registry.instances<T>().put(primaryKey.get(entity), entity);
-      return registry.instances<T>().get(primaryKey.get(entity));
+      registry->instances<T>().put(primaryKey.get(entity), entity);
+      return registry->instances<T>().get(primaryKey.get(entity));
     }
 
     [[nodiscard]]
@@ -347,9 +358,9 @@ namespace worm::core
     mapChangedFields(const ID& id, const T& entity) const
     {
       std::vector<std::pair<std::string, Parameter>> result{};
-      result.reserve(registry.instances<T>().changedFieldCount(id, entity));
+      result.reserve(registry->instances<T>().changedFieldCount(id, entity));
 
-      registry.instances<T>().forEachChangedField(
+      registry->instances<T>().forEachChangedField(
         id,
         entity,
         [&](const auto& field, const auto&, const auto& currentValue) {
@@ -364,7 +375,7 @@ namespace worm::core
     template <EncodableParameter ID>
     void synchronizeRegisteredInstance(const ID& id, const T& newStateEntity) const
     {
-      std::shared_ptr<T> registered = registry.instances<T>().get(id);
+      std::shared_ptr<T> registered = registry->instances<T>().get(id);
       if (!registered) {
         return;
       }
@@ -381,13 +392,13 @@ namespace worm::core
         },
         worm::core::persistent_fields_of<T>());
 
-      registry.instances<T>().refreshSnapshot(id);
+      registry->instances<T>().refreshSnapshot(id);
     }
 
     [[nodiscard]]
     core::ResultSet execute(const Statement& statement) const
     try {
-      return dbClient.execute(statement);
+      return dbClient->execute(statement);
     } catch (const worm::WormException&) {
       throw;
     } catch (const std::exception& error) {
@@ -434,10 +445,9 @@ namespace worm::core
       return alias;
     }
 
-    connection::Client& dbClient;
+    std::shared_ptr<connection::Client> dbClient;
     const QueryBuilder queryBuilder;
-    std::unique_ptr<Registry> ownedRegistry;
-    Registry& registry;
+    std::shared_ptr<Registry> registry;
 
     static constexpr auto primaryKey = primary_key_field_of<T>();
   };

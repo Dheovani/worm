@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <thread>
 
 namespace worm::core
 {
@@ -54,12 +55,27 @@ namespace worm::connection
     Client() = default;
 
     virtual void beginTransactionImpl() = 0;
-    virtual void rollbackTransaction() = 0;
-    virtual void commitTransaction() = 0;
+    virtual void rollbackTransactionImpl() = 0;
+    virtual void commitTransactionImpl() = 0;
 
   private:
     [[nodiscard]]
-    virtual core::ResultSet execute(const core::Statement& statement) = 0;
+    core::ResultSet execute(const core::Statement& statement)
+    {
+      ensureThreadAffinity();
+      return executeImpl(statement);
+    }
+
+    void startTransaction();
+    void commitActiveTransaction();
+    void rollbackActiveTransaction();
+    void ensureThreadAffinity() const;
+
+    [[nodiscard]]
+    virtual core::ResultSet executeImpl(const core::Statement& statement) = 0;
+
+    const std::thread::id ownerThread_ = std::this_thread::get_id();
+    bool transactionActive_ = false;
   };
 
 } // namespace worm::connection

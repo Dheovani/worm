@@ -87,9 +87,9 @@ try
       .dbname = databasePath.string(),
     };
 
-    Client client{config};
+    const auto client = std::make_shared<Client>(config);
 
-    if (client.type() != worm::connection::DatabaseType::SQLite) {
+    if (client->type() != worm::connection::DatabaseType::SQLite) {
       std::cerr << "SqliteClient returned the wrong database type.\n";
       return 1;
     }

@@ -6,9 +6,9 @@ namespace worm::connection
 
   class Transaction
   {
-  public:
-    explicit Transaction(Client& client);
+    friend class Client;
 
+  public:
     ~Transaction() noexcept;
 
     Transaction(const Transaction&) = delete;
@@ -25,6 +25,8 @@ namespace worm::connection
     bool active() const noexcept;
 
   private:
+    explicit Transaction(Client& client);
+
     void ensureActive() const;
 
     Client* client_;

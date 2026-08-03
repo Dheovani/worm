@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -63,9 +64,18 @@ namespace
         shouldThrowUnexpectedError_(shouldThrowUnexpectedError)
     {}
 
-    worm::core::ResultSet execute(const worm::core::Statement& statement) override
+    worm::connection::DatabaseType type() const noexcept override
     {
-      if (shouldThrowUnexpectedError_) {
+      return worm::connection::DatabaseType::SQLite;
+    }
+
+    mutable worm::core::Statement lastStatement;
+    mutable std::vector<worm::core::Statement> statements;
+
+  private:
+    worm::core::ResultSet executeImpl(const worm::core::Statement& statement) override
+    {
+      if (std::exchange(shouldThrowUnexpectedError_, false)) {
         throw std::runtime_error("driver failure");
       }
 
@@ -78,22 +88,13 @@ namespace
       return responses_[nextResponse_++];
     }
 
-    worm::connection::DatabaseType type() const noexcept override
-    {
-      return worm::connection::DatabaseType::SQLite;
-    }
-
-    mutable worm::core::Statement lastStatement;
-    mutable std::vector<worm::core::Statement> statements;
-
-  private:
     void beginTransactionImpl() override
     {}
 
-    void rollbackTransaction() override
+    void rollbackTransactionImpl() override
     {}
 
-    void commitTransaction() override
+    void commitTransactionImpl() override
     {}
 
     std::vector<worm::core::ResultSet> responses_;
@@ -254,6 +255,12 @@ namespace
 
     return worm::core::ResultSet{std::move(rows), affectedRows};
   }
+
+  template <typename Type>
+  std::shared_ptr<Type> nonOwning(Type& value)
+  {
+    return std::shared_ptr<Type>{&value, [](Type*) {}};
+  }
 } // namespace
 
 int main()
@@ -263,7 +270,10 @@ int main()
 
   worm::core::Registry sharedRegistry;
   RecordingClient findClient{{usersResult({{7, "Ada"}})}};
-  const worm::core::Repository<User> repository{findClient, queryBuilder, sharedRegistry};
+  const worm::core::Repository<User> repository{
+    nonOwning(findClient),
+    queryBuilder,
+    nonOwning(sharedRegistry)};
   const std::shared_ptr<User> found = repository.find(std::int64_t{7});
 
   if (!found ||
@@ -285,7 +295,10 @@ int main()
   }
 
   RecordingClient sharedFindClient{{usersResult({{8, "Grace"}})}};
-  const worm::core::Repository<User> sharedRepository{sharedFindClient, queryBuilder, sharedRegistry};
+  const worm::core::Repository<User> sharedRepository{
+    nonOwning(sharedFindClient),
+    queryBuilder,
+    nonOwning(sharedRegistry)};
   const std::shared_ptr<User> sharedFound = sharedRepository.find(std::int64_t{7});
   if (!sharedFound || sharedFound != found || sharedFound->name != "Ada" || !sharedFindClient.statements.empty()) {
     std::cerr << "Repository did not reuse entities registered by another repository.\n";
@@ -293,14 +306,14 @@ int main()
   }
 
   RecordingClient emptyClient{{worm::core::ResultSet{}}};
-  const worm::core::Repository<User> emptyRepository{emptyClient, queryBuilder};
+  const worm::core::Repository<User> emptyRepository{nonOwning(emptyClient), queryBuilder};
   if (emptyRepository.findOne({"select empty"}) != nullptr) {
     std::cerr << "Repository findOne did not return nullopt for an empty result.\n";
     return 1;
   }
 
   RecordingClient allClient{{usersResult({{1, "Ada"}, {2, "Grace"}})}};
-  const worm::core::Repository<User> allRepository{allClient, queryBuilder};
+  const worm::core::Repository<User> allRepository{nonOwning(allClient), queryBuilder};
   const std::vector<std::shared_ptr<User>> users = allRepository.findAll({"select many"});
   if (users.size() != 2 || users[0]->name != "Ada" || users[1]->name != "Grace") {
     std::cerr << "Repository findAll did not hydrate all rows.\n";
@@ -310,7 +323,7 @@ int main()
   bool nonUniqueFailed = false;
   try {
     RecordingClient duplicatedClient{{usersResult({{1, "Ada"}, {2, "Grace"}})}};
-    const worm::core::Repository<User> duplicatedRepository{duplicatedClient, queryBuilder};
+    const worm::core::Repository<User> duplicatedRepository{nonOwning(duplicatedClient), queryBuilder};
     static_cast<void>(duplicatedRepository.findOne({"select duplicated"}));
   } catch (const worm::MappingException&) {
     nonUniqueFailed = true;
@@ -321,10 +334,10 @@ int main()
     return 1;
   }
 
+  RecordingClient failingClient{std::vector<worm::core::ResultSet>{}, true};
+  const worm::core::Repository<User> failingRepository{nonOwning(failingClient), queryBuilder};
   bool driverFailureWrapped = false;
   try {
-    RecordingClient failingClient{std::vector<worm::core::ResultSet>{}, true};
-    const worm::core::Repository<User> failingRepository{failingClient, queryBuilder};
     static_cast<void>(failingRepository.findOne({"select failing"}));
   } catch (const worm::QueryExecutionException& error) {
     driverFailureWrapped = std::string{error.what()} == "driver failure";
@@ -338,8 +351,13 @@ int main()
     return 1;
   }
 
+  if (failingRepository.findOne({"select after failure"}) != nullptr || failingClient.statements.size() != 1) {
+    std::cerr << "Client did not recover after a failed query execution.\n";
+    return 1;
+  }
+
   RecordingClient insertClient{{worm::core::ResultSet{std::uint64_t{1}}, usersResult({{7, "Ada"}})}};
-  const worm::core::Repository<User> insertRepository{insertClient, queryBuilder};
+  const worm::core::Repository<User> insertRepository{nonOwning(insertClient), queryBuilder};
   const std::shared_ptr<User> inserted = insertRepository.insert(User{.id = 7, .name = "Ada"});
 
   if (!inserted ||
@@ -355,7 +373,7 @@ int main()
   }
 
   RecordingClient generatedInsertClient{{usersResult({{9, "Grace"}}, 1)}};
-  const worm::core::Repository<GeneratedUser> generatedInsertRepository{generatedInsertClient, queryBuilder};
+  const worm::core::Repository<GeneratedUser> generatedInsertRepository{nonOwning(generatedInsertClient), queryBuilder};
   const std::shared_ptr<GeneratedUser> generatedInserted = generatedInsertRepository.insert(GeneratedUser{.name = "Grace"});
 
   if (!generatedInserted ||
@@ -371,7 +389,9 @@ int main()
   bool missingGeneratedIdFailed = false;
   try {
     RecordingClient missingGeneratedIdClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-    const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{missingGeneratedIdClient, queryBuilder};
+    const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{
+      nonOwning(missingGeneratedIdClient),
+      queryBuilder};
     static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Missing"}));
   } catch (const worm::MappingException&) {
     missingGeneratedIdFailed = true;
@@ -387,7 +407,7 @@ int main()
     usersResult({{1, "Ada"}}),
     worm::core::ResultSet{std::uint64_t{1}},
     usersResult({{2, "Grace"}})}};
-  const worm::core::Repository<User> manyInsertRepository{manyInsertClient, queryBuilder};
+  const worm::core::Repository<User> manyInsertRepository{nonOwning(manyInsertClient), queryBuilder};
   const std::uint64_t manyInsertedRows =
     manyInsertRepository.insert(std::vector<User>{{.id = 1, .name = "Ada"}, {.id = 2, .name = "Grace"}});
 
@@ -397,7 +417,7 @@ int main()
   }
 
   RecordingClient statementInsertClient{{worm::core::ResultSet{std::uint64_t{3}}}};
-  const worm::core::Repository<User> statementInsertRepository{statementInsertClient, queryBuilder};
+  const worm::core::Repository<User> statementInsertRepository{nonOwning(statementInsertClient), queryBuilder};
   const std::uint64_t statementInsertedRows =
     statementInsertRepository.insert({"insert into users (id,name) values (?,?)", {std::int64_t{7}, std::string{"Ada"}}});
 
@@ -409,7 +429,7 @@ int main()
   bool invalidInsertFailed = false;
   try {
     RecordingClient invalidInsertClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-    const worm::core::Repository<User> invalidInsertRepository{invalidInsertClient, queryBuilder};
+    const worm::core::Repository<User> invalidInsertRepository{nonOwning(invalidInsertClient), queryBuilder};
     static_cast<void>(invalidInsertRepository.insert({"select * from users"}));
   } catch (const worm::InvalidOperationException&) {
     invalidInsertFailed = true;
@@ -421,7 +441,7 @@ int main()
   }
 
   RecordingClient insertFromSelectClient{{worm::core::ResultSet{std::uint64_t{4}}}};
-  const worm::core::Repository<User> insertFromSelectRepository{insertFromSelectClient, queryBuilder};
+  const worm::core::Repository<User> insertFromSelectRepository{nonOwning(insertFromSelectClient), queryBuilder};
   const std::uint64_t insertFromSelectRows = insertFromSelectRepository.insertFromSelect(
     {"id", "name"},
     {"select id,name from archived_users where active = ?", {true}});
@@ -437,7 +457,9 @@ int main()
   bool invalidInsertFromSelectFailed = false;
   try {
     RecordingClient invalidInsertFromSelectClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-    const worm::core::Repository<User> invalidInsertFromSelectRepository{invalidInsertFromSelectClient, queryBuilder};
+    const worm::core::Repository<User> invalidInsertFromSelectRepository{
+      nonOwning(invalidInsertFromSelectClient),
+      queryBuilder};
     static_cast<void>(invalidInsertFromSelectRepository.insertFromSelect({"id", "name"}, {"delete from users"}));
   } catch (const worm::InvalidOperationException&) {
     invalidInsertFromSelectFailed = true;
@@ -449,7 +471,10 @@ int main()
   }
 
   RecordingClient updateClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-  const worm::core::Repository<User> updateRepository{updateClient, queryBuilder, sharedRegistry};
+  const worm::core::Repository<User> updateRepository{
+    nonOwning(updateClient),
+    queryBuilder,
+    nonOwning(sharedRegistry)};
   const std::uint64_t updatedRows = updateRepository.update(std::int64_t{7}, User{.id = 99, .name = "Lovelace"});
 
   if (updatedRows != 1 ||
@@ -473,7 +498,10 @@ int main()
   }
 
   RecordingClient unchangedUpdateClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-  const worm::core::Repository<User> unchangedUpdateRepository{unchangedUpdateClient, queryBuilder, sharedRegistry};
+  const worm::core::Repository<User> unchangedUpdateRepository{
+    nonOwning(unchangedUpdateClient),
+    queryBuilder,
+    nonOwning(sharedRegistry)};
   const std::uint64_t unchangedUpdatedRows =
     unchangedUpdateRepository.update(std::int64_t{7}, User{.id = 7, .name = "Lovelace"});
 
@@ -483,7 +511,7 @@ int main()
   }
 
   RecordingClient missingUpdateClient{{worm::core::ResultSet{std::uint64_t{0}}}};
-  const worm::core::Repository<User> missingUpdateRepository{missingUpdateClient, queryBuilder};
+  const worm::core::Repository<User> missingUpdateRepository{nonOwning(missingUpdateClient), queryBuilder};
   if (missingUpdateRepository.update(std::int64_t{7}, User{.id = 7, .name = "Nobody"}) != 0 ||
       missingUpdateClient.statements.size() != 1) {
     std::cerr << "Repository update(id, entity) did not return zero for an untouched row.\n";
@@ -491,7 +519,7 @@ int main()
   }
 
   RecordingClient bulkUpdateClient{{worm::core::ResultSet{std::uint64_t{2}}}};
-  const worm::core::Repository<User> bulkUpdateRepository{bulkUpdateClient, queryBuilder};
+  const worm::core::Repository<User> bulkUpdateRepository{nonOwning(bulkUpdateClient), queryBuilder};
   const std::uint64_t bulkUpdatedRows =
     bulkUpdateRepository.update({"update users set name = ? where users.id = ?", {std::string{"Changed"}, std::int64_t{1}}});
 
@@ -503,7 +531,7 @@ int main()
   bool unsafeUpdateFailed = false;
   try {
     RecordingClient unsafeUpdateClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-    const worm::core::Repository<User> unsafeUpdateRepository{unsafeUpdateClient, queryBuilder};
+    const worm::core::Repository<User> unsafeUpdateRepository{nonOwning(unsafeUpdateClient), queryBuilder};
     static_cast<void>(unsafeUpdateRepository.update({"update users set name = ? where true"}));
   } catch (const worm::SqlBuildException&) {
     unsafeUpdateFailed = true;
@@ -517,7 +545,10 @@ int main()
   RecordingClient deleteClient{{worm::core::ResultSet{}}};
   worm::core::Registry deleteRegistry;
   deleteRegistry.instances<User>().put(7, User{.id = 7, .name = "Ada"});
-  const worm::core::Repository<User> deleteRepository{deleteClient, queryBuilder, deleteRegistry};
+  const worm::core::Repository<User> deleteRepository{
+    nonOwning(deleteClient),
+    queryBuilder,
+    nonOwning(deleteRegistry)};
   deleteRepository.delete_(std::int64_t{7});
 
   if (deleteClient.lastStatement.parameters != std::vector<worm::core::Parameter>{std::int64_t{7}} ||
@@ -530,7 +561,7 @@ int main()
   bool unsafeDeleteFailed = false;
   try {
     RecordingClient unsafeDeleteClient{{worm::core::ResultSet{}}};
-    const worm::core::Repository<User> unsafeDeleteRepository{unsafeDeleteClient, queryBuilder};
+    const worm::core::Repository<User> unsafeDeleteRepository{nonOwning(unsafeDeleteClient), queryBuilder};
     static_cast<void>(unsafeDeleteRepository.delete_(worm::core::Statement{"delete from users where true"}));
   } catch (const worm::SqlBuildException&) {
     unsafeDeleteFailed = true;
@@ -538,6 +569,24 @@ int main()
 
   if (!unsafeDeleteFailed) {
     std::cerr << "Repository delete_(statement) accepted a statement without a qualified WHERE filter.\n";
+    return 1;
+  }
+
+  std::weak_ptr<RecordingClient> ownedClientLifetime;
+  {
+    auto ownedClient = std::make_shared<RecordingClient>(std::vector<worm::core::ResultSet>{});
+    ownedClientLifetime = ownedClient;
+    const worm::core::Repository<User> owningRepository{ownedClient, queryBuilder};
+    ownedClient.reset();
+
+    if (ownedClientLifetime.expired()) {
+      std::cerr << "Repository did not retain ownership of its client.\n";
+      return 1;
+    }
+  }
+
+  if (!ownedClientLifetime.expired()) {
+    std::cerr << "Repository retained its client after leaving scope.\n";
     return 1;
   }
 

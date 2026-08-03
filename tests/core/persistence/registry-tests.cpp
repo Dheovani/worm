@@ -1,11 +1,13 @@
 #include <core/persistence/registry.hpp>
 
+#include <errors/concurrent-access-exception.hpp>
 #include <reflection/field.hpp>
 
 #include <cstdint>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace
@@ -128,6 +130,31 @@ int main()
       !registryPosts.has(7) ||
       registryPosts.get(7)->title != "Post") {
     std::cerr << "Registry did not preserve isolated typed instance registries.\n";
+    return 1;
+  }
+
+  bool registryRejectedForeignThread = false;
+  std::thread foreignRegistryAccess([&] {
+    try {
+      static_cast<void>(registry.instances<User>());
+    } catch (const worm::ConcurrentAccessException&) {
+      registryRejectedForeignThread = true;
+    }
+  });
+  foreignRegistryAccess.join();
+
+  bool instanceRegistryRejectedForeignThread = false;
+  std::thread foreignInstanceAccess([&] {
+    try {
+      static_cast<void>(registryUsers.has(7));
+    } catch (const worm::ConcurrentAccessException&) {
+      instanceRegistryRejectedForeignThread = true;
+    }
+  });
+  foreignInstanceAccess.join();
+
+  if (!registryRejectedForeignThread || !instanceRegistryRejectedForeignThread) {
+    std::cerr << "Registry accepted access from a foreign thread.\n";
     return 1;
   }
 

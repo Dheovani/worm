@@ -1,9 +1,12 @@
 #include <connection/transaction.hpp>
 
 #include <connection/client.hpp>
+#include <errors/concurrent-access-exception.hpp>
 #include <errors/transaction-exception.hpp>
 
 #include <iostream>
+#include <stdexcept>
+#include <thread>
 #include <utility>
 
 namespace
@@ -11,11 +14,6 @@ namespace
   class RecordingClient final : public worm::connection::Client
   {
   public:
-    worm::core::ResultSet execute(const worm::core::Statement&) override
-    {
-      return {};
-    }
-
     worm::connection::DatabaseType type() const noexcept override
     {
       return worm::connection::DatabaseType::SQLite;
@@ -24,19 +22,29 @@ namespace
     int begins{};
     int commits{};
     int rollbacks{};
+    bool failNextBegin{};
 
   private:
+    worm::core::ResultSet executeImpl(const worm::core::Statement&) override
+    {
+      return {};
+    }
+
     void beginTransactionImpl() override
     {
+      if (std::exchange(failNextBegin, false)) {
+        throw std::runtime_error("begin failed");
+      }
+
       ++begins;
     }
 
-    void rollbackTransaction() override
+    void rollbackTransactionImpl() override
     {
       ++rollbacks;
     }
 
-    void commitTransaction() override
+    void commitTransactionImpl() override
     {
       ++commits;
     }
@@ -112,6 +120,80 @@ int main()
     std::cerr << "Transaction accepted commit after it had already finished.\n";
     return 1;
   }
+
+  RecordingClient nestedClient;
+  {
+    worm::connection::Transaction transaction = nestedClient.beginTransaction();
+    bool nestedTransactionFailed = false;
+    try {
+      static_cast<void>(nestedClient.beginTransaction());
+    } catch (const worm::TransactionException&) {
+      nestedTransactionFailed = true;
+    }
+
+    if (!nestedTransactionFailed || nestedClient.begins != 1) {
+      std::cerr << "Client accepted simultaneous transactions.\n";
+      return 1;
+    }
+  }
+
+  if (nestedClient.rollbacks != 1) {
+    std::cerr << "Rejected nested transaction corrupted the active transaction.\n";
+    return 1;
+  }
+
+  RecordingClient failedBeginClient;
+  failedBeginClient.failNextBegin = true;
+  try {
+    static_cast<void>(failedBeginClient.beginTransaction());
+    std::cerr << "Client accepted a failed transaction start.\n";
+    return 1;
+  } catch (const std::runtime_error&) {}
+
+  {
+    auto transaction = failedBeginClient.beginTransaction();
+    transaction.commit();
+  }
+
+  if (failedBeginClient.begins != 1 || failedBeginClient.commits != 1) {
+    std::cerr << "Failed transaction start left the client in an active state.\n";
+    return 1;
+  }
+
+  RecordingClient crossThreadClient;
+  bool crossThreadRejected = false;
+  std::thread foreignBegin([&] {
+    try {
+      static_cast<void>(crossThreadClient.beginTransaction());
+    } catch (const worm::ConcurrentAccessException&) {
+      crossThreadRejected = true;
+    }
+  });
+  foreignBegin.join();
+
+  if (!crossThreadRejected || crossThreadClient.begins != 0) {
+    std::cerr << "Client allowed a transaction to start from a foreign thread.\n";
+    return 1;
+  }
+
+  RecordingClient foreignCommitClient;
+  auto ownerTransaction = foreignCommitClient.beginTransaction();
+  bool foreignCommitRejected = false;
+  std::thread foreignCommit([&] {
+    try {
+      ownerTransaction.commit();
+    } catch (const worm::ConcurrentAccessException&) {
+      foreignCommitRejected = true;
+    }
+  });
+  foreignCommit.join();
+
+  if (!foreignCommitRejected || !ownerTransaction.active() || foreignCommitClient.commits != 0) {
+    std::cerr << "Transaction allowed commit from a foreign thread or lost its active state.\n";
+    return 1;
+  }
+
+  ownerTransaction.rollback();
 
   return 0;
 }

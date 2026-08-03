@@ -84,7 +84,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [x] Substituir ownership manual nos drivers por RAII.
 - [x] Separar conexão, representação de statement e resultado em tipos próprios.
 - [ ] Avaliar statements preparados reutilizáveis e cache por conexão.
-- [ ] Definir comportamento de thread safety e impedir uso concorrente inseguro.
+- [x] Definir comportamento de thread safety e impedir uso concorrente inseguro.
 - [ ] Implementar configuração de timeout e cancelamento quando o driver suportar.
 - [ ] Adicionar pool de conexões somente após medir uma necessidade real.
 - [x] Separar drivers opcionais para não exigir todos os bancos em cada build.

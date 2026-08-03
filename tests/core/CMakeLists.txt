@@ -21,3 +21,5 @@ add_worm_core_test(WormResultSetTests output/result-set-tests.cpp Worm.Core.Resu
 add_worm_core_test(WormHydrationTests output/hydration-tests.cpp Worm.Core.Hydration)
 add_worm_core_test(WormRegistryTests persistence/registry-tests.cpp Worm.Core.Registry)
 add_worm_core_test(WormRepositoryTests persistence/repository-tests.cpp Worm.Core.Repository)
+
+set_tests_properties(Worm.Core.Repository PROPERTIES TIMEOUT 10)

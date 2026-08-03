@@ -20,6 +20,12 @@ add_worm_error_test(
 )
 
 add_worm_error_test(
+  WormConcurrentAccessExceptionTests
+  concurrent-access-exception-tests.cpp
+  Worm.Errors.ConcurrentAccessException
+)
+
+add_worm_error_test(
   WormInvalidArgExceptionTests
   invalid-arg-exception-tests.cpp
   Worm.Errors.InvalidArgException

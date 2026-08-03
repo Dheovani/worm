@@ -71,7 +71,7 @@ try
     .dbname = database.path().string(),
   };
 
-  worm::connection::SqliteClient client{config};
+  const auto client = std::make_shared<worm::connection::SqliteClient>(config);
   const worm::core::SqliteBuilder sqlBuilder;
 
   worm::tests::runDriverContract(
