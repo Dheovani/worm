@@ -82,11 +82,12 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [x] Remover `noexcept` de fábricas que podem falhar ao conectar.
 - [x] Padronizar nomes e tratamento básico entre os três drivers.
 - [x] Substituir ownership manual nos drivers por RAII.
-- [ ] Separar conexão, statement preparado e resultado em interfaces próprias.
+- [x] Separar conexão, representação de statement e resultado em tipos próprios.
+- [ ] Avaliar statements preparados reutilizáveis e cache por conexão.
 - [ ] Definir comportamento de thread safety e impedir uso concorrente inseguro.
 - [ ] Implementar configuração de timeout e cancelamento quando o driver suportar.
 - [ ] Adicionar pool de conexões somente após medir uma necessidade real.
-- [ ] Separar drivers opcionais para não exigir todos os bancos em cada build.
+- [x] Separar drivers opcionais para não exigir todos os bancos em cada build.
 - [x] Criar testes de integração descartáveis para PostgreSQL e MySQL.
 - [x] Executar o mesmo contrato de integração para todos os drivers.
 
@@ -145,7 +146,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [ ] Testar versões mínimas e atuais dos compiladores suportados.
 - [ ] Criar regras CMake de instalação e exportação com `find_package(Worm)`.
 - [ ] Publicar pacotes reproduzíveis no vcpkg e, se houver demanda, Conan.
-- [ ] Permitir builds mínimos apenas com SQLite.
+- [x] Permitir builds mínimos apenas com SQLite.
 - [ ] Definir e seguir versionamento semântico.
 - [ ] Estabelecer critérios objetivos para versões alpha, beta e `1.0.0`.
 

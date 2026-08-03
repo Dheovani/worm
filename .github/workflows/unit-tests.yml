@@ -153,3 +153,59 @@ jobs:
 
       - name: Run driver contracts
         run: ctest --test-dir build -C Debug -L driver-contract --output-on-failure
+
+  optional-drivers:
+    name: Optional drivers / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: no drivers
+            cmake-options: >-
+              -DWORM_ENABLE_POSTGRESQL=OFF
+              -DWORM_ENABLE_MYSQL=OFF
+              -DWORM_ENABLE_SQLITE=OFF
+          - name: SQLite only
+            cmake-options: >-
+              -DWORM_ENABLE_POSTGRESQL=OFF
+              -DWORM_ENABLE_MYSQL=OFF
+              -DWORM_ENABLE_SQLITE=ON
+          - name: PostgreSQL only
+            cmake-options: >-
+              -DWORM_ENABLE_POSTGRESQL=ON
+              -DWORM_ENABLE_MYSQL=OFF
+              -DWORM_ENABLE_SQLITE=OFF
+          - name: MySQL only
+            cmake-options: >-
+              -DWORM_ENABLE_POSTGRESQL=OFF
+              -DWORM_ENABLE_MYSQL=ON
+              -DWORM_ENABLE_SQLITE=OFF
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          ${{ matrix.cmake-options }}
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build -C Debug --output-on-failure

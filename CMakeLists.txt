@@ -10,6 +10,37 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{VCPKG_ROOT})
   )
 endif()
 
+option(WORM_ENABLE_POSTGRESQL "Build the PostgreSQL driver" ON)
+option(WORM_ENABLE_MYSQL "Build the MySQL driver" ON)
+option(WORM_ENABLE_SQLITE "Build the SQLite driver" ON)
+
+set(WORM_VCPKG_FEATURES)
+if(WORM_ENABLE_POSTGRESQL)
+  list(APPEND WORM_VCPKG_FEATURES postgresql)
+endif()
+if(WORM_ENABLE_MYSQL)
+  list(APPEND WORM_VCPKG_FEATURES mysql)
+endif()
+if(WORM_ENABLE_SQLITE)
+  list(APPEND WORM_VCPKG_FEATURES sqlite)
+endif()
+
+# Keep manifest dependencies aligned with the selected drivers. FORCE is
+# intentional so toggling an option in an existing build directory cannot
+# leave a stale vcpkg feature enabled.
+set(
+  VCPKG_MANIFEST_FEATURES
+  "${WORM_VCPKG_FEATURES}"
+  CACHE STRING "vcpkg features selected by Worm driver options"
+  FORCE
+)
+set(
+  VCPKG_MANIFEST_NO_DEFAULT_FEATURES
+  ON
+  CACHE BOOL "Use only the vcpkg features selected by Worm"
+  FORCE
+)
+
 project(
   worm
   VERSION 0.1.0

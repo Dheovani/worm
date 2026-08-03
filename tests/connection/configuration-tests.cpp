@@ -1,6 +1,9 @@
 #include <connection/configuration.hpp>
 
+#if defined(WORM_HAS_SQLITE_DRIVER)
 #include <connection/drivers/sqlite-client.hpp>
+#endif
+
 #include <errors/unsupported-database-exception.hpp>
 
 #include <iostream>
@@ -12,6 +15,7 @@ int main()
     .dbname = ":memory:",
   };
 
+#if defined(WORM_HAS_SQLITE_DRIVER)
   std::unique_ptr<worm::connection::Client> client =
     worm::connection::makeClient(config, worm::connection::DatabaseType::SQLite);
 
@@ -20,6 +24,29 @@ int main()
     std::cerr << "Connection configuration returned the wrong SQLite client type.\n";
     return 1;
   }
+#else
+  try {
+    static_cast<void>(worm::connection::makeClient(config, worm::connection::DatabaseType::SQLite));
+    std::cerr << "Connection configuration created a disabled SQLite driver.\n";
+    return 1;
+  } catch (const worm::UnsupportedDatabaseException&) {}
+#endif
+
+#if !defined(WORM_HAS_POSTGRESQL_DRIVER)
+  try {
+    static_cast<void>(worm::connection::makeClient(config, worm::connection::DatabaseType::PostgreSQL));
+    std::cerr << "Connection configuration created a disabled PostgreSQL driver.\n";
+    return 1;
+  } catch (const worm::UnsupportedDatabaseException&) {}
+#endif
+
+#if !defined(WORM_HAS_MYSQL_DRIVER)
+  try {
+    static_cast<void>(worm::connection::makeClient(config, worm::connection::DatabaseType::MySQL));
+    std::cerr << "Connection configuration created a disabled MySQL driver.\n";
+    return 1;
+  } catch (const worm::UnsupportedDatabaseException&) {}
+#endif
 
   try {
     static_cast<void>(worm::connection::makeClient(config, static_cast<worm::connection::DatabaseType>(999)));

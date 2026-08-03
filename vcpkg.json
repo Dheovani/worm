@@ -4,9 +4,30 @@
   "version-semver": "0.1.0",
   "description": "A C++ ORM inspired by Doctrine",
   "builtin-baseline": "031f4afe03be385aee354f15be6e6b1fe57497c7",
-  "dependencies": [
-    "libmysql",
-    "libpqxx",
-    "sqlite3"
-  ]
+  "dependencies": [],
+  "default-features": [
+    "mysql",
+    "postgresql",
+    "sqlite"
+  ],
+  "features": {
+    "mysql": {
+      "description": "Build the MySQL driver",
+      "dependencies": [
+        "libmysql"
+      ]
+    },
+    "postgresql": {
+      "description": "Build the PostgreSQL driver",
+      "dependencies": [
+        "libpqxx"
+      ]
+    },
+    "sqlite": {
+      "description": "Build the SQLite driver",
+      "dependencies": [
+        "sqlite3"
+      ]
+    }
+  }
 }

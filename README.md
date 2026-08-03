@@ -52,7 +52,20 @@ Para gerar uma build Release:
 cmake --build --preset release
 ```
 
-O manifesto [vcpkg.json](vcpkg.json) instala automaticamente libmysql, libpqxx e SQLite durante a configuração.
+Por padrão, o manifesto [vcpkg.json](vcpkg.json) instala libmysql, libpqxx e
+SQLite. Cada driver pode ser desativado durante a configuração:
+
+```powershell
+cmake -S . -B build/sqlite `
+  -DWORM_ENABLE_POSTGRESQL=OFF `
+  -DWORM_ENABLE_MYSQL=OFF `
+  -DWORM_ENABLE_SQLITE=ON `
+  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+```
+
+As opções `WORM_ENABLE_POSTGRESQL`, `WORM_ENABLE_MYSQL` e
+`WORM_ENABLE_SQLITE` são independentes e vêm habilitadas por padrão. Drivers
+desativados não têm seus fontes, testes ou dependências adicionados à build.
 
 ## Testes
 
@@ -76,9 +89,9 @@ tests/
 └── errors/
 ```
 
-MySQL e PostgreSQL possuem atualmente testes de contrato que não abrem conexões
-externas. Testes de integração para esses bancos serão adicionados com instâncias
-descartáveis.
+SQLite, MySQL e PostgreSQL compartilham o mesmo contrato de integração. SQLite
+roda localmente; os outros bancos usam instâncias descartáveis na CI e podem ser
+executados localmente com as variáveis descritas em `.env.example`.
 
 ## Estrutura
 

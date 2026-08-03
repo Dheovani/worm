@@ -40,37 +40,30 @@ add_worm_connection_test(
   Worm.Connection.Transaction
 )
 
-add_worm_connection_test(
-  WormMySqlClientTests
-  drivers/mysql-client-tests.cpp
-  Worm.Connection.MySqlClient
-)
+if(WORM_ENABLE_MYSQL)
+  add_worm_connection_test(
+    WormMySqlClientTests
+    drivers/mysql-client-tests.cpp
+    Worm.Connection.MySqlClient
+  )
 
-add_worm_connection_test(
-  WormPgClientTests
-  drivers/pg-client-tests.cpp
-  Worm.Connection.PgClient
-)
+  add_worm_driver_contract_test(
+    WormMySqlDriverContractTests
+    drivers/mysql-contract-tests.cpp
+    Worm.Connection.Contract.MySQL
+    mysql
+  )
+endif()
 
-add_worm_connection_test(
-  WormSqliteClientTests
-  drivers/sqlite-client-tests.cpp
-  Worm.Connection.SqliteClient
-)
+if(WORM_ENABLE_POSTGRESQL)
+  add_worm_connection_test(
+    WormPgClientTests
+    drivers/pg-client-tests.cpp
+    Worm.Connection.PgClient
+  )
+endif()
 
-set_tests_properties(
-  Worm.Connection.SqliteClient
-  PROPERTIES LABELS "integration;connection;sqlite"
-)
-
-add_worm_driver_contract_test(
-  WormSqliteDriverContractTests
-  drivers/sqlite-contract-tests.cpp
-  Worm.Connection.Contract.SQLite
-  sqlite
-)
-
-if(NOT WIN32)
+if(WORM_ENABLE_POSTGRESQL AND NOT WIN32)
   add_worm_driver_contract_test(
     WormPostgresDriverContractTests
     drivers/pg-contract-tests.cpp
@@ -79,9 +72,22 @@ if(NOT WIN32)
   )
 endif()
 
-add_worm_driver_contract_test(
-  WormMySqlDriverContractTests
-  drivers/mysql-contract-tests.cpp
-  Worm.Connection.Contract.MySQL
-  mysql
-)
+if(WORM_ENABLE_SQLITE)
+  add_worm_connection_test(
+    WormSqliteClientTests
+    drivers/sqlite-client-tests.cpp
+    Worm.Connection.SqliteClient
+  )
+
+  set_tests_properties(
+    Worm.Connection.SqliteClient
+    PROPERTIES LABELS "integration;connection;sqlite"
+  )
+
+  add_worm_driver_contract_test(
+    WormSqliteDriverContractTests
+    drivers/sqlite-contract-tests.cpp
+    Worm.Connection.Contract.SQLite
+    sqlite
+  )
+endif()
