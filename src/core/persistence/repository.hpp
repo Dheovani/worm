@@ -21,14 +21,7 @@
 #include <utils/hash.hpp>
 
 #include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
-#include <tuple>
-#include <utility>
-#include <vector>
 
 namespace worm::core
 {

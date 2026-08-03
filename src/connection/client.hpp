@@ -1,11 +1,18 @@
 #pragma once
 
+#include <core/model/entity-metadata.hpp>
 #include <core/output/result-set.hpp>
 #include <core/query/statement.hpp>
 
 #include <cstdint>
 #include <map>
 #include <string>
+
+namespace worm::core
+{
+  template <PersistableEntity T>
+  class Repository;
+}
 
 namespace worm::connection
 {
@@ -26,6 +33,9 @@ namespace worm::connection
 
   class Client
   {
+    template <core::PersistableEntity T>
+    friend class core::Repository;
+
     friend class Transaction;
 
   public:
@@ -33,9 +43,6 @@ namespace worm::connection
 
     Client(const Client&) = delete;
     Client& operator=(const Client&) = delete;
-
-    [[nodiscard]]
-    virtual core::ResultSet execute(const core::Statement& statement) = 0;
 
     [[nodiscard]]
     virtual DatabaseType type() const noexcept = 0;
@@ -49,6 +56,10 @@ namespace worm::connection
     virtual void beginTransactionImpl() = 0;
     virtual void rollbackTransaction() = 0;
     virtual void commitTransaction() = 0;
+
+  private:
+    [[nodiscard]]
+    virtual core::ResultSet execute(const core::Statement& statement) = 0;
   };
 
 } // namespace worm::connection

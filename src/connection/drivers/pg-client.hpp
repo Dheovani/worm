@@ -20,9 +20,6 @@ namespace worm::connection
     PgClient& operator=(const PgClient&) = delete;
 
     [[nodiscard]]
-    core::ResultSet execute(const core::Statement& statement) override;
-
-    [[nodiscard]]
     DatabaseType type() const noexcept override;
 
   private:
@@ -32,6 +29,9 @@ namespace worm::connection
     void beginTransactionImpl() override;
     void rollbackTransaction() override;
     void commitTransaction() override;
+
+    [[nodiscard]]
+    core::ResultSet execute(const core::Statement& statement) override;
   };
 
 } // namespace worm::connection
