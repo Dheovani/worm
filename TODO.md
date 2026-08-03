@@ -81,7 +81,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [x] Adicionar destrutor virtual à interface `Client`.
 - [x] Remover `noexcept` de fábricas que podem falhar ao conectar.
 - [x] Padronizar nomes e tratamento básico entre os três drivers.
-- [ ] Substituir ownership manual nos drivers por RAII.
+- [x] Substituir ownership manual nos drivers por RAII.
 - [ ] Separar conexão, statement preparado e resultado em interfaces próprias.
 - [ ] Definir comportamento de thread safety e impedir uso concorrente inseguro.
 - [ ] Implementar configuração de timeout e cancelamento quando o driver suportar.
@@ -130,7 +130,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 
 ## Marco 6 - Qualidade, segurança e desempenho
 
-- [ ] Executar formatação e análise estática automaticamente na CI.
+- [x] Executar formatação e análise estática automaticamente na CI.
 - [ ] Ativar warnings rigorosos e tratar warnings do projeto como erros na CI.
 - [ ] Adicionar sanitizers no Linux e ferramentas equivalentes no Windows.
 - [ ] Medir cobertura e publicar lacunas relevantes, sem perseguir apenas percentual.
@@ -141,7 +141,7 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 
 ## Marco 7 - Portabilidade e distribuição
 
-- [ ] Configurar CI para Windows e Linux com MSVC, GCC e Clang.
+- [x] Configurar CI para Windows e Linux com MSVC, GCC e Clang.
 - [ ] Testar versões mínimas e atuais dos compiladores suportados.
 - [ ] Criar regras CMake de instalação e exportação com `find_package(Worm)`.
 - [ ] Publicar pacotes reproduzíveis no vcpkg e, se houver demanda, Conan.
