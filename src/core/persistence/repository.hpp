@@ -4,6 +4,7 @@
 #include <core/model/entity-metadata.hpp>
 #include <core/output/hydration.hpp>
 #include <core/output/result-set.hpp>
+#include <core/persistence/registry.hpp>
 #include <core/query/expression.hpp>
 #include <core/query/filter.hpp>
 #include <core/query/predicate.hpp>
@@ -11,7 +12,6 @@
 #include <core/query/source.hpp>
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
-#include <core/persistence/registry.hpp>
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
@@ -40,8 +40,7 @@ namespace worm::core
       ensureDependencies();
     }
 
-    explicit Repository(
-      std::shared_ptr<connection::Client> dbClient,
+    explicit Repository(std::shared_ptr<connection::Client> dbClient,
       const QueryBuilder& queryBuilder,
       std::shared_ptr<Registry> registry)
       : dbClient(std::move(dbClient)),
@@ -61,10 +60,8 @@ namespace worm::core
 
       const std::string alias = generateEntityAlias();
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
-      const Statement statement = queryBuilder.selectAll(
-        {T::table().name(), alias},
-        {},
-        Filter{Predicate::equal(column, encode(id))});
+      const Statement statement =
+        queryBuilder.selectAll({T::table().name(), alias}, {}, Filter{Predicate::equal(column, encode(id))});
 
       return findOne(statement);
     } catch (const worm::WormException&) {
@@ -180,17 +177,13 @@ namespace worm::core
 
     [[nodiscard]]
     std::uint64_t insertFromSelect(
-      const std::vector<std::string>& targetColumns,
-      const Statement& sourceStatement) const
+      const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
     try {
       if (!isOperationValid(sourceStatement, core::Operation::Select)) {
         throw worm::InvalidOperationException("The provided source statement performs an invalid operation.");
       }
 
-      const Statement statement = queryBuilder.insertFromSelect(
-        {T::table().name()},
-        targetColumns,
-        sourceStatement);
+      const Statement statement = queryBuilder.insertFromSelect({T::table().name()}, targetColumns, sourceStatement);
 
       return insert(statement);
     } catch (const worm::WormException&) {
@@ -198,8 +191,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::uint64_t insertFromSelect(
-      const std::vector<std::string>& targetColumns,
+    std::uint64_t insertFromSelect(const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
       const std::vector<Relation>& relations = {},
@@ -207,13 +199,7 @@ namespace worm::core
       const std::vector<Ordering>& ordering = {}) const
     try {
       const Statement statement = queryBuilder.insertFromSelect(
-        {T::table().name()},
-        targetColumns,
-        selectedFields,
-        source,
-        relations,
-        filter,
-        ordering);
+        {T::table().name()}, targetColumns, selectedFields, source, relations, filter, ordering);
 
       return insert(statement);
     } catch (const worm::WormException&) {
@@ -228,18 +214,14 @@ namespace worm::core
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
       const bool shouldUseSnapshot = registry->instances<T>().hasSnapshot(id);
       const std::vector<std::pair<std::string, Parameter>> fields =
-        shouldUseSnapshot
-          ? mapChangedFields(id, newStateEntity)
-          : mapFields(newStateEntity, core::Operation::Update);
+        shouldUseSnapshot ? mapChangedFields(id, newStateEntity) : mapFields(newStateEntity, core::Operation::Update);
 
       if (fields.empty()) {
         return 0;
       }
 
-      const Statement statement = queryBuilder.update(
-        {T::table().name(), alias},
-        fields,
-        Filter{Predicate::equal(column, encode(id))});
+      const Statement statement =
+        queryBuilder.update({T::table().name(), alias}, fields, Filter{Predicate::equal(column, encode(id))});
 
       const ResultSet resultSet = executeFiltered(statement, alias, "UPDATE");
       if (resultSet.affectedRows() > 0) {
@@ -330,8 +312,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::vector<std::pair<std::string, core::Parameter>>
-    mapFields(const T& entity, core::Operation kind) const
+    std::vector<std::pair<std::string, core::Parameter>> mapFields(const T& entity, core::Operation kind) const
     {
       const std::size_t persistentFieldsCount = core::persistent_field_count<T>;
       std::vector<std::pair<std::string, Parameter>> result{};
@@ -339,13 +320,15 @@ namespace worm::core
 
       std::apply(
         [&](const auto&... fields) {
-          ([&] {
-            if (fields.isGenerated() || (kind == core::Operation::Update && fields.isPrimaryKey())) {
-              return;
-            }
+          (
+            [&] {
+              if (fields.isGenerated() || (kind == core::Operation::Update && fields.isPrimaryKey())) {
+                return;
+              }
 
-            result.emplace_back(std::string{fields.columnName()}, encode(fields.get(entity)));
-          }(), ...);
+              result.emplace_back(std::string{fields.columnName()}, encode(fields.get(entity)));
+            }(),
+            ...);
         },
         worm::core::persistent_fields_of<T>());
 
@@ -354,16 +337,13 @@ namespace worm::core
 
     template <EncodableParameter ID>
     [[nodiscard]]
-    std::vector<std::pair<std::string, core::Parameter>>
-    mapChangedFields(const ID& id, const T& entity) const
+    std::vector<std::pair<std::string, core::Parameter>> mapChangedFields(const ID& id, const T& entity) const
     {
       std::vector<std::pair<std::string, Parameter>> result{};
       result.reserve(registry->instances<T>().changedFieldCount(id, entity));
 
       registry->instances<T>().forEachChangedField(
-        id,
-        entity,
-        [&](const auto& field, const auto&, const auto& currentValue) {
+        id, entity, [&](const auto& field, const auto&, const auto& currentValue) {
           if (!field.isPrimaryKey() && !field.isGenerated()) {
             result.emplace_back(std::string{field.columnName()}, encode(currentValue));
           }
@@ -382,13 +362,15 @@ namespace worm::core
 
       std::apply(
         [&](const auto&... fields) {
-          ([&] {
-            if (fields.isPrimaryKey() || fields.isGenerated()) {
-              return;
-            }
+          (
+            [&] {
+              if (fields.isPrimaryKey() || fields.isGenerated()) {
+                return;
+              }
 
-            fields.get(*registered) = fields.get(newStateEntity);
-          }(), ...);
+              fields.get(*registered) = fields.get(newStateEntity);
+            }(),
+            ...);
         },
         worm::core::persistent_fields_of<T>());
 
@@ -407,9 +389,7 @@ namespace worm::core
 
     [[nodiscard]]
     core::ResultSet executeFiltered(
-      const Statement& statement,
-      std::string_view filterQualifier,
-      std::string_view operation) const
+      const Statement& statement, std::string_view filterQualifier, std::string_view operation) const
     try {
       if (!core::hasFilterWhere(statement.sql, filterQualifier)) {
         throw worm::SqlBuildException(

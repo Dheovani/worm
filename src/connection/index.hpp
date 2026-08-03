@@ -6,8 +6,8 @@
  * from the connection namespace/dir
  */
 
-#include <connection/configuration.hpp>
 #include <connection/client.hpp>
+#include <connection/configuration.hpp>
 #include <connection/transaction.hpp>
 
 #if defined(WORM_HAS_MYSQL_DRIVER)

@@ -19,10 +19,10 @@ namespace
       return std::tuple{
         worm::reflection::field("id", &Entity::id),
         worm::reflection::field("email",
-                                &Entity::email,
-                                worm::reflection::FieldMetadata{
-                                  .columnName = "email_address",
-                                }),
+          &Entity::email,
+          worm::reflection::FieldMetadata{
+            .columnName = "email_address",
+          }),
         worm::reflection::field("name", &Entity::name),
       };
     }

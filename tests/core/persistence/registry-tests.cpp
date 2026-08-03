@@ -25,8 +25,7 @@ namespace
     static constexpr auto reflect() noexcept
     {
       return std::tuple{
-        worm::reflection::field("id", &User::id, {.primaryKey = true}),
-        worm::reflection::field("name", &User::name)};
+        worm::reflection::field("id", &User::id, {.primaryKey = true}), worm::reflection::field("name", &User::name)};
     }
   };
 
@@ -43,8 +42,7 @@ namespace
     static constexpr auto reflect() noexcept
     {
       return std::tuple{
-        worm::reflection::field("id", &Post::id, {.primaryKey = true}),
-        worm::reflection::field("title", &Post::title)};
+        worm::reflection::field("id", &Post::id, {.primaryKey = true}), worm::reflection::field("title", &Post::title)};
     }
   };
 } // namespace
@@ -67,14 +65,10 @@ int main()
 
   added->name = "Byron";
   std::vector<std::string> changedFields;
-  const std::size_t changedFieldsCount =
-    users.forEachChangedField(1, [&](const auto& descriptor, const auto&, const auto&) {
-      changedFields.emplace_back(descriptor.name());
-    });
+  const std::size_t changedFieldsCount = users.forEachChangedField(
+    1, [&](const auto& descriptor, const auto&, const auto&) { changedFields.emplace_back(descriptor.name()); });
 
-  if (!users.isDirty(1) ||
-      users.changedFieldCount(1) != 1 ||
-      changedFieldsCount != 1 ||
+  if (!users.isDirty(1) || users.changedFieldCount(1) != 1 || changedFieldsCount != 1 ||
       changedFields != std::vector<std::string>{"name"}) {
     std::cerr << "InstanceRegistry did not detect changed fields against the stored snapshot.\n";
     return 1;
@@ -124,11 +118,8 @@ int main()
   registryUsers.put(7, User{.id = 7, .name = "Ada"});
   registryPosts.put(7, Post{.id = 7, .title = "Post"});
 
-  if (&registryUsers != &sameRegistryUsers ||
-      !sameRegistryUsers.has(7) ||
-      sameRegistryUsers.get(7)->name != "Ada" ||
-      !registryPosts.has(7) ||
-      registryPosts.get(7)->title != "Post") {
+  if (&registryUsers != &sameRegistryUsers || !sameRegistryUsers.has(7) || sameRegistryUsers.get(7)->name != "Ada" ||
+      !registryPosts.has(7) || registryPosts.get(7)->title != "Post") {
     std::cerr << "Registry did not preserve isolated typed instance registries.\n";
     return 1;
   }

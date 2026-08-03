@@ -23,15 +23,12 @@ namespace worm::context
   public:
     explicit PersistenceContext(const connection::ConnectionConfig& connectionConfig)
       : connectionConfig_(connectionConfig),
-        client_(connection::makeClient(
-          connectionConfig_,
-          worm::DependencyInjector<connection::DatabaseType>().get())),
+        client_(connection::makeClient(connectionConfig_, worm::DependencyInjector<connection::DatabaseType>().get())),
         registry_(std::make_shared<core::Registry>()),
         queryBuilder_()
     {}
 
-    explicit PersistenceContext(
-      const connection::ConnectionConfig& connectionConfig,
+    explicit PersistenceContext(const connection::ConnectionConfig& connectionConfig,
       std::shared_ptr<connection::Client> client,
       const core::QueryBuilder& queryBuilder)
       : connectionConfig_(connectionConfig),
@@ -86,9 +83,8 @@ namespace worm::context
 
       auto repository = repositories_.find(index);
       if (repository == repositories_.end()) {
-        repository = repositories_.emplace(
-          index,
-          std::make_shared<core::Repository<T>>(client_, queryBuilder_, registry_)).first;
+        repository =
+          repositories_.emplace(index, std::make_shared<core::Repository<T>>(client_, queryBuilder_, registry_)).first;
       }
 
       return *std::static_pointer_cast<core::Repository<T>>(repository->second);

@@ -3,8 +3,8 @@
 #include <errors/invalid-arg-type-exception.hpp>
 #include <utils/helpers.hpp>
 
-#include <concepts>
 #include <chrono>
+#include <concepts>
 #include <cstdint>
 #include <iomanip>
 #include <limits>
@@ -20,21 +20,14 @@
 namespace worm::core
 {
 
-  using Parameter = std::variant<
-    std::nullptr_t,
-    std::int64_t,
-    double,
-    bool,
-    std::string>;
+  using Parameter = std::variant<std::nullptr_t, std::int64_t, double, bool, std::string>;
 
   namespace detail
   {
     template <typename T>
     inline constexpr bool is_valid_parameter_type =
-      std::is_enum_v<std::remove_cvref_t<T>> ||
-      std::same_as<std::remove_cvref_t<T>, std::nullptr_t> ||
-      std::same_as<std::remove_cvref_t<T>, bool> ||
-      utils::is_date_type<T> ||
+      std::is_enum_v<std::remove_cvref_t<T>> || std::same_as<std::remove_cvref_t<T>, std::nullptr_t> ||
+      std::same_as<std::remove_cvref_t<T>, bool> || utils::is_date_type<T> ||
       std::floating_point<std::remove_cvref_t<T>> ||
       (std::integral<std::remove_cvref_t<T>> && !std::same_as<std::remove_cvref_t<T>, bool>);
 
@@ -55,10 +48,8 @@ namespace worm::core
     {
       using Value = std::remove_cvref_t<T>;
 
-      if constexpr (
-        is_valid_parameter_type<T> ||
-        std::same_as<Value, std::string> ||
-        std::same_as<Value, std::string_view>) {
+      if constexpr (is_valid_parameter_type<T> || std::same_as<Value, std::string> ||
+                    std::same_as<Value, std::string_view>) {
         return true;
       } else if constexpr (utils::is_optional_v<T>) {
         return is_decodable_parameter<utils::remove_optional_t<T>>();
@@ -72,9 +63,9 @@ namespace worm::core
     {
       const std::chrono::year_month_day date{value};
       std::ostringstream output;
-      output << std::setw(4) << std::setfill('0') << static_cast<int>(date.year()) << '-'
-             << std::setw(2) << std::setfill('0') << static_cast<unsigned>(date.month()) << '-'
-             << std::setw(2) << std::setfill('0') << static_cast<unsigned>(date.day());
+      output << std::setw(4) << std::setfill('0') << static_cast<int>(date.year()) << '-' << std::setw(2)
+             << std::setfill('0') << static_cast<unsigned>(date.month()) << '-' << std::setw(2) << std::setfill('0')
+             << static_cast<unsigned>(date.day());
 
       return output.str();
     }
@@ -86,8 +77,7 @@ namespace worm::core
         return std::nullopt;
       }
 
-      const auto digit = [](char character) -> std::optional<int>
-      {
+      const auto digit = [](char character) -> std::optional<int> {
         if (character < '0' || character > '9') {
           return std::nullopt;
         }
@@ -110,10 +100,7 @@ namespace worm::core
       const int year = (*year0 * 1000) + (*year1 * 100) + (*year2 * 10) + *year3;
       const unsigned month = static_cast<unsigned>((*month0 * 10) + *month1);
       const unsigned day = static_cast<unsigned>((*day0 * 10) + *day1);
-      const std::chrono::year_month_day date{
-        std::chrono::year{year},
-        std::chrono::month{month},
-        std::chrono::day{day}};
+      const std::chrono::year_month_day date{std::chrono::year{year}, std::chrono::month{month}, std::chrono::day{day}};
       if (!date.ok()) {
         return std::nullopt;
       }
@@ -198,8 +185,7 @@ namespace worm::core
       return static_cast<Value>(std::get<Underlying>(decoded));
     } else {
       return std::visit(
-        []<typename Stored>(const Stored& stored) -> DecodeResult<Value>
-        {
+        []<typename Stored>(const Stored& stored) -> DecodeResult<Value> {
           using Source = std::remove_cvref_t<Stored>;
 
           if constexpr (std::same_as<Value, std::nullptr_t>) {

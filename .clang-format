@@ -10,6 +10,11 @@ UseTab: Never
 ColumnLimit: 120
 BinPackArguments: false
 BinPackParameters: false
+AlignAfterOpenBracket: DontAlign
+AlwaysBreakTemplateDeclarations: Yes
+BreakAfterAttributes: Always
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: Never
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterClass: true

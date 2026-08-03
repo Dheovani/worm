@@ -20,10 +20,10 @@ namespace
         worm::reflection::field("id", &Entity::id),
         worm::reflection::field("name", &Entity::name),
         worm::reflection::field("transientValue",
-                                &Entity::transientValue,
-                                worm::reflection::FieldMetadata{
-                                  .ignored = true,
-                                }),
+          &Entity::transientValue,
+          worm::reflection::FieldMetadata{
+            .ignored = true,
+          }),
       };
     }
   };

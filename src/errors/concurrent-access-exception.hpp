@@ -9,4 +9,4 @@ namespace worm
   public:
     using WormException::WormException;
   };
-}
+} // namespace worm

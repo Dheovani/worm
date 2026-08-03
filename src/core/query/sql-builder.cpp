@@ -128,9 +128,7 @@ namespace worm::core
     return rendered;
   }
 
-  std::string SqlBuilder::renderExpression(
-    const Expression& expression,
-    std::size_t firstParameterIndex) const
+  std::string SqlBuilder::renderExpression(const Expression& expression, std::size_t firstParameterIndex) const
   {
     std::string rendered;
     rendered.reserve(expression.sql.size());
@@ -176,9 +174,7 @@ namespace worm::core
     return list;
   }
 
-  std::string SqlBuilder::renderFilter(
-    const Filter& filter,
-    std::size_t firstParameterIndex) const
+  std::string SqlBuilder::renderFilter(const Filter& filter, std::size_t firstParameterIndex) const
   {
     return renderExpression(filter.expression(), firstParameterIndex);
   }
@@ -205,8 +201,7 @@ namespace worm::core
     return sql;
   }
 
-  Statement SqlBuilder::selectAll(
-    const Source& source,
+  Statement SqlBuilder::selectAll(const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
     const std::vector<Ordering>& ordering) const
@@ -236,8 +231,7 @@ namespace worm::core
     return {std::move(sql), std::move(parameters)};
   }
 
-  Statement SqlBuilder::select(
-    const std::vector<worm::core::Field>& fields,
+  Statement SqlBuilder::select(const std::vector<worm::core::Field>& fields,
     const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
@@ -269,15 +263,13 @@ namespace worm::core
   }
 
   Statement SqlBuilder::insert(
-    const Source& source,
-    const std::vector<std::pair<std::string, Parameter>>& columns) const
+    const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
     if (columns.empty()) {
       throw worm::SqlBuildException("INSERT operation must receive at least one column.");
     }
 
-    std::string fields = "(",
-                values = "(";
+    std::string fields = "(", values = "(";
 
     for (std::size_t index = 0; index < columns.size(); ++index) {
       const auto& field = columns[index].first;
@@ -294,15 +286,11 @@ namespace worm::core
     fields += ")";
     values += ")";
 
-    return {
-      "insert into " + std::string{source.name} + fields + " values " + values,
-      columnParameters(columns)};
+    return {"insert into " + std::string{source.name} + fields + " values " + values, columnParameters(columns)};
   }
 
   Statement SqlBuilder::insertFromSelect(
-    const Source& target,
-    const std::vector<std::string>& targetColumns,
-    const Statement& sourceStatement) const
+    const Source& target, const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
   {
     if (targetColumns.empty()) {
       throw worm::SqlBuildException("INSERT FROM SELECT operation must receive at least one target column.");
@@ -322,12 +310,10 @@ namespace worm::core
     columns += ")";
 
     return {
-      "insert into " + std::string{target.name} + columns + " " + sourceStatement.sql,
-      sourceStatement.parameters};
+      "insert into " + std::string{target.name} + columns + " " + sourceStatement.sql, sourceStatement.parameters};
   }
 
-  Statement SqlBuilder::insertFromSelect(
-    const Source& target,
+  Statement SqlBuilder::insertFromSelect(const Source& target,
     const std::vector<std::string>& targetColumns,
     const std::vector<Field>& selectedFields,
     const Source& source,
@@ -340,8 +326,7 @@ namespace worm::core
     return insertFromSelect(target, targetColumns, selectStatement);
   }
 
-  Statement SqlBuilder::update(
-    const Source& source,
+  Statement SqlBuilder::update(const Source& source,
     const std::vector<std::pair<std::string, Parameter>>& columns,
     const std::optional<Filter>& filter) const
   {

@@ -82,11 +82,8 @@ int main()
       result = 1;
     }
 
-    if (config.host != "localhost" ||
-        config.username != "worm" ||
-        config.password != "secret" ||
-        config.dbname != ":memory:" ||
-        config.port != "0") {
+    if (config.host != "localhost" || config.username != "worm" || config.password != "secret" ||
+        config.dbname != ":memory:" || config.port != "0") {
       std::cerr << "ConnectionConfig dependency injection returned invalid environment values.\n";
       result = 1;
     }

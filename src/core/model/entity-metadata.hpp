@@ -57,8 +57,7 @@ namespace worm::core
       using EntityType = std::remove_cvref_t<T>;
       using Fields = std::remove_cvref_t<decltype(EntityType::reflect())>;
 
-      return selected_fields_impl<Selector, EntityType>(
-        std::make_index_sequence<std::tuple_size_v<Fields>>{});
+      return selected_fields_impl<Selector, EntityType>(std::make_index_sequence<std::tuple_size_v<Fields>>{});
     }
 
   } // namespace detail

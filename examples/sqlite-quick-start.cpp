@@ -34,8 +34,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true}),
         worm::reflection::field("name", &User::name),
         worm::reflection::field("email", &User::email)};
     }
@@ -55,8 +54,7 @@ namespace
       }
 
       char* errorMessage = nullptr;
-      const int result = sqlite3_exec(
-        connection,
+      const int result = sqlite3_exec(connection,
         "CREATE TABLE users ("
         "id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NULL)",
         nullptr,
@@ -64,9 +62,7 @@ namespace
         &errorMessage);
 
       if (result != SQLITE_OK) {
-        const std::string message = errorMessage != nullptr
-          ? errorMessage
-          : "Could not create the users table.";
+        const std::string message = errorMessage != nullptr ? errorMessage : "Could not create the users table.";
         sqlite3_free(errorMessage);
         sqlite3_close(connection);
         throw std::runtime_error(message);
@@ -93,8 +89,7 @@ namespace
 } // namespace
 
 int main()
-try
-{
+try {
   const ExampleDatabase database;
   const worm::connection::ConnectionConfig config{
     .dbname = database.path().string(),
@@ -116,9 +111,7 @@ try
   const std::uint64_t updatedRows = users.update(ada->id, *ada);
 
   const worm::core::Statement namedAda = queryBuilder.selectAll(
-    {User::table().name()},
-    {},
-    worm::core::Filter{worm::core::Predicate::equal("users.name", ada->name)});
+    {User::table().name()}, {}, worm::core::Filter{worm::core::Predicate::equal("users.name", ada->name)});
   const std::vector<std::shared_ptr<User>> matches = users.findAll(namedAda);
 
   {

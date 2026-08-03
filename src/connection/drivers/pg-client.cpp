@@ -13,12 +13,8 @@ namespace
 {
   std::string pgConnectionData(const worm::connection::ConnectionConfig& databaseConfig)
   {
-    return
-      " host=" + databaseConfig.host +
-      " port=" + databaseConfig.port +
-      " dbname=" + databaseConfig.dbname +
-      " user=" + databaseConfig.username +
-      " password=" + databaseConfig.password;
+    return " host=" + databaseConfig.host + " port=" + databaseConfig.port + " dbname=" + databaseConfig.dbname +
+           " user=" + databaseConfig.username + " password=" + databaseConfig.password;
   }
 
   pqxx::params pgParameters(const std::vector<worm::core::Parameter>& parameters)
@@ -28,8 +24,7 @@ namespace
 
     for (const worm::core::Parameter& parameter : parameters) {
       std::visit(
-        [&values](const auto& value)
-        {
+        [&values](const auto& value) {
           using Value = std::decay_t<decltype(value)>;
 
           if constexpr (std::is_same_v<Value, std::nullptr_t>) {
@@ -48,11 +43,8 @@ namespace
 namespace worm::connection
 {
   PgClient::PgClient(const ConnectionConfig& databaseConfig)
-  try
-    : connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig))),
-      innerTransaction_(nullptr)
-  {}
-  catch (const std::exception& error) {
+  try : connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig))), innerTransaction_(nullptr) {
+  } catch (const std::exception& error) {
     throw DatabaseConnectionException(error.what());
   }
 

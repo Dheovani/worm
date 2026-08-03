@@ -9,7 +9,8 @@
 
 namespace
 {
-  template <typename T, typename Expected> bool holdsValue(const T& value, const Expected& expected)
+  template <typename T, typename Expected>
+  bool holdsValue(const T& value, const Expected& expected)
   {
     return std::holds_alternative<Expected>(value) && std::get<Expected>(value) == expected;
   }

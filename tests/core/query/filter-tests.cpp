@@ -20,8 +20,7 @@ int main()
     return 1;
   }
 
-  if (expression.parameters.size() != 2 ||
-      std::get<std::int64_t>(expression.parameters[0]) != 18 ||
+  if (expression.parameters.size() != 2 || std::get<std::int64_t>(expression.parameters[0]) != 18 ||
       std::get<bool>(expression.parameters[1]) != true) {
     std::cerr << "Filter did not preserve predicate parameters correctly.\n";
     return 1;

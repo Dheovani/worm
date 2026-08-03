@@ -9,23 +9,19 @@
 int main()
 {
   const worm::core::ResultSet emptyResult;
-  if (!emptyResult.empty() ||
-      emptyResult.rowCount() != 0 ||
-      emptyResult.affectedRows() != 0 ||
+  if (!emptyResult.empty() || emptyResult.rowCount() != 0 || emptyResult.affectedRows() != 0 ||
       emptyResult.begin() != emptyResult.end()) {
     std::cerr << "Empty ResultSet did not expose an empty container contract.\n";
     return 1;
   }
 
-  const worm::core::ResultSet result{
-    {
-      worm::core::ResultRow{
-        {
-          worm::core::ResultColumn{"id", std::int64_t{7}},
-          worm::core::ResultColumn{"name", std::string{"Ada"}},
-          worm::core::ResultColumn{"deleted_at", nullptr},
-        }},
-    }};
+  const worm::core::ResultSet result{{
+    worm::core::ResultRow{{
+      worm::core::ResultColumn{"id", std::int64_t{7}},
+      worm::core::ResultColumn{"name", std::string{"Ada"}},
+      worm::core::ResultColumn{"deleted_at", nullptr},
+    }},
+  }};
 
   if (result.empty() || result.rowCount() != 1 || result.affectedRows() != 0) {
     std::cerr << "ResultSet did not preserve rows.\n";

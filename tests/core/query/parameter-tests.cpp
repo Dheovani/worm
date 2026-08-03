@@ -50,17 +50,13 @@ int main()
   const Parameter encodedOptionalNull = worm::core::encode(std::optional<std::string>{});
   const Parameter encodedOptionalText = worm::core::encode(std::optional<std::string>{"Ada"});
   const Parameter encodedEnum = worm::core::encode(Status::Active);
-  const Parameter encodedDate = worm::core::encode(
-    std::chrono::sys_days{std::chrono::year{2026} / std::chrono::July / std::chrono::day{28}});
+  const Parameter encodedDate =
+    worm::core::encode(std::chrono::sys_days{std::chrono::year{2026} / std::chrono::July / std::chrono::day{28}});
 
-  if (!std::holds_alternative<std::nullptr_t>(encodedNull) ||
-      !std::holds_alternative<std::string>(encodedEmptyText) ||
-      !std::get<std::string>(encodedEmptyText).empty() ||
-      std::get<std::int64_t>(encodedZero) != 0 ||
-      std::get<bool>(encodedFalse) != false ||
-      !std::holds_alternative<std::nullptr_t>(encodedOptionalNull) ||
-      std::get<std::string>(encodedOptionalText) != "Ada" ||
-      std::get<std::int64_t>(encodedEnum) != 1 ||
+  if (!std::holds_alternative<std::nullptr_t>(encodedNull) || !std::holds_alternative<std::string>(encodedEmptyText) ||
+      !std::get<std::string>(encodedEmptyText).empty() || std::get<std::int64_t>(encodedZero) != 0 ||
+      std::get<bool>(encodedFalse) != false || !std::holds_alternative<std::nullptr_t>(encodedOptionalNull) ||
+      std::get<std::string>(encodedOptionalText) != "Ada" || std::get<std::int64_t>(encodedEnum) != 1 ||
       std::get<std::string>(encodedDate) != "2026-07-28") {
     std::cerr << "Parameter encoding did not preserve distinct SQL values.\n";
     return 1;
@@ -77,8 +73,7 @@ int main()
   const auto decodedDate = worm::core::decode<std::chrono::sys_days>(Parameter{std::string{"2026-07-28"}});
   const auto invalidDate = worm::core::decode<std::chrono::sys_days>(Parameter{std::string{"2026-02-31"}});
 
-  if (std::get<int>(decodedInteger) != 7 ||
-      !std::holds_alternative<std::nullptr_t>(decodedNull) ||
+  if (std::get<int>(decodedInteger) != 7 || !std::holds_alternative<std::nullptr_t>(decodedNull) ||
       std::get<std::optional<std::string>>(decodedOptionalNull).has_value() ||
       std::get<std::optional<std::string>>(decodedOptionalText).value() != "Grace" ||
       std::get<Status>(decodedEnum) != Status::Active ||

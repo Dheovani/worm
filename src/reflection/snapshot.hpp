@@ -15,21 +15,25 @@ namespace worm::reflection
   namespace detail
   {
     template <typename Entity, std::size_t... Indexes>
-    [[nodiscard]] constexpr bool has_snapshot_fields(std::index_sequence<Indexes...>)
+    [[nodiscard]]
+    constexpr bool has_snapshot_fields(std::index_sequence<Indexes...>)
     {
       using Fields = std::remove_cvref_t<decltype(Entity::reflect())>;
       return (std::copy_constructible<std::remove_cv_t<typename std::tuple_element_t<Indexes, Fields>::value_type>> &&
-              ...) &&
+               ...) &&
              (std::equality_comparable<std::remove_cv_t<typename std::tuple_element_t<Indexes, Fields>::value_type>> &&
-              ...);
+               ...);
     }
 
     template <typename Entity, std::size_t... Indexes>
-    [[nodiscard]] constexpr auto snapshot_type(std::index_sequence<Indexes...>) -> std::tuple<std::remove_cv_t<
-      typename std::tuple_element_t<Indexes, std::remove_cvref_t<decltype(Entity::reflect())>>::value_type>...>;
+    [[nodiscard]]
+    constexpr auto snapshot_type(std::index_sequence<Indexes...>)
+      -> std::tuple<std::remove_cv_t<
+        typename std::tuple_element_t<Indexes, std::remove_cvref_t<decltype(Entity::reflect())>>::value_type>...>;
 
     template <typename Entity, std::size_t... Indexes>
-    [[nodiscard]] constexpr auto make_snapshot_impl(const Entity& object, std::index_sequence<Indexes...>)
+    [[nodiscard]]
+    constexpr auto make_snapshot_impl(const Entity& object, std::index_sequence<Indexes...>)
     {
       const auto fields = Entity::reflect();
       return std::tuple{std::get<Indexes>(fields).get(object)...};
@@ -37,10 +41,7 @@ namespace worm::reflection
 
     template <typename Entity, typename Snapshot, typename Visitor, std::size_t... Indexes>
     constexpr std::size_t for_each_changed_field_impl(
-      const Entity& object,
-      const Snapshot& snapshot,
-      Visitor&& visitor,
-      std::index_sequence<Indexes...>)
+      const Entity& object, const Snapshot& snapshot, Visitor&& visitor, std::index_sequence<Indexes...>)
     {
       const auto fields = Entity::reflect();
       std::size_t changed = 0;

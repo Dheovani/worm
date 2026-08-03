@@ -15,7 +15,8 @@ namespace worm::reflection
 {
   struct FieldNameHasher
   {
-    [[nodiscard]] constexpr std::uint64_t operator()(std::string_view value) const noexcept
+    [[nodiscard]]
+    constexpr std::uint64_t operator()(std::string_view value) const noexcept
     {
       std::uint64_t hash = 14695981039346656037ull;
       for (const char character : value) {
@@ -29,8 +30,9 @@ namespace worm::reflection
   namespace detail
   {
     template <Reflectable T, typename NameSelector, typename Hasher>
-    [[nodiscard]] constexpr std::optional<std::size_t>
-    find_field_index_impl(std::string_view name, NameSelector&& selectName, Hasher hasher)
+    [[nodiscard]]
+    constexpr std::optional<std::size_t> find_field_index_impl(
+      std::string_view name, NameSelector&& selectName, Hasher hasher)
     {
       const auto fields = std::remove_cvref_t<T>::reflect();
       const auto requestedHash = std::invoke(hasher, name);
@@ -55,8 +57,8 @@ namespace worm::reflection
     }
 
     template <Reflectable T, typename NameSelector, typename Visitor, typename Hasher>
-    constexpr bool
-    visit_field_descriptor_impl(std::string_view name, NameSelector&& selectName, Visitor&& visitor, Hasher hasher)
+    constexpr bool visit_field_descriptor_impl(
+      std::string_view name, NameSelector&& selectName, Visitor&& visitor, Hasher hasher)
     {
       const auto fields = std::remove_cvref_t<T>::reflect();
       const auto requestedHash = std::invoke(hasher, name);
@@ -81,13 +83,15 @@ namespace worm::reflection
   } // namespace detail
 
   template <Reflectable T, typename Hasher = FieldNameHasher>
-  [[nodiscard]] constexpr std::optional<std::size_t> find_field_index(std::string_view name, Hasher hasher = {})
+  [[nodiscard]]
+  constexpr std::optional<std::size_t> find_field_index(std::string_view name, Hasher hasher = {})
   {
     return detail::find_field_index_impl<T>(name, [](const auto& descriptor) { return descriptor.name(); }, hasher);
   }
 
   template <Reflectable T, typename Hasher = FieldNameHasher>
-  [[nodiscard]] constexpr std::optional<std::size_t> find_column_index(std::string_view name, Hasher hasher = {})
+  [[nodiscard]]
+  constexpr std::optional<std::size_t> find_column_index(std::string_view name, Hasher hasher = {})
   {
     return detail::find_field_index_impl<T>(
       name, [](const auto& descriptor) { return descriptor.columnName(); }, hasher);

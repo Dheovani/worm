@@ -28,8 +28,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &Person::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &Person::id, {.primaryKey = true}),
         worm::reflection::field("name", &Person::name),
         worm::reflection::field("active", &Person::active)};
     }
@@ -44,8 +43,7 @@ namespace
     }
 
     char* errorMessage = nullptr;
-    const int result = sqlite3_exec(
-      connection,
+    const int result = sqlite3_exec(connection,
       "CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)",
       nullptr,
       nullptr,
@@ -64,8 +62,7 @@ namespace
 } // namespace
 
 int main()
-try
-{
+try {
   using Client = worm::connection::SqliteClient;
 
   static_assert(std::is_base_of_v<worm::connection::Client, Client>);
@@ -73,8 +70,7 @@ try
   static_assert(!std::is_copy_constructible_v<Client>);
   static_assert(!std::is_copy_assignable_v<Client>);
 
-  const std::filesystem::path databasePath =
-    std::filesystem::temp_directory_path() / "worm-sqlite-client-tests.db";
+  const std::filesystem::path databasePath = std::filesystem::temp_directory_path() / "worm-sqlite-client-tests.db";
 
   std::filesystem::remove(databasePath);
   if (!prepareDatabase(databasePath)) {
@@ -101,15 +97,14 @@ try
     const std::shared_ptr<Person> ada = repository.insert(Person{.id = 1, .name = "Ada", .active = 1});
     const std::shared_ptr<Person> grace = repository.insert(Person{.id = 2, .name = "Grace", .active = 0});
 
-    if (!ada || ada->id != 1 || ada->name != "Ada" || !ada->active ||
-        !grace || grace->id != 2 || grace->name != "Grace" || grace->active) {
+    if (!ada || ada->id != 1 || ada->name != "Ada" || !ada->active || !grace || grace->id != 2 ||
+        grace->name != "Grace" || grace->active) {
       std::cerr << "Repository did not insert and hydrate entities through SqliteClient.\n";
       return 1;
     }
 
-    const std::uint64_t updatedRows = repository.update(worm::core::Statement{
-      "UPDATE people SET active = ? WHERE people.name = ?",
-      {true, std::string{"Grace"}}});
+    const std::uint64_t updatedRows = repository.update(
+      worm::core::Statement{"UPDATE people SET active = ? WHERE people.name = ?", {true, std::string{"Grace"}}});
 
     if (updatedRows != 1) {
       std::cerr << "SqliteClient did not report update feedback through Repository.\n";
@@ -123,9 +118,7 @@ try
       return 1;
     }
 
-    repository.delete_(worm::core::Statement{
-      "DELETE FROM people WHERE people.name = ?",
-      {std::string{"Grace"}}});
+    repository.delete_(worm::core::Statement{"DELETE FROM people WHERE people.name = ?", {std::string{"Grace"}}});
 
     const worm::core::Repository<Person> deletionVerificationRepository{client, queryBuilder};
     if (deletionVerificationRepository.find(std::int64_t{2}) != nullptr) {

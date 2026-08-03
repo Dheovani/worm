@@ -36,7 +36,8 @@ namespace worm
   class DependencyInjector
   {
   public:
-    [[nodiscard]] Type get() const
+    [[nodiscard]]
+    Type get() const
     {
       if constexpr (std::default_initializable<Type>) {
         return Type{};
@@ -65,8 +66,7 @@ namespace worm
     [[nodiscard]]
     connection::ConnectionConfig get() const
     {
-      return {
-        .host = detail::envValue("HOST"),
+      return {.host = detail::envValue("HOST"),
         .username = detail::envValue("USERNAME"),
         .password = detail::envValue("PASSWORD"),
         .dbname = detail::envValue("DBNAME"),
@@ -99,8 +99,7 @@ namespace worm
     connection::Client& get() const
     {
       static std::unique_ptr<connection::Client> client = connection::makeClient(
-        DependencyInjector<connection::ConnectionConfig>().get(),
-        DependencyInjector<connection::DatabaseType>().get());
+        DependencyInjector<connection::ConnectionConfig>().get(), DependencyInjector<connection::DatabaseType>().get());
 
       return *client;
     }

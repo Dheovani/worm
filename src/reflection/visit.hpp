@@ -20,9 +20,6 @@ namespace worm::reflection
     const auto fields = std::remove_cvref_t<T>::reflect();
 
     std::apply(
-      [&object, &visitor](const auto&... field) {
-        (std::invoke(visitor, field, field.get(object)), ...);
-      },
-      fields);
+      [&object, &visitor](const auto&... field) { (std::invoke(visitor, field, field.get(object)), ...); }, fields);
   }
 } // namespace worm::reflection

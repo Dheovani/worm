@@ -21,8 +21,7 @@ namespace
     [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true}),
         worm::reflection::field("name", &User::name),
         worm::reflection::field("transientValue", &User::transientValue, {.ignored = true})};
     }
@@ -76,8 +75,7 @@ namespace
     [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{
-        worm::reflection::field("id", &DuplicatedPrimaryKey::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &DuplicatedPrimaryKey::id, {.primaryKey = true}),
         worm::reflection::field("externalId", &DuplicatedPrimaryKey::externalId, {.primaryKey = true})};
     }
   };
@@ -96,8 +94,7 @@ namespace
     [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{
-        worm::reflection::field("id", &IgnoredPrimaryKey::id, {.primaryKey = true, .ignored = true}),
+      return std::tuple{worm::reflection::field("id", &IgnoredPrimaryKey::id, {.primaryKey = true, .ignored = true}),
         worm::reflection::field("name", &IgnoredPrimaryKey::name)};
     }
   };

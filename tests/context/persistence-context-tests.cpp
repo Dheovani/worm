@@ -25,8 +25,7 @@ namespace
     static constexpr auto reflect() noexcept
     {
       return std::tuple{
-        worm::reflection::field("id", &User::id, {.primaryKey = true}),
-        worm::reflection::field("name", &User::name)};
+        worm::reflection::field("id", &User::id, {.primaryKey = true}), worm::reflection::field("name", &User::name)};
     }
   };
 
@@ -40,14 +39,11 @@ namespace
     }
 
   private:
-    void beginTransactionImpl() override
-    {}
+    void beginTransactionImpl() override {}
 
-    void rollbackTransactionImpl() override
-    {}
+    void rollbackTransactionImpl() override {}
 
-    void commitTransactionImpl() override
-    {}
+    void commitTransactionImpl() override {}
 
     [[nodiscard]]
     worm::core::ResultSet executeImpl(const worm::core::Statement&) override

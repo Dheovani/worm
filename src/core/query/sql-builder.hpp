@@ -23,34 +23,27 @@ namespace worm::core
   {
   public:
     [[nodiscard]]
-    virtual Statement selectAll(
-      const Source& source,
-      const std::vector<Relation>& relations,
-      const std::optional<Filter>& filter = std::nullopt,
-      const std::vector<Ordering>& ordering = {}) const;
-    
-    [[nodiscard]]
-    virtual Statement select(
-      const std::vector<worm::core::Field>& fields,
-      const Source& source,
+    virtual Statement selectAll(const Source& source,
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {}) const;
 
     [[nodiscard]]
-    virtual Statement insert(
+    virtual Statement select(const std::vector<worm::core::Field>& fields,
       const Source& source,
-      const std::vector<std::pair<std::string, Parameter>>& columns) const;
+      const std::vector<Relation>& relations,
+      const std::optional<Filter>& filter = std::nullopt,
+      const std::vector<Ordering>& ordering = {}) const;
+
+    [[nodiscard]]
+    virtual Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
 
     [[nodiscard]]
     virtual Statement insertFromSelect(
-      const Source& target,
-      const std::vector<std::string>& targetColumns,
-      const Statement& sourceStatement) const;
+      const Source& target, const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const;
 
     [[nodiscard]]
-    virtual Statement insertFromSelect(
-      const Source& target,
+    virtual Statement insertFromSelect(const Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
@@ -59,8 +52,7 @@ namespace worm::core
       const std::vector<Ordering>& ordering = {}) const;
 
     [[nodiscard]]
-    virtual Statement update(
-      const Source& source,
+    virtual Statement update(const Source& source,
       const std::vector<std::pair<std::string, Parameter>>& columns,
       const std::optional<Filter>& filter = std::nullopt) const;
 

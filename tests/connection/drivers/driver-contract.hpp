@@ -29,8 +29,7 @@ namespace worm::tests
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        reflection::field("id", &DriverContractEntity::id, {.primaryKey = true}),
+      return std::tuple{reflection::field("id", &DriverContractEntity::id, {.primaryKey = true}),
         reflection::field("label", &DriverContractEntity::label),
         reflection::field("note", &DriverContractEntity::note)};
     }
@@ -45,9 +44,7 @@ namespace worm::tests
 
   template <typename Client, core::SqlBuilderI Builder>
   void runDriverContract(
-    const std::shared_ptr<Client>& client,
-    const Builder& sqlBuilder,
-    connection::DatabaseType expectedDatabaseType)
+    const std::shared_ptr<Client>& client, const Builder& sqlBuilder, connection::DatabaseType expectedDatabaseType)
   {
     requireContract(client->type() == expectedDatabaseType, "Driver returned the wrong database type.");
 
@@ -68,19 +65,15 @@ namespace worm::tests
     requireContract(first != nullptr, "Driver did not return the first inserted entity.");
     requireContract(second != nullptr, "Driver did not return the second inserted entity.");
     requireContract(
-      first->label == "Ada's record" && first->note == "bound text",
-      "Driver did not preserve bound text parameters.");
+      first->label == "Ada's record" && first->note == "bound text", "Driver did not preserve bound text parameters.");
     requireContract(
-      second->label == "Grace" && !second->note.has_value(),
-      "Driver did not preserve SQL NULL separately from text.");
+      second->label == "Grace" && !second->note.has_value(), "Driver did not preserve SQL NULL separately from text.");
 
     const std::uint64_t updatedRows = repository.update(
-      std::string{"first"},
-      DriverContractEntity{.id = "first", .label = "Ada Lovelace", .note = std::nullopt});
+      std::string{"first"}, DriverContractEntity{.id = "first", .label = "Ada Lovelace", .note = std::nullopt});
 
     requireContract(updatedRows == 1, "Driver did not report one affected row for UPDATE.");
-    requireContract(
-      first->label == "Ada Lovelace" && !first->note.has_value(),
+    requireContract(first->label == "Ada Lovelace" && !first->note.has_value(),
       "Repository did not synchronize the entity after UPDATE.");
 
     {
@@ -93,8 +86,7 @@ namespace worm::tests
     }
 
     const core::Repository<DriverContractEntity> rollbackVerification{client, queryBuilder};
-    requireContract(
-      rollbackVerification.find(std::string{"rolled-back"}) == nullptr,
+    requireContract(rollbackVerification.find(std::string{"rolled-back"}) == nullptr,
       "Driver did not roll back an unfinished transaction.");
 
     {
@@ -109,15 +101,12 @@ namespace worm::tests
 
     const core::Repository<DriverContractEntity> commitVerification{client, queryBuilder};
     requireContract(
-      commitVerification.find(std::string{"committed"}) != nullptr,
-      "Driver did not commit an explicit transaction.");
+      commitVerification.find(std::string{"committed"}) != nullptr, "Driver did not commit an explicit transaction.");
 
     repository.delete_(std::string{"second"});
 
     const core::Repository<DriverContractEntity> deletionVerification{client, queryBuilder};
-    requireContract(
-      deletionVerification.find(std::string{"second"}) == nullptr,
-      "Driver did not persist DELETE.");
+    requireContract(deletionVerification.find(std::string{"second"}) == nullptr, "Driver did not persist DELETE.");
 
     bool normalizedError = false;
     try {

@@ -26,12 +26,8 @@ namespace
 
   std::string connectionString(const worm::connection::ConnectionConfig& config)
   {
-    return
-      "host=" + config.host +
-      " port=" + config.port +
-      " dbname=" + config.dbname +
-      " user=" + config.username +
-      " password=" + config.password;
+    return "host=" + config.host + " port=" + config.port + " dbname=" + config.dbname + " user=" + config.username +
+           " password=" + config.password;
   }
 
   void resetSchema(const worm::connection::ConnectionConfig& config)
@@ -39,16 +35,14 @@ namespace
     pqxx::connection connection{connectionString(config)};
     pqxx::work transaction{connection};
     transaction.exec("DROP TABLE IF EXISTS worm_driver_contract");
-    transaction.exec(
-      "CREATE TABLE worm_driver_contract ("
-      "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL)");
+    transaction.exec("CREATE TABLE worm_driver_contract ("
+                     "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL)");
     transaction.commit();
   }
 } // namespace
 
 int main()
-try
-{
+try {
   const std::string databaseName = environmentValue("WORM_TEST_POSTGRES_DBNAME");
   if (databaseName.empty()) {
     return skippedTest;
@@ -67,10 +61,7 @@ try
   const auto client = std::make_shared<worm::connection::PgClient>(config);
   const worm::core::PgBuilder sqlBuilder;
 
-  worm::tests::runDriverContract(
-    client,
-    sqlBuilder,
-    worm::connection::DatabaseType::PostgreSQL);
+  worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::PostgreSQL);
 
   return 0;
 } catch (const std::exception& error) {

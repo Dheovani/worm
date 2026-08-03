@@ -34,8 +34,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true}),
         worm::reflection::field("name", &User::name),
         worm::reflection::field("active", &User::active),
         worm::reflection::field("status", &User::status),
@@ -48,21 +47,17 @@ namespace
 
 int main()
 {
-  const worm::core::ResultRow row{
-    {
-      {"id", std::int64_t{7}},
-      {"name", std::string{"Ada"}},
-      {"active", true},
-      {"status", std::int64_t{1}},
-      {"nickname", nullptr},
-      {"born_at", std::string{"1815-12-10"}},
-    }};
+  const worm::core::ResultRow row{{
+    {"id", std::int64_t{7}},
+    {"name", std::string{"Ada"}},
+    {"active", true},
+    {"status", std::int64_t{1}},
+    {"nickname", nullptr},
+    {"born_at", std::string{"1815-12-10"}},
+  }};
 
   const User user = worm::core::hydrate<User>(row);
-  if (user.id != 7 ||
-      user.name != "Ada" ||
-      !user.active ||
-      user.status != Status::Active ||
+  if (user.id != 7 || user.name != "Ada" || !user.active || user.status != Status::Active ||
       user.nickname.has_value() ||
       user.bornAt != std::chrono::sys_days{std::chrono::year{1815} / std::chrono::December / std::chrono::day{10}}) {
     std::cerr << "Hydration did not populate a reflected entity with decoded column values.\n";
@@ -78,29 +73,27 @@ int main()
 
   bool invalidTypeFailed = false;
   try {
-    (void)worm::core::hydrate<User>(
-      {{
-        {"id", std::string{"not an integer"}},
-        {"name", std::string{"Ada"}},
-        {"active", true},
-        {"status", std::int64_t{1}},
-        {"nickname", nullptr},
-        {"born_at", std::string{"1815-12-10"}},
-      }});
+    (void)worm::core::hydrate<User>({{
+      {"id", std::string{"not an integer"}},
+      {"name", std::string{"Ada"}},
+      {"active", true},
+      {"status", std::int64_t{1}},
+      {"nickname", nullptr},
+      {"born_at", std::string{"1815-12-10"}},
+    }});
   } catch (const worm::HydrationException&) {
     invalidTypeFailed = true;
   }
 
   bool missingColumnFailed = false;
   try {
-    (void)worm::core::hydrate<User>(
-      {{
-        {"id", std::int64_t{7}},
-        {"name", std::string{"Ada"}},
-        {"active", true},
-        {"status", std::int64_t{1}},
-        {"nickname", nullptr},
-      }});
+    (void)worm::core::hydrate<User>({{
+      {"id", std::int64_t{7}},
+      {"name", std::string{"Ada"}},
+      {"active", true},
+      {"status", std::int64_t{1}},
+      {"nickname", nullptr},
+    }});
   } catch (const worm::HydrationException&) {
     missingColumnFailed = true;
   }

@@ -10,7 +10,8 @@
 
 namespace
 {
-  template <typename Callable> bool ThrowsInvalidArgument(Callable&& callable)
+  template <typename Callable>
+  bool ThrowsInvalidArgument(Callable&& callable)
   {
     try {
       std::forward<Callable>(callable)();
@@ -34,12 +35,12 @@ int main()
   }
 
   const std::vector<std::pair<Comparison, std::string>> operators{{Comparison::Equal, "="},
-                                                                  {Comparison::NotEqual, "<>"},
-                                                                  {Comparison::Greater, ">"},
-                                                                  {Comparison::GreaterOrEqual, ">="},
-                                                                  {Comparison::Less, "<"},
-                                                                  {Comparison::LessOrEqual, "<="},
-                                                                  {Comparison::Like, "LIKE"}};
+    {Comparison::NotEqual, "<>"},
+    {Comparison::Greater, ">"},
+    {Comparison::GreaterOrEqual, ">="},
+    {Comparison::Less, "<"},
+    {Comparison::LessOrEqual, "<="},
+    {Comparison::Like, "LIKE"}};
   for (const auto& [operation, sqlOperator] : operators) {
     if (Predicate::compare("value", operation, true).sql != "value " + sqlOperator + " ?") {
       std::cerr << "A comparison operator was mapped incorrectly.\n";
@@ -70,11 +71,9 @@ int main()
   const auto compoundConjunction = Predicate::all({left, right, third});
   const auto compoundDisjunction = Predicate::any({left, right, third});
 
-  if (conjunction.sql != "(age >= ?) and (active = ?)" ||
-      disjunction.sql != "(age >= ?) or (active = ?)" ||
-      negation.sql != "not ((age >= ?) or (active = ?))" ||
-      conjunction.parameters.size() != 2 || disjunction.parameters.size() != 2 ||
-      negation.parameters.size() != 2) {
+  if (conjunction.sql != "(age >= ?) and (active = ?)" || disjunction.sql != "(age >= ?) or (active = ?)" ||
+      negation.sql != "not ((age >= ?) or (active = ?))" || conjunction.parameters.size() != 2 ||
+      disjunction.parameters.size() != 2 || negation.parameters.size() != 2) {
     std::cerr << "Expression logical composition is invalid.\n";
     return 1;
   }

@@ -11,7 +11,10 @@ namespace
   class Entity
   {
   public:
-    Entity(int id, std::string name) : id_(id), name_(std::move(name)) {}
+    Entity(int id, std::string name)
+      : id_(id),
+        name_(std::move(name))
+    {}
 
     static constexpr auto reflect()
     {

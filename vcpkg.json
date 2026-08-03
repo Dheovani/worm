@@ -14,7 +14,10 @@
     "mysql": {
       "description": "Build the MySQL driver",
       "dependencies": [
-        "libmysql"
+        {
+          "name": "libmysql",
+          "platform": "!linux"
+        }
       ]
     },
     "postgresql": {

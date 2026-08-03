@@ -28,8 +28,7 @@ namespace worm::core
     {}
 
     [[nodiscard]]
-    Statement selectAll(
-      const Source& source,
+    Statement selectAll(const Source& source,
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {}) const
@@ -38,8 +37,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    Statement select(
-      const std::vector<worm::core::Field>& fields,
+    Statement select(const std::vector<worm::core::Field>& fields,
       const Source& source,
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
@@ -49,25 +47,20 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    Statement insert(
-      const Source& source,
-      const std::vector<std::pair<std::string, Parameter>>& columns) const
+    Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
     {
       return sqlBuilder.insert(source, columns);
     }
 
     [[nodiscard]]
     Statement insertFromSelect(
-      const Source& target,
-      const std::vector<std::string>& targetColumns,
-      const Statement& sourceStatement) const
+      const Source& target, const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
     {
       return sqlBuilder.insertFromSelect(target, targetColumns, sourceStatement);
     }
 
     [[nodiscard]]
-    Statement insertFromSelect(
-      const Source& target,
+    Statement insertFromSelect(const Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
@@ -75,19 +68,11 @@ namespace worm::core
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {}) const
     {
-      return sqlBuilder.insertFromSelect(
-        target,
-        targetColumns,
-        selectedFields,
-        source,
-        relations,
-        filter,
-        ordering);
+      return sqlBuilder.insertFromSelect(target, targetColumns, selectedFields, source, relations, filter, ordering);
     }
 
     [[nodiscard]]
-    Statement update(
-      const Source& source,
+    Statement update(const Source& source,
       const std::vector<std::pair<std::string, Parameter>>& columns,
       const std::optional<Filter>& filter = std::nullopt) const
     {

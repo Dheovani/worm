@@ -52,14 +52,11 @@ namespace worm::core
     void validate_required_columns(const ResultRow& row)
     {
       std::apply(
-        [&row](const auto&... field)
-        {
+        [&row](const auto&... field) {
           (
-            [&row, &field]
-            {
+            [&row, &field] {
               if (field.isPersistent() && !has_column(row, field.columnName())) {
-                throw HydrationException(
-                  hydration_error(field.columnName(), "required persistent column is missing"));
+                throw HydrationException(hydration_error(field.columnName(), "required persistent column is missing"));
               }
             }(),
             ...);
@@ -79,8 +76,7 @@ namespace worm::core
       } else {
         const DecodeResult<Value> decoded = decode<Value>(column.value);
         if (std::holds_alternative<DecodeError>(decoded)) {
-          throw HydrationException(
-            hydration_error(column.name, decode_error_message(std::get<DecodeError>(decoded))));
+          throw HydrationException(hydration_error(column.name, decode_error_message(std::get<DecodeError>(decoded))));
         }
 
         field.get(entity) = std::get<Value>(decoded);
@@ -97,16 +93,13 @@ namespace worm::core
     T entity{};
 
     for (const ResultColumn& column : row.columns) {
-      const bool hydrated = reflection::visit_column_descriptor<T>(
-        column.name,
-        [&entity, &column](const auto& field)
-        {
-          if (!field.isPersistent()) {
-            throw HydrationException(detail::hydration_error(column.name, "column maps to an ignored field"));
-          }
+      const bool hydrated = reflection::visit_column_descriptor<T>(column.name, [&entity, &column](const auto& field) {
+        if (!field.isPersistent()) {
+          throw HydrationException(detail::hydration_error(column.name, "column maps to an ignored field"));
+        }
 
-          detail::hydrate_field(entity, field, column);
-        });
+        detail::hydrate_field(entity, field, column);
+      });
 
       if (!hydrated) {
         throw HydrationException(detail::hydration_error(column.name, "column does not exist in entity metadata"));

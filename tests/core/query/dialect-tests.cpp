@@ -7,8 +7,7 @@
 
 namespace
 {
-  bool hasDialectContract(
-    const worm::core::Dialect& dialect,
+  bool hasDialectContract(const worm::core::Dialect& dialect,
     std::size_t placeholderIndex,
     const std::string& expectedPlaceholder,
     const std::string& escapedIdentifier,

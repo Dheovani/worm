@@ -1,14 +1,14 @@
 #pragma once
 
-#include <core/model/entity.hpp>
 #include <core/model/entity-metadata.hpp>
+#include <core/model/entity.hpp>
 #include <errors/concurrent-access-exception.hpp>
 #include <reflection/snapshot.hpp>
 
 #include <map>
 #include <memory>
-#include <typeindex>
 #include <thread>
+#include <typeindex>
 #include <unordered_map>
 #include <utility>
 
@@ -181,16 +181,11 @@ namespace worm::core
         return 0;
 
       return reflection::for_each_changed_field(
-        *instances_.at(key),
-        snapshots_.at(key),
-        std::forward<Visitor>(visitor));
+        *instances_.at(key), snapshots_.at(key), std::forward<Visitor>(visitor));
     }
 
     template <typename Visitor>
-    std::size_t forEachChangedField(
-      const PK& key,
-      const T& instance,
-      Visitor&& visitor) const
+    std::size_t forEachChangedField(const PK& key, const T& instance, Visitor&& visitor) const
     {
       ensureThreadAffinity();
       if (!hasSnapshot(key))

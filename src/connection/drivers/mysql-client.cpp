@@ -3,9 +3,9 @@
 #include <errors/query-execution-exception.hpp>
 
 #include <algorithm>
-#include <cstring>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -59,8 +59,7 @@ namespace
     std::memset(&boundParameter.bind, 0, sizeof(boundParameter.bind));
 
     std::visit(
-      [&boundParameter](const auto& value)
-      {
+      [&boundParameter](const auto& value) {
         using Value = std::decay_t<decltype(value)>;
 
         if constexpr (std::is_same_v<Value, std::nullptr_t>) {
@@ -105,8 +104,7 @@ namespace worm::connection
       throw DatabaseConnectionException("Unable to initialize the MySQL client.");
     }
 
-    if (mysql_real_connect(
-          connection_.get(),
+    if (mysql_real_connect(connection_.get(),
           databaseConfig.host.c_str(),
           databaseConfig.username.c_str(),
           databaseConfig.password.c_str(),
@@ -165,7 +163,8 @@ namespace worm::connection
       throw QueryExecutionException("Unable to initialize a MySQL prepared statement.");
     }
 
-    if (mysql_stmt_prepare(preparedStatement, statement.sql.c_str(), static_cast<unsigned long>(statement.sql.size()))) {
+    if (mysql_stmt_prepare(
+          preparedStatement, statement.sql.c_str(), static_cast<unsigned long>(statement.sql.size()))) {
       const std::string error = mysql_stmt_error(preparedStatement);
       mysql_stmt_close(preparedStatement);
       throw QueryExecutionException(error);

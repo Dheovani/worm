@@ -42,9 +42,7 @@ namespace
     return std::filesystem::temp_directory_path() / ("worm-sql-builder-tests-" + std::to_string(now));
   }
 
-  int assertFactoryReturnsBuilder(
-    const std::filesystem::path& root,
-    std::string_view databaseType)
+  int assertFactoryReturnsBuilder(const std::filesystem::path& root, std::string_view databaseType)
   {
     {
       std::ofstream envFile(root / ".env");
@@ -98,11 +96,7 @@ int main()
     Field{"total", orders},
   };
   const std::vector<Relation> relations{
-    Relation{
-      Join::Inner,
-      users,
-      orders,
-      Predicate::compare("u.id", Comparison::Equal, std::int64_t{7})},
+    Relation{Join::Inner, users, orders, Predicate::compare("u.id", Comparison::Equal, std::int64_t{7})},
   };
   const Filter filter{Predicate::equal("u.active", true)};
   const std::vector<Ordering> ordering{
@@ -110,9 +104,8 @@ int main()
   };
   const worm::core::Statement select = pgBuilder.select(fields, users, relations, filter, ordering);
 
-  if (select.sql !=
-      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
-      " where u.active = $2 order by o.total desc") {
+  if (select.sql != "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+                    " where u.active = $2 order by o.total desc") {
     std::cerr << "Select builder did not render joined source, filter, or ordering correctly.\n";
     return 1;
   }
@@ -125,34 +118,23 @@ int main()
   const worm::core::Statement mySqlSelect = mySqlBuilder.select(fields, users, relations, filter, ordering);
   const worm::core::Statement sqliteSelect = sqliteBuilder.select(fields, users, relations, filter, ordering);
 
-  if (mySqlSelect.sql !=
-        "select u.id,o.total from users u inner join orders o on (u.id = ?)"
-        " where u.active = ? order by o.total desc" ||
-      sqliteSelect.sql !=
-        "select u.id,o.total from users u inner join orders o on (u.id = ?)"
-        " where u.active = ? order by o.total desc") {
+  if (mySqlSelect.sql != "select u.id,o.total from users u inner join orders o on (u.id = ?)"
+                         " where u.active = ? order by o.total desc" ||
+      sqliteSelect.sql != "select u.id,o.total from users u inner join orders o on (u.id = ?)"
+                          " where u.active = ? order by o.total desc") {
     std::cerr << "Question mark dialect placeholders were rendered incorrectly.\n";
     return 1;
   }
 
   const Source payments{"payments", "p"};
   const std::vector<Relation> multipleRelations{
-    Relation{
-      Join::Inner,
-      users,
-      orders,
-      Predicate::compare("u.id", Comparison::Equal, std::int64_t{7})},
-    Relation{
-      Join::Left,
-      orders,
-      payments,
-      Predicate::compare("o.id", Comparison::Equal, std::int64_t{9})},
+    Relation{Join::Inner, users, orders, Predicate::compare("u.id", Comparison::Equal, std::int64_t{7})},
+    Relation{Join::Left, orders, payments, Predicate::compare("o.id", Comparison::Equal, std::int64_t{9})},
   };
 
   const worm::core::Statement multiJoinSelect = pgBuilder.select(fields, users, multipleRelations, filter, ordering);
-  if (multiJoinSelect.sql !=
-      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
-      " left join payments p on (o.id = $2) where u.active = $3 order by o.total desc") {
+  if (multiJoinSelect.sql != "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+                             " left join payments p on (o.id = $2) where u.active = $3 order by o.total desc") {
     std::cerr << "Select builder did not separate multiple joins or number parameters correctly.\n";
     return 1;
   }
@@ -189,10 +171,9 @@ int main()
   };
 
   const worm::core::Statement rawInsertFromSelect = pgBuilder.insertFromSelect(archivedUsers, targetColumns, select);
-  if (rawInsertFromSelect.sql !=
-      "insert into archived_users(id,total) "
-      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
-      " where u.active = $2 order by o.total desc") {
+  if (rawInsertFromSelect.sql != "insert into archived_users(id,total) "
+                                 "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+                                 " where u.active = $2 order by o.total desc") {
     std::cerr << "Insert from raw select query was not rendered correctly.\n";
     return 1;
   }
@@ -204,10 +185,9 @@ int main()
 
   const worm::core::Statement structuredInsertFromSelect =
     pgBuilder.insertFromSelect(archivedUsers, targetColumns, fields, users, relations, filter, ordering);
-  if (structuredInsertFromSelect.sql !=
-      "insert into archived_users(id,total) "
-      "select u.id,o.total from users u inner join orders o on (u.id = $1)"
-      " where u.active = $2 order by o.total desc") {
+  if (structuredInsertFromSelect.sql != "insert into archived_users(id,total) "
+                                        "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+                                        " where u.active = $2 order by o.total desc") {
     std::cerr << "Insert from structured select query was not rendered correctly.\n";
     return 1;
   }

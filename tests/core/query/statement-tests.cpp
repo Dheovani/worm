@@ -13,9 +13,7 @@ int main()
     return 1;
   }
 
-  const worm::core::Statement statement{
-    "select * from users where id = $1",
-    {std::int64_t{7}}};
+  const worm::core::Statement statement{"select * from users where id = $1", {std::int64_t{7}}};
 
   if (statement.sql != "select * from users where id = $1" ||
       statement.parameters != std::vector<worm::core::Parameter>{std::int64_t{7}}) {
@@ -23,8 +21,8 @@ int main()
     return 1;
   }
 
-  const worm::core::Statement fromStatement =
-    worm::core::Statement::prepare("select * from users where email = ? and active = ?", {std::string{"ada@example.com"}, true});
+  const worm::core::Statement fromStatement = worm::core::Statement::prepare(
+    "select * from users where email = ? and active = ?", {std::string{"ada@example.com"}, true});
 
   if (fromStatement.sql != "select * from users where email = ? and active = ?" ||
       fromStatement.parameters != std::vector<worm::core::Parameter>{std::string{"ada@example.com"}, true}) {

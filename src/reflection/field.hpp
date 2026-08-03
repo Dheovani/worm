@@ -16,7 +16,9 @@ namespace worm::reflection
     using member_pointer = Value Owner::*;
 
     constexpr FieldDescriptor(std::string_view name, member_pointer member, FieldMetadata metadata = {}) noexcept
-      : name_(name), member_(member), metadata_(metadata)
+      : name_(name),
+        member_(member),
+        metadata_(metadata)
     {}
 
     [[nodiscard]]
@@ -90,15 +92,17 @@ namespace worm::reflection
 
   template <typename Owner, typename Value>
   [[nodiscard]]
-  constexpr auto field(std::string_view name, Value Owner::* member, FieldMetadata metadata = {}) noexcept
+  constexpr auto field(std::string_view name, Value Owner::*member, FieldMetadata metadata = {}) noexcept
   {
     return FieldDescriptor<Owner, Value>{name, member, metadata};
   }
 
-  template <typename T> struct is_field_descriptor : std::false_type
+  template <typename T>
+  struct is_field_descriptor : std::false_type
   {};
 
-  template <typename Owner, typename Value> struct is_field_descriptor<FieldDescriptor<Owner, Value>> : std::true_type
+  template <typename Owner, typename Value>
+  struct is_field_descriptor<FieldDescriptor<Owner, Value>> : std::true_type
   {};
 
   template <typename T>

@@ -40,8 +40,7 @@ namespace
     }
 
     const unsigned int port = static_cast<unsigned int>(std::stoul(config.port));
-    if (mysql_real_connect(
-          connection.get(),
+    if (mysql_real_connect(connection.get(),
           config.host.c_str(),
           config.username.c_str(),
           config.password.c_str(),
@@ -53,16 +52,14 @@ namespace
     }
 
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_driver_contract");
-    executeSql(
-      connection.get(),
+    executeSql(connection.get(),
       "CREATE TABLE worm_driver_contract ("
       "id VARCHAR(64) PRIMARY KEY, label VARCHAR(255) NOT NULL, note VARCHAR(255) NULL)");
   }
 } // namespace
 
 int main()
-try
-{
+try {
   const std::string databaseName = environmentValue("WORM_TEST_MYSQL_DBNAME");
   if (databaseName.empty()) {
     return skippedTest;
@@ -81,10 +78,7 @@ try
   const auto client = std::make_shared<worm::connection::MySqlClient>(config);
   const worm::core::MySqlBuilder sqlBuilder;
 
-  worm::tests::runDriverContract(
-    client,
-    sqlBuilder,
-    worm::connection::DatabaseType::MySQL);
+  worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::MySQL);
 
   return 0;
 } catch (const std::exception& error) {

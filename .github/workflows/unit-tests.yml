@@ -36,7 +36,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Install MySQL client development files
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
 
       - name: Install Clang
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
@@ -129,7 +135,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Install MySQL client development files
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
 
       - name: Bootstrap vcpkg
         shell: bash
@@ -189,7 +200,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Install MySQL client development files
+        if: matrix.name == 'MySQL only'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
 
       - name: Bootstrap vcpkg
         shell: bash

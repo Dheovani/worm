@@ -26,8 +26,7 @@ namespace
       }
 
       char* errorMessage = nullptr;
-      const int result = sqlite3_exec(
-        connection,
+      const int result = sqlite3_exec(connection,
         "CREATE TABLE worm_driver_contract ("
         "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL)",
         nullptr,
@@ -35,9 +34,8 @@ namespace
         &errorMessage);
 
       if (result != SQLITE_OK) {
-        const std::string message = errorMessage != nullptr
-          ? errorMessage
-          : "Could not create the SQLite contract table.";
+        const std::string message =
+          errorMessage != nullptr ? errorMessage : "Could not create the SQLite contract table.";
         sqlite3_free(errorMessage);
         sqlite3_close(connection);
         throw std::runtime_error(message);
@@ -64,8 +62,7 @@ namespace
 } // namespace
 
 int main()
-try
-{
+try {
   const TemporaryDatabase database;
   const worm::connection::ConnectionConfig config{
     .dbname = database.path().string(),
@@ -74,10 +71,7 @@ try
   const auto client = std::make_shared<worm::connection::SqliteClient>(config);
   const worm::core::SqliteBuilder sqlBuilder;
 
-  worm::tests::runDriverContract(
-    client,
-    sqlBuilder,
-    worm::connection::DatabaseType::SQLite);
+  worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::SQLite);
 
   return 0;
 } catch (const std::exception& error) {

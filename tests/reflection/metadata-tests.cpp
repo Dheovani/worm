@@ -13,18 +13,18 @@ namespace
   };
 
   constexpr auto idField = worm::reflection::field("id",
-                                                   &Entity::id,
-                                                   worm::reflection::FieldMetadata{
-                                                     .columnName = "entity_id",
-                                                     .primaryKey = true,
-                                                     .generated = true,
-                                                   });
+    &Entity::id,
+    worm::reflection::FieldMetadata{
+      .columnName = "entity_id",
+      .primaryKey = true,
+      .generated = true,
+    });
 
   constexpr auto ignoredField = worm::reflection::field("transientValue",
-                                                        &Entity::transientValue,
-                                                        worm::reflection::FieldMetadata{
-                                                          .ignored = true,
-                                                        });
+    &Entity::transientValue,
+    worm::reflection::FieldMetadata{
+      .ignored = true,
+    });
 
   constexpr auto defaultField = worm::reflection::field("id", &Entity::id);
 

@@ -14,8 +14,7 @@ namespace
   int bindParameter(sqlite3_stmt* statement, int index, const worm::core::Parameter& parameter)
   {
     return std::visit(
-      [statement, index](const auto& value) -> int
-      {
+      [statement, index](const auto& value) -> int {
         using Value = std::decay_t<decltype(value)>;
 
         if constexpr (std::is_same_v<Value, std::nullptr_t>) {
@@ -78,9 +77,7 @@ namespace worm::connection
       return;
     }
 
-    const std::string message = rawError != nullptr
-      ? rawError
-      : sqlite3_errmsg(connection_.get());
+    const std::string message = rawError != nullptr ? rawError : sqlite3_errmsg(connection_.get());
     sqlite3_free(rawError);
 
     throw QueryExecutionException(message);
@@ -91,11 +88,7 @@ namespace worm::connection
     std::vector<core::ResultRow> rows;
     sqlite3_stmt* statement = nullptr;
     int resultCode = sqlite3_prepare_v2(
-      connection_.get(),
-      statementData.sql.c_str(),
-      static_cast<int>(statementData.sql.size()),
-      &statement,
-      nullptr);
+      connection_.get(), statementData.sql.c_str(), static_cast<int>(statementData.sql.size()), &statement, nullptr);
 
     if (resultCode != SQLITE_OK) {
       if (statement != nullptr) {
@@ -137,8 +130,7 @@ namespace worm::connection
           columnValue = nullptr;
           break;
         default:
-          columnValue = std::string{
-            static_cast<const char*>(sqlite3_column_blob(statement, i)),
+          columnValue = std::string{static_cast<const char*>(sqlite3_column_blob(statement, i)),
             static_cast<std::size_t>(sqlite3_column_bytes(statement, i))};
           break;
         }
@@ -149,9 +141,7 @@ namespace worm::connection
       rows.push_back({columns});
     }
 
-    const std::uint64_t affectedRows = readOnly
-      ? 0
-      : static_cast<std::uint64_t>(sqlite3_changes(connection_.get()));
+    const std::uint64_t affectedRows = readOnly ? 0 : static_cast<std::uint64_t>(sqlite3_changes(connection_.get()));
 
     if (resultCode != SQLITE_DONE) {
       throwStatementError(statement);

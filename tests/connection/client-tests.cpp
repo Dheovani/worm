@@ -19,14 +19,11 @@ namespace
       return {};
     }
 
-    void beginTransactionImpl() override
-    {}
+    void beginTransactionImpl() override {}
 
-    void rollbackTransactionImpl() override
-    {}
+    void rollbackTransactionImpl() override {}
 
-    void commitTransactionImpl() override
-    {}
+    void commitTransactionImpl() override {}
   };
 } // namespace
 

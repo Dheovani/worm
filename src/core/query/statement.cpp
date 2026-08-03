@@ -190,15 +190,11 @@ namespace worm::core
     [[nodiscard]]
     bool isWhereTerminator(std::string_view token)
     {
-      return equalsCaseInsensitive(token, "group")
-          || equalsCaseInsensitive(token, "having")
-          || equalsCaseInsensitive(token, "order")
-          || equalsCaseInsensitive(token, "limit")
-          || equalsCaseInsensitive(token, "offset")
-          || equalsCaseInsensitive(token, "returning")
-          || equalsCaseInsensitive(token, "union")
-          || equalsCaseInsensitive(token, "except")
-          || equalsCaseInsensitive(token, "intersect");
+      return equalsCaseInsensitive(token, "group") || equalsCaseInsensitive(token, "having") ||
+             equalsCaseInsensitive(token, "order") || equalsCaseInsensitive(token, "limit") ||
+             equalsCaseInsensitive(token, "offset") || equalsCaseInsensitive(token, "returning") ||
+             equalsCaseInsensitive(token, "union") || equalsCaseInsensitive(token, "except") ||
+             equalsCaseInsensitive(token, "intersect");
     }
   } // namespace
 

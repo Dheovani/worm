@@ -20,14 +20,16 @@ namespace worm
     Error
   };
 
-  [[nodiscard]] inline std::string getClassName(const char* path)
+  [[nodiscard]]
+  inline std::string getClassName(const char* path)
   {
     const std::string fullPath(path);
     const std::size_t separator = fullPath.find_last_of("/\\");
     return separator == std::string::npos ? fullPath : fullPath.substr(separator + 1);
   }
 
-  [[nodiscard]] inline std::string getLogTypeMessage(LogLevel level)
+  [[nodiscard]]
+  inline std::string getLogTypeMessage(LogLevel level)
   {
     switch (level) {
     case LogLevel::Info:
@@ -48,7 +50,9 @@ namespace worm
   class Logger
   {
   public:
-    template <typename Class> Logger(Class source, int lineNumber) : line_(lineNumber)
+    template <typename Class>
+    Logger(Class source, int lineNumber)
+      : line_(lineNumber)
     {
       if constexpr (std::is_convertible_v<Class, const char*>)
         className_ = getClassName(source);
@@ -59,7 +63,8 @@ namespace worm
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
 
-    template <typename Type> const Logger& operator<<(const Type& value) const
+    template <typename Type>
+    const Logger& operator<<(const Type& value) const
     {
       std::ostringstream stream;
       stream << value;
@@ -67,7 +72,8 @@ namespace worm
       return *this;
     }
 
-    template <typename... Args> void log(LogLevel level, const char* message, Args... args) const
+    template <typename... Args>
+    void log(LogLevel level, const char* message, Args... args) const
     {
       std::ostringstream prefix;
       prefix << className_;
@@ -89,27 +95,32 @@ namespace worm
 #endif
     }
 
-    template <typename... Args> void info(const char* message, Args... args) const
+    template <typename... Args>
+    void info(const char* message, Args... args) const
     {
       log(LogLevel::Info, message, args...);
     }
 
-    template <typename... Args> void debug(const char* message, Args... args) const
+    template <typename... Args>
+    void debug(const char* message, Args... args) const
     {
       log(LogLevel::Debug, message, args...);
     }
 
-    template <typename... Args> void trace(const char* message, Args... args) const
+    template <typename... Args>
+    void trace(const char* message, Args... args) const
     {
       log(LogLevel::Trace, message, args...);
     }
 
-    template <typename... Args> void warning(const char* message, Args... args) const
+    template <typename... Args>
+    void warning(const char* message, Args... args) const
     {
       log(LogLevel::Warning, message, args...);
     }
 
-    template <typename... Args> void error(const char* message, Args... args) const
+    template <typename... Args>
+    void error(const char* message, Args... args) const
     {
       log(LogLevel::Error, message, args...);
     }

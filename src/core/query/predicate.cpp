@@ -42,10 +42,7 @@ namespace worm::core
       throw worm::SqlBuildException("Unsupported comparison operator.");
     }
 
-    Expression membershipExpression(
-      std::string_view column,
-      std::vector<Parameter> values,
-      std::string_view keyword)
+    Expression membershipExpression(std::string_view column, std::vector<Parameter> values, std::string_view keyword)
     {
       validateColumn(column);
       if (values.empty()) {
@@ -67,9 +64,7 @@ namespace worm::core
       return {std::move(sql), std::move(values)};
     }
 
-    Expression logicalExpression(
-      const std::vector<Expression>& expressions,
-      std::string_view logicalOperator)
+    Expression logicalExpression(const std::vector<Expression>& expressions, std::string_view logicalOperator)
     {
       if (expressions.empty()) {
         throw worm::SqlBuildException("Logical expressions require at least one expression.");
@@ -139,9 +134,7 @@ namespace worm::core
 
   Expression Predicate::not_(const Expression& expression)
   {
-    return {
-      "not (" + expression.sql + ")",
-      expression.parameters};
+    return {"not (" + expression.sql + ")", expression.parameters};
   }
 
   Expression Predicate::all(const Expression& left, const Expression& right)
