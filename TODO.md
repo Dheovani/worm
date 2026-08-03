@@ -121,7 +121,8 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 
 ## Marco 5 - Experiência do desenvolvedor
 
-- [ ] Criar um quick start que funcione em menos de dez minutos.
+- [x] Criar um quick start que funcione em menos de dez minutos.
+- [x] Documentar o fluxo mínimo de build, entidade, CRUD, consultas, transações e erros.
 - [ ] Manter exemplos completos para CRUD, transações, consultas e relações.
 - [ ] Produzir mensagens de erro que indiquem entidade, campo, coluna e operação.
 - [ ] Documentar claramente ownership, lifetime e garantias de thread safety.

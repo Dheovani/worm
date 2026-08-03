@@ -13,6 +13,7 @@ endif()
 option(WORM_ENABLE_POSTGRESQL "Build the PostgreSQL driver" ON)
 option(WORM_ENABLE_MYSQL "Build the MySQL driver" ON)
 option(WORM_ENABLE_SQLITE "Build the SQLite driver" ON)
+option(WORM_BUILD_EXAMPLES "Build Worm usage examples" OFF)
 
 set(WORM_VCPKG_FEATURES)
 if(WORM_ENABLE_POSTGRESQL)
@@ -65,4 +66,8 @@ add_subdirectory(src)
 # Keep the root ready for future test suites without requiring the directory now.
 if(BUILD_TESTING AND EXISTS "${PROJECT_SOURCE_DIR}/tests/CMakeLists.txt")
   add_subdirectory(tests)
+endif()
+
+if(WORM_BUILD_EXAMPLES)
+  add_subdirectory(examples)
 endif()

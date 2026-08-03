@@ -172,6 +172,7 @@ jobs:
               -DWORM_ENABLE_POSTGRESQL=OFF
               -DWORM_ENABLE_MYSQL=OFF
               -DWORM_ENABLE_SQLITE=ON
+              -DWORM_BUILD_EXAMPLES=ON
           - name: PostgreSQL only
             cmake-options: >-
               -DWORM_ENABLE_POSTGRESQL=ON

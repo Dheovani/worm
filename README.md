@@ -1,23 +1,32 @@
 # Worm
 
-Worm é um ORM em C++20 inspirado no Doctrine. O projeto está em fase inicial e
-atualmente concentra-se na infraestrutura de conexão com bancos de dados, injeção
-de dependências e no desenho de um subsistema de reflexão tipado.
+Worm é um ORM em C++20 inspirado no Doctrine. O projeto está em fase inicial,
+mas já oferece um fluxo tipado de persistência sobre reflexão estática, SQL
+parametrizado e drivers para SQLite, PostgreSQL e MySQL.
 
 ## Estado atual
 
-- clientes para MySQL, PostgreSQL e SQLite;
-- dependências gerenciadas por vcpkg;
+- drivers opcionais para MySQL, PostgreSQL e SQLite;
+- CRUD tipado com hidratação, identity map e updates parciais por snapshot;
+- parâmetros vinculados e transações RAII;
+- dependências opcionais gerenciadas por features do vcpkg;
 - build organizado em targets CMake namespaced (`Worm::*`);
-- testes unitários para erros, conexões e utilitários;
-- teste de integração SQLite executado inteiramente em memória.
+- testes unitários e um contrato de integração compartilhado entre drivers;
 - reflexão C++20 tipada com descritores `constexpr`, conceito `Reflectable` e
   visitação de campos.
-- núcleo inicial de consultas com expressões parametrizadas e composição de
+- consultas com expressões parametrizadas e composição de
   cláusulas `WHERE` e `ORDER BY`.
 
 O projeto ainda não deve ser considerado pronto para produção. Consulte
 [TODO.md](TODO.md) para acompanhar as próximas etapas.
+
+## Uso real
+
+O [guia de primeiros passos](docs/getting-started.md) mostra um fluxo completo
+com SQLite: integração CMake, entidade refletida, CRUD, consulta parametrizada,
+transação, erros, ownership e limitações atuais. O mesmo fluxo está disponível
+como exemplo compilável em
+[`examples/sqlite-quick-start.cpp`](examples/sqlite-quick-start.cpp).
 
 ## Requisitos
 
@@ -86,7 +95,10 @@ Os testes ficam fora do código de produção:
 ```text
 tests/
 ├── connection/
-└── errors/
+├── core/
+├── errors/
+├── reflection/
+└── utils/
 ```
 
 SQLite, MySQL e PostgreSQL compartilham o mesmo contrato de integração. SQLite
@@ -98,6 +110,8 @@ executados localmente com as variáveis descritas em `.env.example`.
 ```text
 worm/
 ├── cmake/          # descoberta e normalização de dependências
+├── docs/           # guias de uso e limitações
+├── examples/       # exemplos compiláveis opcionais
 ├── src/
 │   ├── connection/ # clientes de banco de dados
 │   ├── core/       # expressões e cláusulas SQL parametrizadas
