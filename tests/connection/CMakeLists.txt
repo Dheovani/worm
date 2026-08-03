@@ -7,6 +7,21 @@ function(add_worm_connection_test target source test_name)
   set_tests_properties(${test_name} PROPERTIES LABELS "unit;connection")
 endfunction()
 
+function(add_worm_driver_contract_test target source test_name driver_label)
+  add_executable(${target} ${source})
+  target_link_libraries(${target} PRIVATE Worm::Connection)
+  target_compile_features(${target} PRIVATE cxx_std_20)
+
+  add_test(NAME ${test_name} COMMAND ${target})
+  set_tests_properties(
+    ${test_name}
+    PROPERTIES
+      LABELS "integration;connection;driver-contract;${driver_label}"
+      SKIP_RETURN_CODE 77
+      TIMEOUT 30
+  )
+endfunction()
+
 add_worm_connection_test(
   WormClientTests
   client-tests.cpp
@@ -46,4 +61,27 @@ add_worm_connection_test(
 set_tests_properties(
   Worm.Connection.SqliteClient
   PROPERTIES LABELS "integration;connection;sqlite"
+)
+
+add_worm_driver_contract_test(
+  WormSqliteDriverContractTests
+  drivers/sqlite-contract-tests.cpp
+  Worm.Connection.Contract.SQLite
+  sqlite
+)
+
+if(NOT WIN32)
+  add_worm_driver_contract_test(
+    WormPostgresDriverContractTests
+    drivers/pg-contract-tests.cpp
+    Worm.Connection.Contract.PostgreSQL
+    postgresql
+  )
+endif()
+
+add_worm_driver_contract_test(
+  WormMySqlDriverContractTests
+  drivers/mysql-contract-tests.cpp
+  Worm.Connection.Contract.MySQL
+  mysql
 )

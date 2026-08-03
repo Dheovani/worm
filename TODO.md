@@ -87,8 +87,8 @@ altera e remove uma entidade em SQLite sem concatenar valores em SQL.
 - [ ] Implementar configuração de timeout e cancelamento quando o driver suportar.
 - [ ] Adicionar pool de conexões somente após medir uma necessidade real.
 - [ ] Separar drivers opcionais para não exigir todos os bancos em cada build.
-- [ ] Criar testes de integração descartáveis para PostgreSQL e MySQL.
-- [ ] Executar o mesmo contrato de integração para todos os drivers.
+- [x] Criar testes de integração descartáveis para PostgreSQL e MySQL.
+- [x] Executar o mesmo contrato de integração para todos os drivers.
 
 ## Marco 3 — Consultas e relacionamentos
 

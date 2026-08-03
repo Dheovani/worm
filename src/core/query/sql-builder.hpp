@@ -73,6 +73,9 @@ namespace worm::core
     [[nodiscard]]
     virtual std::string placeholder(std::size_t index) const;
 
+    [[nodiscard]]
+    virtual std::string renderMutationSource(const Source& source) const;
+
   private:
     [[nodiscard]]
     std::string renderExpression(const Expression& expression, std::size_t firstParameterIndex = 1) const;
@@ -98,7 +101,11 @@ namespace worm::core
   {};
 
   class SqliteBuilder : public SqlBuilder
-  {};
+  {
+  protected:
+    [[nodiscard]]
+    std::string renderMutationSource(const Source& source) const override;
+  };
 
   template <typename T>
   concept SqlBuilderI = std::derived_from<std::remove_cvref_t<T>, SqlBuilder>;

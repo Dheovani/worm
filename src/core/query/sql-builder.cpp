@@ -104,6 +104,30 @@ namespace worm::core
     return "?";
   }
 
+  std::string SqlBuilder::renderMutationSource(const Source& source) const
+  {
+    std::string rendered{source.name};
+
+    if (source.alias.has_value()) {
+      rendered += " ";
+      rendered += source.alias.value();
+    }
+
+    return rendered;
+  }
+
+  std::string SqliteBuilder::renderMutationSource(const Source& source) const
+  {
+    std::string rendered{source.name};
+
+    if (source.alias.has_value()) {
+      rendered += " as ";
+      rendered += source.alias.value();
+    }
+
+    return rendered;
+  }
+
   std::string SqlBuilder::renderExpression(
     const Expression& expression,
     std::size_t firstParameterIndex) const
@@ -325,14 +349,7 @@ namespace worm::core
       throw worm::SqlBuildException("UPDATE operation must receive at least one column.");
     }
 
-    std::string sql = "update " + std::string{source.name};
-
-    if (source.alias.has_value()) {
-      sql += " ";
-      sql += source.alias.value();
-    }
-
-    sql += " set ";
+    std::string sql = "update " + renderMutationSource(source) + " set ";
 
     for (std::size_t index = 0; index < columns.size(); ++index) {
       const auto& field = columns[index].first;
@@ -361,12 +378,7 @@ namespace worm::core
 
   Statement SqlBuilder::delete_(const Source& source, const std::optional<Filter>& filter) const
   {
-    std::string sql = "delete from " + std::string{source.name};
-
-    if (source.alias.has_value()) {
-      sql += " ";
-      sql += source.alias.value();
-    }
+    std::string sql = "delete from " + renderMutationSource(source);
 
     if (filter.has_value()) {
       sql += " where ";

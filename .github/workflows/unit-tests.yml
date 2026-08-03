@@ -79,3 +79,77 @@ jobs:
 
       - name: Run unit tests
         run: ctest --test-dir build -C Debug --output-on-failure
+
+  driver-contracts:
+    name: Driver contracts
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: worm_contract
+          POSTGRES_USER: worm
+          POSTGRES_PASSWORD: worm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U worm -d worm_contract"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: worm_contract
+          MYSQL_USER: worm
+          MYSQL_PASSWORD: worm
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      WORM_TEST_POSTGRES_HOST: 127.0.0.1
+      WORM_TEST_POSTGRES_PORT: 5432
+      WORM_TEST_POSTGRES_DBNAME: worm_contract
+      WORM_TEST_POSTGRES_USERNAME: worm
+      WORM_TEST_POSTGRES_PASSWORD: worm
+      WORM_TEST_MYSQL_HOST: 127.0.0.1
+      WORM_TEST_MYSQL_PORT: 3306
+      WORM_TEST_MYSQL_DBNAME: worm_contract
+      WORM_TEST_MYSQL_USERNAME: worm
+      WORM_TEST_MYSQL_PASSWORD: worm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build driver contracts
+        run: >
+          cmake --build build --config Debug --parallel --target
+          WormSqliteDriverContractTests
+          WormPostgresDriverContractTests
+          WormMySqlDriverContractTests
+
+      - name: Run driver contracts
+        run: ctest --test-dir build -C Debug -L driver-contract --output-on-failure

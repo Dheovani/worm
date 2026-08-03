@@ -222,7 +222,7 @@ int main()
   const worm::core::Statement sqliteUpdate = sqliteBuilder.update(users, insertColumns, filter);
   if (pgUpdate.sql != "update users u set name = $1,active = $2 where u.active = $3" ||
       mySqlUpdate.sql != "update users u set name = ?,active = ? where u.active = ?" ||
-      sqliteUpdate.sql != "update users u set name = ?,active = ? where u.active = ?") {
+      sqliteUpdate.sql != "update users as u set name = ?,active = ? where u.active = ?") {
     std::cerr << "Update builder did not render placeholders or filter correctly.\n";
     return 1;
   }
@@ -249,7 +249,7 @@ int main()
   const worm::core::Statement sqliteDelete = sqliteBuilder.delete_(users, filter);
   if (pgDelete.sql != "delete from users u where u.active = $1" ||
       mySqlDelete.sql != "delete from users u where u.active = ?" ||
-      sqliteDelete.sql != "delete from users u where u.active = ?") {
+      sqliteDelete.sql != "delete from users as u where u.active = ?") {
     std::cerr << "Delete builder did not render placeholders or filter correctly.\n";
     return 1;
   }
