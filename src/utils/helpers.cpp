@@ -68,9 +68,9 @@ std::string worm::utils::env::getDatabaseType()
     throw MissingConfigurationException("The project .env file was not found.");
 
   const auto variables = loadFromPath(path);
-  const auto databaseType = variables.find("database_type");
+  const auto databaseType = variables.find("DATABASE_TYPE");
   if (databaseType == variables.end() || databaseType->second.empty())
-    throw MissingConfigurationException("The database_type environment variable is missing.");
+    throw MissingConfigurationException("The DATABASE_TYPE environment variable is missing.");
 
   return databaseType->second;
 }

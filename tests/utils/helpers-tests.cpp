@@ -62,8 +62,8 @@ int main()
   {
     std::ofstream envFile(root / ".env");
     envFile << "# ignored comment\n"
-            << " database_type = \"sqlite\" \n"
-            << " host = localhost\n";
+            << " DATABASE_TYPE = \"sqlite\" \n"
+            << " HOST = localhost\n";
   }
 
   std::filesystem::current_path(nested);
@@ -71,7 +71,7 @@ int main()
   int result = 0;
   try {
     const auto variables = utils::env::loadFromPath((root / ".env").string());
-    if (variables.at("database_type") != "sqlite" || variables.at("host") != "localhost" ||
+    if (variables.at("DATABASE_TYPE") != "sqlite" || variables.at("HOST") != "localhost" ||
         utils::env::findInProjectRoot() != (root / ".env").string() || utils::env::getDatabaseType() != "sqlite") {
       std::cerr << "Environment helpers returned unexpected values.\n";
       result = 1;

@@ -60,16 +60,16 @@ int main()
   std::filesystem::create_directories(root);
   {
     std::ofstream envFile(root / ".env");
-    envFile << "database_type=sqlite\n"
-            << "dbname=:memory:\n";
+    envFile << "DATABASE_TYPE=sqlite\n"
+            << "DBNAME=:memory:\n";
   }
 
   std::filesystem::current_path(root);
-  setEnvironment("host", "localhost");
-  setEnvironment("username", "worm");
-  setEnvironment("password", "secret");
-  setEnvironment("dbname", ":memory:");
-  setEnvironment("port", "0");
+  setEnvironment("HOST", "localhost");
+  setEnvironment("USERNAME", "worm");
+  setEnvironment("PASSWORD", "secret");
+  setEnvironment("DBNAME", ":memory:");
+  setEnvironment("PORT", "0");
 
   int result = 0;
   try {
@@ -113,11 +113,11 @@ int main()
     result = 1;
   }
 
-  unsetEnvironment("host");
-  unsetEnvironment("username");
-  unsetEnvironment("password");
-  unsetEnvironment("dbname");
-  unsetEnvironment("port");
+  unsetEnvironment("HOST");
+  unsetEnvironment("USERNAME");
+  unsetEnvironment("PASSWORD");
+  unsetEnvironment("DBNAME");
+  unsetEnvironment("PORT");
   std::filesystem::current_path(originalPath);
   std::filesystem::remove_all(root);
   return result;

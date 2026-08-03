@@ -43,8 +43,8 @@ $env:VCPKG_ROOT = "C:\Users\seu-usuario\vcpkg"
 ```
 
 Copie [.env.example](.env.example) para `.env` e ajuste o driver e as
-credenciais. O valor `database_type` aceita `sqlite`, `postgresql` ou `mysql`;
-para SQLite, `dbname` também pode ser `:memory:`.
+credenciais. O valor `DATABASE_TYPE` aceita `sqlite`, `postgresql` ou `mysql`;
+para SQLite, `DBNAME` também pode ser `:memory:`.
 
 ## Configuração e build
 

@@ -66,11 +66,11 @@ namespace worm
     connection::ConnectionConfig get() const
     {
       return {
-        .host = detail::envValue("host"),
-        .username = detail::envValue("username"),
-        .password = detail::envValue("password"),
-        .dbname = detail::envValue("dbname"),
-        .port = detail::envValue("port")};
+        .host = detail::envValue("HOST"),
+        .username = detail::envValue("USERNAME"),
+        .password = detail::envValue("PASSWORD"),
+        .dbname = detail::envValue("DBNAME"),
+        .port = detail::envValue("PORT")};
     }
   };
 

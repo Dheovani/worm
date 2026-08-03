@@ -48,7 +48,7 @@ namespace
   {
     {
       std::ofstream envFile(root / ".env");
-      envFile << "database_type=" << databaseType << '\n';
+      envFile << "DATABASE_TYPE=" << databaseType << '\n';
     }
 
     const auto builder = worm::core::getSqlBuilder();
