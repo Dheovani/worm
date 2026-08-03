@@ -31,10 +31,7 @@ vcpkg_installed/
 # IDE and editor state
 .idea/
 .vs/
-.vscode/*
-!.vscode/settings.json
-!.vscode/c_cpp_properties.json
-!.vscode/extensions.json
+.vscode/
 *.suo
 *.user
 
