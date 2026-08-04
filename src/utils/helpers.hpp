@@ -2,11 +2,11 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <unordered_map>
 #include <variant>
 
 namespace worm::utils
@@ -101,12 +101,13 @@ namespace worm::utils
   namespace env
   {
     [[nodiscard]]
-    std::string findInProjectRoot();
+    inline std::string envValue(const char* key)
+    {
+      if (const char* value = std::getenv(key)) {
+        return value;
+      }
 
-    [[nodiscard]]
-    std::unordered_map<std::string, std::string> loadFromPath(const std::string& path);
-
-    [[nodiscard]]
-    std::string getDatabaseType();
+      return {};
+    }
   } // namespace env
 } // namespace worm::utils

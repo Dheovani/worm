@@ -385,7 +385,7 @@ namespace worm::core
 
   std::unique_ptr<SqlBuilder> getSqlBuilder()
   {
-    const auto type = worm::DependencyInjector<worm::connection::DatabaseType>().get();
+    const auto type = worm::DependencyInjector<connection::DatabaseType>::get();
 
     switch (type) {
     case worm::connection::DatabaseType::PostgreSQL:

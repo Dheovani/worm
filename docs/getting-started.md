@@ -186,11 +186,11 @@ try {
 
 ## Contexto de persistência e lifetime
 
-`PersistenceContext` centraliza o cliente, o identity map e os repositories. O tipo
+`Session` centraliza o cliente, o identity map e os repositories. O tipo
 de banco é lido de `DATABASE_TYPE`, documentado em [`.env.example`](../.env.example):
 
 ```cpp
-const worm::context::PersistenceContext context(config);
+const worm::context::Session context(config);
 const auto& users = context.repository<User>();
 ```
 
@@ -210,6 +210,6 @@ compartilhado não sincroniza modificações feitas na própria entidade.
 - Chaves geradas pelo banco ainda não têm comportamento portátil entre drivers.
 - Relacionamentos, eager/lazy loading e detecção de N+1 ainda não existem.
 - Não existe pool de conexões nem cache de statements preparados.
-- Um mesmo `Client`, `PersistenceContext`, `Repository` ou `Registry` não pode ser
+- Um mesmo `Client`, `Session`, `Repository` ou `Registry` não pode ser
   compartilhado entre threads; crie contextos independentes para trabalho paralelo.
 - O contrato de instalação e `find_package(Worm)` ainda será definido.

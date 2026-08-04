@@ -3,10 +3,8 @@
 #include <core/query/predicate.hpp>
 #include <errors/sql-build-exception.hpp>
 
-#include <chrono>
 #include <cstdint>
-#include <filesystem>
-#include <fstream>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -15,39 +13,28 @@
 
 namespace
 {
-  class CurrentPathGuard
+  void setEnvironment(const char* key, const char* value)
   {
-  public:
-    CurrentPathGuard()
-      : originalPath_(std::filesystem::current_path())
-    {}
-
-    ~CurrentPathGuard()
-    {
-      std::error_code error;
-      std::filesystem::current_path(originalPath_, error);
-    }
-
-    CurrentPathGuard(const CurrentPathGuard&) = delete;
-    CurrentPathGuard& operator=(const CurrentPathGuard&) = delete;
-
-  private:
-    std::filesystem::path originalPath_;
-  };
-
-  std::filesystem::path uniqueTempDirectory()
-  {
-    const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
-
-    return std::filesystem::temp_directory_path() / ("worm-sql-builder-tests-" + std::to_string(now));
+#ifdef _WIN32
+    _putenv_s(key, value);
+#else
+    setenv(key, value, 1);
+#endif
   }
 
-  int assertFactoryReturnsBuilder(const std::filesystem::path& root, std::string_view databaseType)
+  void unsetEnvironment(const char* key)
   {
-    {
-      std::ofstream envFile(root / ".env");
-      envFile << "DATABASE_TYPE=" << databaseType << '\n';
-    }
+#ifdef _WIN32
+    _putenv_s(key, "");
+#else
+    unsetenv(key);
+#endif
+  }
+
+  int assertFactoryReturnsBuilder(std::string_view databaseType)
+  {
+    const std::string database{databaseType};
+    setEnvironment("DATABASE_TYPE", database.c_str());
 
     const auto builder = worm::core::getSqlBuilder();
 
@@ -239,30 +226,21 @@ int main()
     return 1;
   }
 
-  const CurrentPathGuard currentPathGuard;
-  const std::filesystem::path root = uniqueTempDirectory();
-
-  std::error_code cleanupError;
-  std::filesystem::remove_all(root, cleanupError);
-  std::filesystem::create_directories(root);
-  std::filesystem::current_path(root);
-
   int result = 0;
   try {
-    result = assertFactoryReturnsBuilder(root, "postgresql");
+    result = assertFactoryReturnsBuilder("postgresql");
     if (result == 0) {
-      result = assertFactoryReturnsBuilder(root, "mysql");
+      result = assertFactoryReturnsBuilder("mysql");
     }
     if (result == 0) {
-      result = assertFactoryReturnsBuilder(root, "sqlite");
+      result = assertFactoryReturnsBuilder("sqlite");
     }
   } catch (const std::exception& error) {
     std::cerr << "SqlBuilder factory test failed: " << error.what() << '\n';
     result = 1;
   }
 
-  std::filesystem::current_path(std::filesystem::temp_directory_path(), cleanupError);
-  std::filesystem::remove_all(root, cleanupError);
+  unsetEnvironment("DATABASE_TYPE");
 
   return result;
 }

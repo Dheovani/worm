@@ -1,10 +1,7 @@
 #include <utils/helpers.hpp>
 
-#include <errors/configuration-exception.hpp>
-
 #include <chrono>
-#include <filesystem>
-#include <fstream>
+#include <cstdlib>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -13,6 +10,26 @@
 
 namespace
 {
+  constexpr const char* environmentKey = "WORM_HELPERS_TEST_VALUE";
+
+  void setEnvironment(const char* key, const char* value)
+  {
+#ifdef _WIN32
+    _putenv_s(key, value);
+#else
+    setenv(key, value, 1);
+#endif
+  }
+
+  void unsetEnvironment(const char* key)
+  {
+#ifdef _WIN32
+    _putenv_s(key, "");
+#else
+    unsetenv(key);
+#endif
+  }
+
   struct Base
   {};
   struct Derived : Base
@@ -52,42 +69,18 @@ int main()
   static_assert(!utils::holds_variant_option<double, std::variant<int, std::string>>);
   static_assert(std::is_same_v<utils::remove_class_pointer_t<decltype(&Derived::value), Derived>, int>);
 
-  const std::filesystem::path originalPath = std::filesystem::current_path();
-  const std::filesystem::path root = std::filesystem::temp_directory_path() / "worm-helpers-tests";
-  const std::filesystem::path nested = root / "nested";
-
-  std::filesystem::remove_all(root);
-  std::filesystem::create_directories(nested);
-
-  {
-    std::ofstream envFile(root / ".env");
-    envFile << "# ignored comment\n"
-            << " DATABASE_TYPE = \"sqlite\" \n"
-            << " HOST = localhost\n";
+  setEnvironment(environmentKey, "configured");
+  if (utils::env::envValue(environmentKey) != "configured") {
+    std::cerr << "envValue did not return the configured environment value.\n";
+    unsetEnvironment(environmentKey);
+    return 1;
   }
 
-  std::filesystem::current_path(nested);
-
-  int result = 0;
-  try {
-    const auto variables = utils::env::loadFromPath((root / ".env").string());
-    if (variables.at("DATABASE_TYPE") != "sqlite" || variables.at("HOST") != "localhost" ||
-        utils::env::findInProjectRoot() != (root / ".env").string() || utils::env::getDatabaseType() != "sqlite") {
-      std::cerr << "Environment helpers returned unexpected values.\n";
-      result = 1;
-    }
-
-    try {
-      static_cast<void>(utils::env::loadFromPath((root / "missing.env").string()));
-      std::cerr << "loadFromPath accepted a missing file.\n";
-      result = 1;
-    } catch (const worm::ConfigurationException&) {}
-  } catch (const std::exception& error) {
-    std::cerr << "Environment helper test failed: " << error.what() << '\n';
-    result = 1;
+  unsetEnvironment(environmentKey);
+  if (!utils::env::envValue(environmentKey).empty()) {
+    std::cerr << "envValue returned a value for a missing environment variable.\n";
+    return 1;
   }
 
-  std::filesystem::current_path(originalPath);
-  std::filesystem::remove_all(root);
-  return result;
+  return 0;
 }

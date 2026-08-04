@@ -20,7 +20,7 @@ namespace worm::core
   {
   public:
     explicit QueryBuilder()
-      : sqlBuilder(worm::DependencyInjector<SqlBuilder>().get())
+      : sqlBuilder(worm::DependencyInjector<SqlBuilder>::get())
     {}
 
     explicit QueryBuilder(const SqlBuilder& sqlBuilder) noexcept

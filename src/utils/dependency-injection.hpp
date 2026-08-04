@@ -4,6 +4,7 @@
 #include <connection/configuration.hpp>
 #include <core/query/dialect.hpp>
 #include <core/query/sql-builder.hpp>
+#include <errors/missing-configuration-exception.hpp>
 #include <errors/unregistered-dependency-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 #include <utils/helpers.hpp>
@@ -11,7 +12,6 @@
 
 #include <concepts>
 #include <cstddef>
-#include <cstdlib>
 #include <memory>
 #include <string>
 #include <typeinfo>
@@ -19,25 +19,11 @@
 namespace worm
 {
 
-  namespace detail
-  {
-    [[nodiscard]]
-    inline std::string envValue(const char* key)
-    {
-      if (const char* value = std::getenv(key)) {
-        return value;
-      }
-
-      return {};
-    }
-  } // namespace detail
-
   template <typename Type>
-  class DependencyInjector
+  struct DependencyInjector
   {
-  public:
     [[nodiscard]]
-    Type get() const
+    static Type get()
     {
       if constexpr (std::default_initializable<Type>) {
         return Type{};
@@ -48,40 +34,41 @@ namespace worm
   };
 
   template <>
-  class DependencyInjector<Logger>
+  struct DependencyInjector<Logger>
   {
-  public:
     template <typename Class, std::size_t Index>
     [[nodiscard]]
-    Logger get() const
+    static Logger get()
     {
       return {typeid(Class).name(), static_cast<int>(Index)};
     }
   };
 
   template <>
-  class DependencyInjector<connection::ConnectionConfig>
+  struct DependencyInjector<connection::ConnectionConfig>
   {
-  public:
     [[nodiscard]]
-    connection::ConnectionConfig get() const
+    static connection::ConnectionConfig get()
     {
-      return {.host = detail::envValue("HOST"),
-        .username = detail::envValue("USERNAME"),
-        .password = detail::envValue("PASSWORD"),
-        .dbname = detail::envValue("DBNAME"),
-        .port = detail::envValue("PORT")};
+      return {.host = utils::env::envValue("HOST"),
+        .username = utils::env::envValue("USERNAME"),
+        .password = utils::env::envValue("PASSWORD"),
+        .dbname = utils::env::envValue("DBNAME"),
+        .port = utils::env::envValue("PORT")};
     }
   };
 
   template <>
-  class DependencyInjector<connection::DatabaseType>
+  struct DependencyInjector<connection::DatabaseType>
   {
-  public:
     [[nodiscard]]
-    connection::DatabaseType get() const
+    static connection::DatabaseType get()
     {
-      const std::string database = utils::env::getDatabaseType();
+      const std::string database = utils::env::envValue("DATABASE_TYPE");
+      if (database.empty()) {
+        throw MissingConfigurationException("The DATABASE_TYPE environment variable is missing.");
+      }
+
       const auto type = connection::databaseTypes.find(database);
       if (type == connection::databaseTypes.end()) {
         throw UnsupportedDatabaseException("Unsupported database type: " + database);
@@ -92,27 +79,25 @@ namespace worm
   };
 
   template <>
-  class DependencyInjector<connection::Client>
+  struct DependencyInjector<connection::Client>
   {
-  public:
     [[nodiscard]]
-    connection::Client& get() const
+    static connection::Client& get()
     {
       static std::unique_ptr<connection::Client> client = connection::makeClient(
-        DependencyInjector<connection::ConnectionConfig>().get(), DependencyInjector<connection::DatabaseType>().get());
+        DependencyInjector<connection::ConnectionConfig>::get(), DependencyInjector<connection::DatabaseType>::get());
 
       return *client;
     }
   };
 
   template <>
-  class DependencyInjector<core::Dialect>
+  struct DependencyInjector<core::Dialect>
   {
-  public:
     [[nodiscard]]
-    const core::Dialect& get() const
+    static const core::Dialect& get()
     {
-      const auto dbType = DependencyInjector<connection::DatabaseType>().get();
+      const auto dbType = DependencyInjector<connection::DatabaseType>::get();
 
       if (dbType == connection::DatabaseType::PostgreSQL) {
         static const core::PostgresDialect dialect{};
@@ -134,13 +119,12 @@ namespace worm
   };
 
   template <>
-  class DependencyInjector<core::SqlBuilder>
+  struct DependencyInjector<core::SqlBuilder>
   {
-  public:
     [[nodiscard]]
-    const core::SqlBuilder& get() const
+    static const core::SqlBuilder& get()
     {
-      const auto dbType = DependencyInjector<connection::DatabaseType>().get();
+      const auto dbType = DependencyInjector<connection::DatabaseType>::get();
 
       if (dbType == connection::DatabaseType::PostgreSQL) {
         static const core::PgBuilder builder{};

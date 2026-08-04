@@ -1,6 +1,7 @@
-#include <context/persistence-context.hpp>
+#include <context/session.hpp>
 
 #include <errors/concurrent-access-exception.hpp>
+#include <errors/invalid-arg-exception.hpp>
 #include <reflection/field.hpp>
 
 #include <cstdint>
@@ -62,25 +63,37 @@ int main()
     const auto client = std::make_shared<TestClient>();
     const worm::core::SqliteBuilder sqlBuilder;
     const worm::core::QueryBuilder queryBuilder{sqlBuilder};
-    const worm::context::PersistenceContext context({}, client, queryBuilder);
+    const worm::connection::ConnectionConfig connectionConfig{.host = "localhost", .dbname = ":memory:"};
+    const worm::context::Session context(connectionConfig, client, queryBuilder);
 
     retainedClient = context.client();
     clientLifetime = retainedClient;
     if (retainedClient->type() != worm::connection::DatabaseType::SQLite) {
-      std::cerr << "PersistenceContext created a client for the wrong database.\n";
+      std::cerr << "Session created a client for the wrong database.\n";
       return 1;
     }
+
+    if (context.connectionConfig().host != "localhost" || context.connectionConfig().dbname != ":memory:") {
+      std::cerr << "Session did not preserve its connection configuration.\n";
+      return 1;
+    }
+
+    try {
+      const worm::context::Session invalidSession(connectionConfig, nullptr, queryBuilder);
+      std::cerr << "Session accepted a null client.\n";
+      return 1;
+    } catch (const worm::InvalidArgException&) {}
 
     const auto& firstRepository = context.repository<User>();
     const auto& secondRepository = context.repository<User>();
     if (&firstRepository != &secondRepository) {
-      std::cerr << "PersistenceContext did not reuse its typed repository.\n";
+      std::cerr << "Session did not reuse its typed repository.\n";
       return 1;
     }
 
     context.instances<User>().put(7, User{.id = 7, .name = "Ada"});
     if (!context.registry()->instances<User>().has(7)) {
-      std::cerr << "PersistenceContext did not share its registry with entity access.\n";
+      std::cerr << "Session did not share its registry with entity access.\n";
       return 1;
     }
 
@@ -95,7 +108,7 @@ int main()
     foreignAccess.join();
 
     if (!foreignThreadRejected) {
-      std::cerr << "PersistenceContext accepted access from a foreign thread.\n";
+      std::cerr << "Session accepted access from a foreign thread.\n";
       return 1;
     }
   }

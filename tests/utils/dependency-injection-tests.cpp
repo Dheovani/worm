@@ -1,10 +1,10 @@
 #include <utils/dependency-injection.hpp>
 
+#include <errors/missing-configuration-exception.hpp>
 #include <errors/unregistered-dependency-exception.hpp>
+#include <errors/unsupported-database-exception.hpp>
 
 #include <cstdlib>
-#include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -47,24 +47,20 @@ namespace
 
 int main()
 {
-  const Value value = worm::DependencyInjector<Value>().get();
+  const Value value = worm::DependencyInjector<Value>::get();
   if (value.number != 7) {
     std::cerr << "Generic dependency injection returned an invalid value.\n";
     return 1;
   }
 
-  const std::filesystem::path originalPath = std::filesystem::current_path();
-  const std::filesystem::path root = std::filesystem::temp_directory_path() / "worm-dependency-injection-tests";
+  unsetEnvironment("DATABASE_TYPE");
+  try {
+    static_cast<void>(worm::DependencyInjector<worm::connection::DatabaseType>::get());
+    std::cerr << "DatabaseType dependency injection accepted a missing configuration.\n";
+    return 1;
+  } catch (const worm::MissingConfigurationException&) {}
 
-  std::filesystem::remove_all(root);
-  std::filesystem::create_directories(root);
-  {
-    std::ofstream envFile(root / ".env");
-    envFile << "DATABASE_TYPE=sqlite\n"
-            << "DBNAME=:memory:\n";
-  }
-
-  std::filesystem::current_path(root);
+  setEnvironment("DATABASE_TYPE", "sqlite");
   setEnvironment("HOST", "localhost");
   setEnvironment("USERNAME", "worm");
   setEnvironment("PASSWORD", "secret");
@@ -73,9 +69,9 @@ int main()
 
   int result = 0;
   try {
-    const worm::connection::DatabaseType type = worm::DependencyInjector<worm::connection::DatabaseType>().get();
+    const worm::connection::DatabaseType type = worm::DependencyInjector<worm::connection::DatabaseType>::get();
     const worm::connection::ConnectionConfig config =
-      worm::DependencyInjector<worm::connection::ConnectionConfig>().get();
+      worm::DependencyInjector<worm::connection::ConnectionConfig>::get();
 
     if (type != worm::connection::DatabaseType::SQLite) {
       std::cerr << "Specialized dependency injection returned an invalid value.\n";
@@ -88,11 +84,11 @@ int main()
       result = 1;
     }
 
-    auto logger = worm::DependencyInjector<worm::Logger>().get<Value, 12>();
+    auto logger = worm::DependencyInjector<worm::Logger>::get<Value, 12>();
     logger.debug("Dependency injection logger smoke test");
 
-    const worm::core::Dialect& dialect = worm::DependencyInjector<worm::core::Dialect>().get();
-    const worm::core::SqlBuilder& sqlBuilder = worm::DependencyInjector<worm::core::SqlBuilder>().get();
+    const worm::core::Dialect& dialect = worm::DependencyInjector<worm::core::Dialect>::get();
+    const worm::core::SqlBuilder& sqlBuilder = worm::DependencyInjector<worm::core::SqlBuilder>::get();
 
     if (dynamic_cast<const worm::core::SqliteDialect*>(&dialect) == nullptr ||
         dynamic_cast<const worm::core::SqliteBuilder*>(&sqlBuilder) == nullptr) {
@@ -100,8 +96,15 @@ int main()
       result = 1;
     }
 
+    setEnvironment("DATABASE_TYPE", "unsupported");
     try {
-      static_cast<void>(worm::DependencyInjector<ExternalDependency>().get());
+      static_cast<void>(worm::DependencyInjector<worm::connection::DatabaseType>::get());
+      std::cerr << "DatabaseType dependency injection accepted an unsupported database.\n";
+      result = 1;
+    } catch (const worm::UnsupportedDatabaseException&) {}
+
+    try {
+      static_cast<void>(worm::DependencyInjector<ExternalDependency>::get());
       std::cerr << "Dependency injection accepted an unregistered dependency.\n";
       result = 1;
     } catch (const worm::UnregisteredDependencyException&) {}
@@ -110,12 +113,11 @@ int main()
     result = 1;
   }
 
+  unsetEnvironment("DATABASE_TYPE");
   unsetEnvironment("HOST");
   unsetEnvironment("USERNAME");
   unsetEnvironment("PASSWORD");
   unsetEnvironment("DBNAME");
   unsetEnvironment("PORT");
-  std::filesystem::current_path(originalPath);
-  std::filesystem::remove_all(root);
   return result;
 }

@@ -18,7 +18,6 @@ add_worm_utils_test(
 target_link_libraries(WormDependencyInjectionTests PRIVATE Worm::Core)
 
 set_tests_properties(
-  Worm.Utils.Helpers
   Worm.Utils.DependencyInjection
   PROPERTIES LABELS "integration;utils"
 )
