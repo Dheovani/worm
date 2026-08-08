@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <concepts>
 #include <cstddef>
 #include <cstdlib>
 #include <optional>
@@ -33,6 +34,22 @@ namespace worm::utils
 
   template <typename Type>
   inline constexpr bool is_string_like = is_string_impl<std::decay_t<Type>>::value;
+
+  template <typename T, typename U = T>
+  struct is_equality_comparable : std::false_type
+  {};
+
+  template <typename T, typename U>
+    requires requires(const std::remove_cvref_t<T>& left, const std::remove_cvref_t<U>& right) {
+      { left == right } -> std::convertible_to<bool>;
+      { right == left } -> std::convertible_to<bool>;
+    }
+  struct is_equality_comparable<T, U> : std::true_type
+  {};
+
+  template <typename T, typename U = T>
+  inline constexpr bool is_equality_comparable_v =
+    is_equality_comparable<std::remove_cvref_t<T>, std::remove_cvref_t<U>>::value;
 
   template <typename T>
   struct is_optional : std::false_type
@@ -110,4 +127,19 @@ namespace worm::utils
       return {};
     }
   } // namespace env
+
+  namespace strings
+  {
+    inline bool replaceFirst(std::string& buffer, std::string_view target, std::string_view value)
+    {
+      const std::size_t pos = buffer.find(target);
+
+      if (pos == std::string::npos) {
+        return false;
+      }
+
+      buffer.replace(pos, target.size(), value);
+      return true;
+    }
+  } // namespace strings
 } // namespace worm::utils

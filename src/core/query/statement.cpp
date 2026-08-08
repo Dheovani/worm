@@ -1,11 +1,36 @@
 #include <core/query/statement.hpp>
 
 #include <cctype>
+#include <functional>
 #include <string_view>
 #include <vector>
 
 namespace worm::core
 {
+  std::size_t StatementHash::operator()(const Statement& statement) const noexcept
+  {
+    constexpr std::size_t hashConstant = 0x9e3779b9;
+    std::size_t result = std::hash<std::string>{}(statement.sql);
+
+    for (const Parameter& parameter : statement.parameters) {
+      std::size_t parameterHash = parameter.index();
+      std::visit(
+        [&parameterHash](const auto& value) {
+          using Value = std::decay_t<decltype(value)>;
+
+          if constexpr (std::is_same_v<Value, std::nullptr_t>) {
+            parameterHash = 0;
+          } else {
+            parameterHash ^= std::hash<Value>{}(value) + hashConstant + (parameterHash << 6U) + (parameterHash >> 2U);
+          }
+        },
+        parameter);
+
+      result ^= parameterHash + hashConstant + (result << 6U) + (result >> 2U);
+    }
+
+    return result;
+  }
 
   namespace
   {

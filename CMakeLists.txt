@@ -13,6 +13,7 @@ endif()
 option(WORM_ENABLE_POSTGRESQL "Build the PostgreSQL driver" ON)
 option(WORM_ENABLE_MYSQL "Build the MySQL driver" ON)
 option(WORM_ENABLE_SQLITE "Build the SQLite driver" ON)
+option(WORM_ENABLE_MSSQL "Build the Microsoft SQL Server driver" OFF)
 option(WORM_BUILD_EXAMPLES "Build Worm usage examples" OFF)
 
 set(WORM_VCPKG_FEATURES)
@@ -24,6 +25,9 @@ if(WORM_ENABLE_MYSQL)
 endif()
 if(WORM_ENABLE_SQLITE)
   list(APPEND WORM_VCPKG_FEATURES sqlite)
+endif()
+if(WORM_ENABLE_MSSQL)
+  list(APPEND WORM_VCPKG_FEATURES mssql)
 endif()
 
 # Keep manifest dependencies aligned with the selected drivers. FORCE is

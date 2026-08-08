@@ -68,6 +68,12 @@ namespace worm::core
     [[nodiscard]]
     virtual std::string renderMutationSource(const Source& source) const;
 
+    [[nodiscard]]
+    virtual std::string renderUpdateFrom(const Source& source) const;
+
+    [[nodiscard]]
+    virtual std::string renderDeletePrefix(const Source& source) const;
+
   private:
     [[nodiscard]]
     std::string renderExpression(const Expression& expression, std::size_t firstParameterIndex = 1) const;
@@ -97,6 +103,19 @@ namespace worm::core
   protected:
     [[nodiscard]]
     std::string renderMutationSource(const Source& source) const override;
+  };
+
+  class SqlServerBuilder : public SqlBuilder
+  {
+  protected:
+    [[nodiscard]]
+    std::string renderMutationSource(const Source& source) const override;
+
+    [[nodiscard]]
+    std::string renderUpdateFrom(const Source& source) const override;
+
+    [[nodiscard]]
+    std::string renderDeletePrefix(const Source& source) const override;
   };
 
   template <typename T>

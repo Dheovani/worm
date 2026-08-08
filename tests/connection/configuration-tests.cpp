@@ -48,6 +48,14 @@ int main()
   } catch (const worm::UnsupportedDatabaseException&) {}
 #endif
 
+#if !defined(WORM_HAS_MSSQL_DRIVER)
+  try {
+    static_cast<void>(worm::connection::makeClient(config, worm::connection::DatabaseType::MSSQL));
+    std::cerr << "Connection configuration created a disabled MSSQL driver.\n";
+    return 1;
+  } catch (const worm::UnsupportedDatabaseException&) {}
+#endif
+
   try {
     static_cast<void>(worm::connection::makeClient(config, static_cast<worm::connection::DatabaseType>(999)));
   } catch (const worm::UnsupportedDatabaseException&) {

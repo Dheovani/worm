@@ -53,6 +53,11 @@ namespace
       return 1;
     }
 
+    if (databaseType == "mssql" && dynamic_cast<worm::core::SqlServerBuilder*>(builder.get()) == nullptr) {
+      std::cerr << "SqlBuilder factory did not return SqlServerBuilder.\n";
+      return 1;
+    }
+
     return 0;
   }
 } // namespace
@@ -71,10 +76,12 @@ int main()
   using worm::core::Relation;
   using worm::core::Source;
   using worm::core::SqliteBuilder;
+  using worm::core::SqlServerBuilder;
 
   const PgBuilder pgBuilder;
   const MySqlBuilder mySqlBuilder;
   const SqliteBuilder sqliteBuilder;
+  const SqlServerBuilder sqlServerBuilder;
 
   const Source users{"users", "u"};
   const Source orders{"orders", "o"};
@@ -187,9 +194,11 @@ int main()
   const worm::core::Statement pgUpdate = pgBuilder.update(users, insertColumns, filter);
   const worm::core::Statement mySqlUpdate = mySqlBuilder.update(users, insertColumns, filter);
   const worm::core::Statement sqliteUpdate = sqliteBuilder.update(users, insertColumns, filter);
+  const worm::core::Statement sqlServerUpdate = sqlServerBuilder.update(users, insertColumns, filter);
   if (pgUpdate.sql != "update users u set name = $1,active = $2 where u.active = $3" ||
       mySqlUpdate.sql != "update users u set name = ?,active = ? where u.active = ?" ||
-      sqliteUpdate.sql != "update users as u set name = ?,active = ? where u.active = ?") {
+      sqliteUpdate.sql != "update users as u set name = ?,active = ? where u.active = ?" ||
+      sqlServerUpdate.sql != "update u set name = ?,active = ? from users u where u.active = ?") {
     std::cerr << "Update builder did not render placeholders or filter correctly.\n";
     return 1;
   }
@@ -214,9 +223,11 @@ int main()
   const worm::core::Statement pgDelete = pgBuilder.delete_(users, filter);
   const worm::core::Statement mySqlDelete = mySqlBuilder.delete_(users, filter);
   const worm::core::Statement sqliteDelete = sqliteBuilder.delete_(users, filter);
+  const worm::core::Statement sqlServerDelete = sqlServerBuilder.delete_(users, filter);
   if (pgDelete.sql != "delete from users u where u.active = $1" ||
       mySqlDelete.sql != "delete from users u where u.active = ?" ||
-      sqliteDelete.sql != "delete from users as u where u.active = ?") {
+      sqliteDelete.sql != "delete from users as u where u.active = ?" ||
+      sqlServerDelete.sql != "delete u from users u where u.active = ?") {
     std::cerr << "Delete builder did not render placeholders or filter correctly.\n";
     return 1;
   }
@@ -234,6 +245,9 @@ int main()
     }
     if (result == 0) {
       result = assertFactoryReturnsBuilder("sqlite");
+    }
+    if (result == 0) {
+      result = assertFactoryReturnsBuilder("mssql");
     }
   } catch (const std::exception& error) {
     std::cerr << "SqlBuilder factory test failed: " << error.what() << '\n';

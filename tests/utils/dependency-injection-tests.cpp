@@ -66,6 +66,7 @@ int main()
   setEnvironment("PASSWORD", "secret");
   setEnvironment("DBNAME", ":memory:");
   setEnvironment("PORT", "0");
+  setEnvironment("QUERY_CACHE_ENABLED", "true");
 
   int result = 0;
   try {
@@ -79,7 +80,7 @@ int main()
     }
 
     if (config.host != "localhost" || config.username != "worm" || config.password != "secret" ||
-        config.dbname != ":memory:" || config.port != "0") {
+        config.dbname != ":memory:" || config.port != "0" || !config.cacheResults) {
       std::cerr << "ConnectionConfig dependency injection returned invalid environment values.\n";
       result = 1;
     }
@@ -93,6 +94,15 @@ int main()
     if (dynamic_cast<const worm::core::SqliteDialect*>(&dialect) == nullptr ||
         dynamic_cast<const worm::core::SqliteBuilder*>(&sqlBuilder) == nullptr) {
       std::cerr << "Dependency injection did not resolve database-specific abstractions.\n";
+      result = 1;
+    }
+
+    setEnvironment("DATABASE_TYPE", "mssql");
+    const worm::core::Dialect& sqlServerDialect = worm::DependencyInjector<worm::core::Dialect>::get();
+    const worm::core::SqlBuilder& sqlServerBuilder = worm::DependencyInjector<worm::core::SqlBuilder>::get();
+    if (dynamic_cast<const worm::core::SqlServerDialect*>(&sqlServerDialect) == nullptr ||
+        dynamic_cast<const worm::core::SqlServerBuilder*>(&sqlServerBuilder) == nullptr) {
+      std::cerr << "Dependency injection did not resolve SQL Server abstractions.\n";
       result = 1;
     }
 
@@ -119,5 +129,6 @@ int main()
   unsetEnvironment("PASSWORD");
   unsetEnvironment("DBNAME");
   unsetEnvironment("PORT");
+  unsetEnvironment("QUERY_CACHE_ENABLED");
   return result;
 }

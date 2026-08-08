@@ -21,6 +21,7 @@ namespace worm::connection
     }
 
     beginTransactionImpl();
+    cachedResults_.clear();
     transactionActive_ = true;
   }
 
@@ -32,6 +33,7 @@ namespace worm::connection
     }
 
     commitTransactionImpl();
+    cachedResults_.clear();
     transactionActive_ = false;
   }
 
@@ -43,6 +45,7 @@ namespace worm::connection
     }
 
     rollbackTransactionImpl();
+    cachedResults_.clear();
     transactionActive_ = false;
   }
 

@@ -2,6 +2,7 @@
 
 #include <core/query/expression.hpp>
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -26,6 +27,14 @@ namespace worm::core
     {
       return {std::move(sql), std::move(parameters)};
     }
+
+    friend bool operator==(const Statement&, const Statement&) = default;
+  };
+
+  struct StatementHash
+  {
+    [[nodiscard]]
+    std::size_t operator()(const Statement& statement) const noexcept;
   };
 
   [[nodiscard]]

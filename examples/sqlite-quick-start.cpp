@@ -34,7 +34,8 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true}),
+      return std::tuple{
+        worm::reflection::field("id", &User::id, {.primaryKey = true}),
         worm::reflection::field("name", &User::name),
         worm::reflection::field("email", &User::email)};
     }

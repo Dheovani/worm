@@ -1,7 +1,6 @@
 add_library(
   WormContext
   session.cpp
-  session-factory.cpp
 )
 add_library(Worm::Context ALIAS WormContext)
 

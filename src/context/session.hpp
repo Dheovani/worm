@@ -20,7 +20,8 @@ namespace worm::context
   public:
     explicit Session(const connection::ConnectionConfig& connectionConfig);
 
-    explicit Session(const connection::ConnectionConfig& connectionConfig,
+    explicit Session(
+      const connection::ConnectionConfig& connectionConfig,
       std::shared_ptr<connection::Client> client,
       const core::QueryBuilder& queryBuilder);
 

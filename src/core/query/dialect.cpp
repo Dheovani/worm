@@ -53,4 +53,25 @@ namespace worm::core
     return quote(identifier, '"');
   }
 
+  std::string SqlServerDialect::placeholder(std::size_t) const
+  {
+    return "?";
+  }
+
+  std::string SqlServerDialect::quoteIdentifier(std::string_view identifier) const
+  {
+    std::string quoted{"["};
+    quoted.reserve(identifier.size() + 2);
+
+    for (const char character : identifier) {
+      quoted += character;
+      if (character == ']') {
+        quoted += ']';
+      }
+    }
+
+    quoted += ']';
+    return quoted;
+  }
+
 } // namespace worm::core

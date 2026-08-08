@@ -96,7 +96,8 @@ namespace
 namespace worm::connection
 {
   MySqlClient::MySqlClient(const ConnectionConfig& databaseConfig)
-    : connection_(mysql_init(nullptr), mysql_close)
+    : Client(databaseConfig.cacheResults),
+      connection_(mysql_init(nullptr), mysql_close)
   {
     const unsigned int port = static_cast<unsigned int>(std::stoul(databaseConfig.port));
 

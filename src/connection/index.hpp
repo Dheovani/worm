@@ -21,3 +21,7 @@
 #if defined(WORM_HAS_SQLITE_DRIVER)
 #include <connection/drivers/sqlite-client.hpp>
 #endif
+
+#if defined(WORM_HAS_MSSQL_DRIVER)
+#include <connection/drivers/mssql-client.hpp>
+#endif

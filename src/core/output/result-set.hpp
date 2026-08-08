@@ -14,6 +14,8 @@ namespace worm::core
   {
     std::string name;
     Parameter value;
+
+    friend bool operator==(const ResultColumn&, const ResultColumn&) = default;
   };
 
   struct ResultRow
@@ -25,6 +27,8 @@ namespace worm::core
 
     [[nodiscard]]
     std::size_t columnCount() const noexcept;
+
+    friend bool operator==(const ResultRow&, const ResultRow&) = default;
   };
 
   class ResultSet
@@ -55,6 +59,9 @@ namespace worm::core
 
     [[nodiscard]]
     Iterator end() const noexcept;
+
+    [[nodiscard]]
+    bool operator==(const ResultSet& other) const noexcept;
 
   private:
     std::vector<ResultRow> rows_;

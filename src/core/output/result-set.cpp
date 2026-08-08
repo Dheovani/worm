@@ -52,4 +52,9 @@ namespace worm::core
   {
     return rows_.end();
   }
+
+  bool ResultSet::operator==(const ResultSet& other) const noexcept
+  {
+    return rows_ == other.rows_ && affectedRows_ == other.affectedRows_;
+  }
 } // namespace worm::core

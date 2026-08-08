@@ -2,6 +2,7 @@
 
 #include <errors/concurrent-access-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
+#include <utils/dependency-injection.hpp>
 
 #include <utility>
 
@@ -14,7 +15,7 @@ namespace worm::context
       registry_(std::make_shared<core::Registry>()),
       queryBuilder_()
   {}
-  
+
   Session::Session(const connection::ConnectionConfig& connectionConfig,
     std::shared_ptr<connection::Client> client,
     const core::QueryBuilder& queryBuilder)

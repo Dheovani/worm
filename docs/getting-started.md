@@ -204,10 +204,18 @@ O `Repository` mantém ownership compartilhado do cliente e do registry recebido
 Entidades retornadas como `shared_ptr` podem sobreviver ao contexto, mas o ponteiro
 compartilhado não sincroniza modificações feitas na própria entidade.
 
+O cache de resultados de `SELECT` é opt-in por meio de
+`QUERY_CACHE_ENABLED=true`. A chave inclui o SQL e seus parâmetros; mutações e
+transações invalidam o cache. Mantenha-o desabilitado quando o mesmo banco puder
+ser alterado por outros processos e a aplicação precisar observar essas mudanças
+imediatamente.
+
 ## Limitações atuais
 
 - Migrações e criação de esquema ainda não estão implementadas.
 - Chaves geradas pelo banco ainda não têm comportamento portátil entre drivers.
+- O driver SQL Server compila e implementa o contrato ODBC, mas ainda não possui
+  um teste de contrato executado contra uma instância real na CI.
 - Relacionamentos, eager/lazy loading e detecção de N+1 ainda não existem.
 - Não existe pool de conexões nem cache de statements preparados.
 - Um mesmo `Client`, `Session`, `Repository` ou `Registry` não pode ser

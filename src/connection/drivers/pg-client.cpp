@@ -3,6 +3,7 @@
 #include <errors/database-connection-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/transaction-exception.hpp>
+#include <utils/helpers.hpp>
 
 #include <cstdint>
 #include <type_traits>
@@ -11,10 +12,35 @@
 
 namespace
 {
+  std::string quoteConnectionValue(std::string_view value)
+  {
+    std::string quoted{"'"};
+    quoted.reserve(value.size() + 2);
+
+    for (const char character : value) {
+      if (character == '\\' || character == '\'') {
+        quoted += '\\';
+      }
+
+      quoted += character;
+    }
+
+    quoted += '\'';
+    return quoted;
+  }
+
   std::string pgConnectionData(const worm::connection::ConnectionConfig& databaseConfig)
   {
-    return " host=" + databaseConfig.host + " port=" + databaseConfig.port + " dbname=" + databaseConfig.dbname +
-           " user=" + databaseConfig.username + " password=" + databaseConfig.password;
+    using worm::utils::strings::replaceFirst;
+    std::string conn = "host={host} port={port} dbname={dbname} user={username} password={password}";
+
+    replaceFirst(conn, "{host}", quoteConnectionValue(databaseConfig.host));
+    replaceFirst(conn, "{port}", quoteConnectionValue(databaseConfig.port));
+    replaceFirst(conn, "{dbname}", quoteConnectionValue(databaseConfig.dbname));
+    replaceFirst(conn, "{username}", quoteConnectionValue(databaseConfig.username));
+    replaceFirst(conn, "{password}", quoteConnectionValue(databaseConfig.password));
+
+    return conn;
   }
 
   pqxx::params pgParameters(const std::vector<worm::core::Parameter>& parameters)
@@ -43,7 +69,10 @@ namespace
 namespace worm::connection
 {
   PgClient::PgClient(const ConnectionConfig& databaseConfig)
-  try : connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig))), innerTransaction_(nullptr) {
+  try
+    : Client(databaseConfig.cacheResults),
+      connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig))),
+      innerTransaction_(nullptr) {
   } catch (const std::exception& error) {
     throw DatabaseConnectionException(error.what());
   }

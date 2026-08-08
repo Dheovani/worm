@@ -128,6 +128,40 @@ namespace worm::core
     return rendered;
   }
 
+  std::string SqlBuilder::renderUpdateFrom(const Source&) const
+  {
+    return {};
+  }
+
+  std::string SqlBuilder::renderDeletePrefix(const Source& source) const
+  {
+    return "delete from " + renderMutationSource(source);
+  }
+
+  std::string SqlServerBuilder::renderMutationSource(const Source& source) const
+  {
+    return std::string{source.alias.value_or(source.name)};
+  }
+
+  std::string SqlServerBuilder::renderUpdateFrom(const Source& source) const
+  {
+    if (!source.alias.has_value()) {
+      return {};
+    }
+
+    return " from " + std::string{source.name} + " " + std::string{source.alias.value()};
+  }
+
+  std::string SqlServerBuilder::renderDeletePrefix(const Source& source) const
+  {
+    if (!source.alias.has_value()) {
+      return "delete from " + std::string{source.name};
+    }
+
+    return "delete " + std::string{source.alias.value()} + " from " + std::string{source.name} + " " +
+           std::string{source.alias.value()};
+  }
+
   std::string SqlBuilder::renderExpression(const Expression& expression, std::size_t firstParameterIndex) const
   {
     std::string rendered;
@@ -348,6 +382,8 @@ namespace worm::core
       }
     }
 
+    sql += renderUpdateFrom(source);
+
     if (filter.has_value()) {
       sql += " where ";
       sql += renderFilter(filter.value(), columns.size() + 1);
@@ -363,7 +399,7 @@ namespace worm::core
 
   Statement SqlBuilder::delete_(const Source& source, const std::optional<Filter>& filter) const
   {
-    std::string sql = "delete from " + renderMutationSource(source);
+    std::string sql = renderDeletePrefix(source);
 
     if (filter.has_value()) {
       sql += " where ";
@@ -394,6 +430,8 @@ namespace worm::core
       return std::make_unique<MySqlBuilder>();
     case worm::connection::DatabaseType::SQLite:
       return std::make_unique<SqliteBuilder>();
+    case worm::connection::DatabaseType::MSSQL:
+      return std::make_unique<SqlServerBuilder>();
     default:
       throw worm::UnsupportedDatabaseException("Unsupported database type.");
     }

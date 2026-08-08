@@ -32,6 +32,7 @@ namespace
 
   struct Base
   {};
+
   struct Derived : Base
   {
     int value = 0;
@@ -39,6 +40,21 @@ namespace
     {
       return value;
     }
+  };
+
+  struct Comparable
+  {
+    int value;
+
+    bool operator==(const Comparable& other) const
+    {
+      return value == other.value;
+    }
+  };
+
+  struct NonComparable
+  {
+    int value;
   };
 } // namespace
 
@@ -49,6 +65,8 @@ int main()
   static_assert(utils::is_string_like<std::string>);
   static_assert(utils::is_string_like<std::string_view>);
   static_assert(utils::is_string_like<const char*>);
+  static_assert(utils::is_string_like<const char[5]>);
+  static_assert(!utils::is_string_like<char>);
   static_assert(!utils::is_string_like<int>);
   static_assert(utils::is_optional<std::optional<int>>::value);
   static_assert(utils::is_optional_v<std::optional<int>>);
@@ -68,6 +86,15 @@ int main()
   static_assert(utils::holds_variant_option<std::string, std::variant<int, std::string>>);
   static_assert(!utils::holds_variant_option<double, std::variant<int, std::string>>);
   static_assert(std::is_same_v<utils::remove_class_pointer_t<decltype(&Derived::value), Derived>, int>);
+  static_assert(utils::is_equality_comparable_v<Comparable>);
+  static_assert(!utils::is_equality_comparable_v<NonComparable>);
+
+  std::string text = "driver={driver}";
+  if (!utils::strings::replaceFirst(text, "{driver}", "ODBC") || text != "driver=ODBC" ||
+      utils::strings::replaceFirst(text, "{missing}", "value")) {
+    std::cerr << "replaceFirst did not report or apply replacements correctly.\n";
+    return 1;
+  }
 
   setEnvironment(environmentKey, "configured");
   if (utils::env::envValue(environmentKey) != "configured") {

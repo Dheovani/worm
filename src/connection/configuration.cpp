@@ -14,6 +14,10 @@
 #include <connection/drivers/sqlite-client.hpp>
 #endif
 
+#if defined(WORM_HAS_MSSQL_DRIVER)
+#include <connection/drivers/mssql-client.hpp>
+#endif
+
 namespace worm::connection
 {
   std::unique_ptr<Client> makeClient(const ConnectionConfig& connectionData, DatabaseType type)
@@ -36,6 +40,12 @@ namespace worm::connection
       return std::make_unique<SqliteClient>(connectionData);
 #else
       throw UnsupportedDatabaseException("SQLite driver is not enabled in this build.");
+#endif
+    case DatabaseType::MSSQL:
+#if defined(WORM_HAS_MSSQL_DRIVER)
+      return std::make_unique<MsSqlClient>(connectionData);
+#else
+      throw UnsupportedDatabaseException("MSSQL driver is not enabled in this build.");
 #endif
     default:
       throw UnsupportedDatabaseException("Unsupported database type.");

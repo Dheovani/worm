@@ -34,7 +34,8 @@ int main()
 
   if (worm::connection::databaseTypes.at("postgresql") != worm::connection::DatabaseType::PostgreSQL ||
       worm::connection::databaseTypes.at("mysql") != worm::connection::DatabaseType::MySQL ||
-      worm::connection::databaseTypes.at("sqlite") != worm::connection::DatabaseType::SQLite) {
+      worm::connection::databaseTypes.at("sqlite") != worm::connection::DatabaseType::SQLite ||
+      worm::connection::databaseTypes.at("mssql") != worm::connection::DatabaseType::MSSQL) {
     std::cerr << "Database type mapping is incorrect.\n";
     return 1;
   }

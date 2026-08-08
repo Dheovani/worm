@@ -20,6 +20,7 @@ if(WORM_ENABLE_SQLITE)
   # vcpkg's SQLite port exports an unofficial config target. Keep the built-in
   # FindSQLite3 module as a fallback for system installations.
   find_package(unofficial-sqlite3 CONFIG QUIET)
+
   if(TARGET unofficial::sqlite3::sqlite3)
     set(WORM_SQLITE_TARGET unofficial::sqlite3::sqlite3)
   else()
@@ -34,10 +35,12 @@ if(WORM_ENABLE_MYSQL)
   # vcpkg's libmysql port exports unofficial::libmysql::libmysql. On Unix-like
   # systems, also accept a mysqlclient installation discoverable by pkg-config.
   find_package(unofficial-libmysql CONFIG QUIET)
+
   if(TARGET unofficial::libmysql::libmysql)
     set(WORM_MYSQL_TARGET unofficial::libmysql::libmysql)
   else()
     find_package(PkgConfig QUIET)
+
     if(PkgConfig_FOUND)
       pkg_check_modules(MySQLClient QUIET IMPORTED_TARGET mysqlclient)
     endif()
@@ -54,4 +57,22 @@ if(WORM_ENABLE_MYSQL)
   endif()
 
   target_link_libraries(WormDependencies INTERFACE ${WORM_MYSQL_TARGET})
+endif()
+
+if(WORM_ENABLE_MSSQL)
+  # SQL Server connectivity uses the standard ODBC API. CMake's FindODBC
+  # resolves the platform ODBC driver manager:
+  #
+  #   Windows: Windows SDK / odbc32
+  #   Unix:    unixODBC or iODBC
+  #
+  # The Microsoft ODBC Driver for SQL Server itself is a runtime dependency
+  # and is not linked directly into Worm.
+  find_package(ODBC REQUIRED)
+
+  if(NOT TARGET ODBC::ODBC)
+    message(FATAL_ERROR "ODBC was found, but target ODBC::ODBC is unavailable.")
+  endif()
+
+  target_link_libraries(WormDependencies INTERFACE ODBC::ODBC)
 endif()

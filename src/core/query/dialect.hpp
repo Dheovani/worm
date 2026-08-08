@@ -49,4 +49,14 @@ namespace worm::core
     std::string quoteIdentifier(std::string_view identifier) const override;
   };
 
+  class SqlServerDialect : public Dialect
+  {
+  public:
+    [[nodiscard]]
+    std::string placeholder(std::size_t index) const override;
+
+    [[nodiscard]]
+    std::string quoteIdentifier(std::string_view identifier) const override;
+  };
+
 } // namespace worm::core

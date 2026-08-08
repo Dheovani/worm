@@ -50,11 +50,13 @@ namespace worm
     [[nodiscard]]
     static connection::ConnectionConfig get()
     {
-      return {.host = utils::env::envValue("HOST"),
+      return {
+        .host = utils::env::envValue("HOST"),
         .username = utils::env::envValue("USERNAME"),
         .password = utils::env::envValue("PASSWORD"),
         .dbname = utils::env::envValue("DBNAME"),
-        .port = utils::env::envValue("PORT")};
+        .port = utils::env::envValue("PORT"),
+        .cacheResults = utils::env::envValue("QUERY_CACHE_ENABLED") == "true"};
     }
   };
 
@@ -114,6 +116,11 @@ namespace worm
         return dialect;
       }
 
+      if (dbType == connection::DatabaseType::MSSQL) {
+        static const core::SqlServerDialect dialect{};
+        return dialect;
+      }
+
       throw UnsupportedDatabaseException("Unsupported database type.");
     }
   };
@@ -138,6 +145,11 @@ namespace worm
 
       if (dbType == connection::DatabaseType::SQLite) {
         static const core::SqliteBuilder builder{};
+        return builder;
+      }
+
+      if (dbType == connection::DatabaseType::MSSQL) {
+        static const core::SqlServerBuilder builder{};
         return builder;
       }
 

@@ -38,6 +38,7 @@ int main()
   const worm::core::PostgresDialect postgresDialect;
   const worm::core::MySqlDialect mySqlDialect;
   const worm::core::SqliteDialect sqliteDialect;
+  const worm::core::SqlServerDialect sqlServerDialect;
 
   if (!hasDialectContract(postgresDialect, 3, "$3", "weird\"name", "\"users\"", "\"weird\"\"name\"")) {
     return 1;
@@ -51,11 +52,16 @@ int main()
     return 1;
   }
 
+  if (!hasDialectContract(sqlServerDialect, 3, "?", "weird]name", "[users]", "[weird]]name]")) {
+    return 1;
+  }
+
   const std::vector<std::unique_ptr<worm::core::Dialect>> dialects = [] {
     std::vector<std::unique_ptr<worm::core::Dialect>> values;
     values.push_back(std::make_unique<worm::core::PostgresDialect>());
     values.push_back(std::make_unique<worm::core::MySqlDialect>());
     values.push_back(std::make_unique<worm::core::SqliteDialect>());
+    values.push_back(std::make_unique<worm::core::SqlServerDialect>());
     return values;
   }();
 

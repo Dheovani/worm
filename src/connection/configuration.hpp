@@ -14,6 +14,7 @@ namespace worm::connection
     std::string password;
     std::string dbname;
     std::string port;
+    bool cacheResults{false};
   };
 
   [[nodiscard]]

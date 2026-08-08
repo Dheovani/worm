@@ -29,6 +29,12 @@ add_worm_connection_test(
 )
 
 add_worm_connection_test(
+  WormClientCacheTests
+  client-cache-tests.cpp
+  Worm.Connection.ClientCache
+)
+
+add_worm_connection_test(
   WormConfigurationTests
   configuration-tests.cpp
   Worm.Connection.Configuration
@@ -91,5 +97,13 @@ if(WORM_ENABLE_SQLITE)
     drivers/sqlite-contract-tests.cpp
     Worm.Connection.Contract.SQLite
     sqlite
+  )
+endif()
+
+if(WORM_ENABLE_MSSQL)
+  add_worm_connection_test(
+    WormMsSqlClientTests
+    drivers/mssql-client-tests.cpp
+    Worm.Connection.MsSqlClient
   )
 endif()

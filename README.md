@@ -43,8 +43,8 @@ $env:VCPKG_ROOT = "C:\Users\seu-usuario\vcpkg"
 ```
 
 Copie [.env.example](.env.example) para `.env` e ajuste o driver e as
-credenciais. O valor `DATABASE_TYPE` aceita `sqlite`, `postgresql` ou `mysql`;
-para SQLite, `DBNAME` também pode ser `:memory:`.
+credenciais. O valor `DATABASE_TYPE` aceita `sqlite`, `postgresql`, `mysql` ou
+`mssql`; para SQLite, `DBNAME` também pode ser `:memory:`.
 
 ## Configuração e build
 
@@ -73,8 +73,13 @@ cmake -S . -B build/sqlite `
 ```
 
 As opções `WORM_ENABLE_POSTGRESQL`, `WORM_ENABLE_MYSQL` e
-`WORM_ENABLE_SQLITE` são independentes e vêm habilitadas por padrão. Drivers
-desativados não têm seus fontes, testes ou dependências adicionados à build.
+`WORM_ENABLE_SQLITE` são independentes e vêm habilitadas por padrão. O driver
+SQL Server é habilitado explicitamente com `WORM_ENABLE_MSSQL=ON` e usa ODBC.
+Drivers desativados não têm seus fontes, testes ou dependências adicionados à
+build.
+
+Para usar SQL Server, instale o Microsoft ODBC Driver 18 e configure
+`MSSQL_ODBC_DRIVER`. O nome padrão é `ODBC Driver 18 for SQL Server`.
 
 ## Testes
 

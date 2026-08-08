@@ -13,6 +13,9 @@ endif()
 if(WORM_ENABLE_SQLITE)
   list(APPEND WORM_CONNECTION_SOURCES drivers/sqlite-client.cpp)
 endif()
+if(WORM_ENABLE_MSSQL)
+  list(APPEND WORM_CONNECTION_SOURCES drivers/mssql-client.cpp)
+endif()
 
 add_library(WormConnection ${WORM_CONNECTION_SOURCES})
 add_library(Worm::Connection ALIAS WormConnection)
@@ -38,4 +41,5 @@ target_compile_definitions(
     $<$<BOOL:${WORM_ENABLE_POSTGRESQL}>:WORM_HAS_POSTGRESQL_DRIVER=1>
     $<$<BOOL:${WORM_ENABLE_MYSQL}>:WORM_HAS_MYSQL_DRIVER=1>
     $<$<BOOL:${WORM_ENABLE_SQLITE}>:WORM_HAS_SQLITE_DRIVER=1>
+    $<$<BOOL:${WORM_ENABLE_MSSQL}>:WORM_HAS_MSSQL_DRIVER=1>
 )

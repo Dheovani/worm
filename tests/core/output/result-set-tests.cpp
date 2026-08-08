@@ -34,6 +34,12 @@ int main()
     return 1;
   }
 
+  if (commandResult == worm::core::ResultSet{std::uint64_t{2}} ||
+      !(commandResult == worm::core::ResultSet{std::uint64_t{3}})) {
+    std::cerr << "ResultSet equality ignored the affected row count.\n";
+    return 1;
+  }
+
   const auto& row = result.rows().front();
   if (row.empty() || row.columnCount() != 3) {
     std::cerr << "ResultRow did not preserve columns.\n";

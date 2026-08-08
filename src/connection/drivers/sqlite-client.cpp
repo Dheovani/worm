@@ -43,7 +43,8 @@ namespace worm::connection
   }
 
   SqliteClient::SqliteClient(const ConnectionConfig& databaseConfig)
-    : connection_(nullptr)
+    : Client(databaseConfig.cacheResults),
+      connection_(nullptr)
   {
     sqlite3* connection = nullptr;
     const int resultCode = sqlite3_open(databaseConfig.dbname.c_str(), &connection);
