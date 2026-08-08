@@ -69,12 +69,13 @@ namespace
 namespace worm::connection
 {
   PgClient::PgClient(const ConnectionConfig& databaseConfig)
-  try
-    : Client(databaseConfig.cacheResults),
-      connection_(std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig))),
-      innerTransaction_(nullptr) {
-  } catch (const std::exception& error) {
-    throw DatabaseConnectionException(error.what());
+    : Client(databaseConfig.cacheResults)
+  {
+    try {
+      connection_ = std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig));
+    } catch (const std::exception& error) {
+      throw DatabaseConnectionException(error.what());
+    }
   }
 
   worm::core::ResultSet PgClient::executeImpl(const worm::core::Statement& statement)

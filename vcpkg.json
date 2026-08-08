@@ -34,12 +34,7 @@
     },
     "mssql": {
       "description": "Build the Microsoft SQL Server driver",
-      "dependencies": [
-        {
-          "name": "unixodbc",
-          "platform": "!windows"
-        }
-      ]
+      "dependencies": []
     }
   }
 }

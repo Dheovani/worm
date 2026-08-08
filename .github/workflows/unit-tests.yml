@@ -45,12 +45,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y default-libmysqlclient-dev pkg-config
+          sudo apt-get install -y autoconf autoconf-archive automake default-libmysqlclient-dev libtool pkg-config
 
       - name: Install MySQL client development files
         if: runner.os == 'macOS'
         run: |
-          brew install mysql-client pkg-config
+          brew install autoconf autoconf-archive automake libtool mysql-client pkg-config
           echo "PKG_CONFIG_PATH=$(brew --prefix mysql-client)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
       - name: Install Clang
@@ -153,7 +153,7 @@ jobs:
       - name: Install MySQL client development files
         run: |
           sudo apt-get update
-          sudo apt-get install -y default-libmysqlclient-dev pkg-config
+          sudo apt-get install -y autoconf autoconf-archive automake default-libmysqlclient-dev libtool pkg-config
 
       - name: Bootstrap vcpkg
         shell: bash
@@ -224,16 +224,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Install Unix build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf autoconf-archive automake libtool
+
       - name: Install MySQL client development files
         if: matrix.name == 'MySQL only'
         run: |
-          sudo apt-get update
           sudo apt-get install -y default-libmysqlclient-dev pkg-config
 
       - name: Install ODBC development files
         if: matrix.name == 'MSSQL only'
         run: |
-          sudo apt-get update
           sudo apt-get install -y unixodbc-dev
 
       - name: Bootstrap vcpkg

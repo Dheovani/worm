@@ -56,7 +56,8 @@ namespace worm
         .password = utils::env::envValue("PASSWORD"),
         .dbname = utils::env::envValue("DBNAME"),
         .port = utils::env::envValue("PORT"),
-        .cacheResults = utils::env::envValue("QUERY_CACHE_ENABLED") == "true"};
+        .cacheResults = utils::env::envValue("QUERY_CACHE_ENABLED") == "true",
+      };
     }
   };
 
