@@ -60,5 +60,25 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          mapfile -t files < <(git ls-files -- 'src' 'tests' | grep -E '\.cpp$')
-          clang-tidy -p build/quality "${files[@]}"
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import subprocess
+
+          compile_commands = pathlib.Path("build/quality/compile_commands.json")
+          entries = json.loads(compile_commands.read_text())
+          files = sorted({
+              pathlib.Path(entry["file"]).resolve()
+              for entry in entries
+              if entry["file"].endswith(".cpp")
+          })
+
+          project_root = pathlib.Path.cwd().resolve()
+          project_files = [
+              str(file)
+              for file in files
+              if file.is_relative_to(project_root / "src") or file.is_relative_to(project_root / "tests")
+          ]
+
+          subprocess.run(["clang-tidy", "-p", "build/quality", *project_files], check=True)
+          PY

@@ -21,14 +21,17 @@ jobs:
         include:
           - os: ubuntu-latest
             compiler: gcc
+            cc: gcc
             cxx: g++
           - os: ubuntu-latest
             compiler: clang
+            cc: clang
             cxx: clang++
           - os: windows-latest
             compiler: msvc
           - os: macos-latest
             compiler: appleclang
+            cc: clang
             cxx: clang++
 
     env:
@@ -43,6 +46,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y default-libmysqlclient-dev pkg-config
+
+      - name: Install MySQL client development files
+        if: runner.os == 'macOS'
+        run: |
+          brew install mysql-client pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix mysql-client)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
       - name: Install Clang
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
@@ -73,9 +82,13 @@ jobs:
 
       - name: Configure
         if: runner.os != 'Windows'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER="${{ matrix.cc }}"
           -DCMAKE_CXX_COMPILER="${{ matrix.cxx }}"
           -DBUILD_TESTING=ON
           -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
@@ -152,6 +165,9 @@ jobs:
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Debug
+          -DWORM_ENABLE_POSTGRESQL=ON
+          -DWORM_ENABLE_MYSQL=ON
+          -DWORM_ENABLE_SQLITE=ON
           -DBUILD_TESTING=ON
           -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 
@@ -194,6 +210,12 @@ jobs:
               -DWORM_ENABLE_POSTGRESQL=OFF
               -DWORM_ENABLE_MYSQL=ON
               -DWORM_ENABLE_SQLITE=OFF
+          - name: MSSQL only
+            cmake-options: >-
+              -DWORM_ENABLE_POSTGRESQL=OFF
+              -DWORM_ENABLE_MYSQL=OFF
+              -DWORM_ENABLE_SQLITE=OFF
+              -DWORM_ENABLE_MSSQL=ON
 
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
@@ -207,6 +229,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y default-libmysqlclient-dev pkg-config
+
+      - name: Install ODBC development files
+        if: matrix.name == 'MSSQL only'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev
 
       - name: Bootstrap vcpkg
         shell: bash

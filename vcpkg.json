@@ -16,7 +16,7 @@
       "dependencies": [
         {
           "name": "libmysql",
-          "platform": "!linux"
+          "platform": "windows"
         }
       ]
     },

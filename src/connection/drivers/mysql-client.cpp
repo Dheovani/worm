@@ -15,9 +15,18 @@ namespace
 {
   constexpr unsigned long resultBufferSize = 4096;
 
+  enum class MySqlParameterKind
+  {
+    Null,
+    Integer,
+    Floating,
+    Text
+  };
+
   struct MySqlBoundParameter
   {
     MYSQL_BIND bind{};
+    MySqlParameterKind kind{MySqlParameterKind::Null};
     std::int64_t integer{};
     double floating{};
     std::string text;
@@ -29,6 +38,32 @@ namespace
   {
     bool value{};
   };
+
+  void refreshMySqlBind(MySqlBoundParameter& boundParameter)
+  {
+    std::memset(&boundParameter.bind, 0, sizeof(boundParameter.bind));
+
+    switch (boundParameter.kind) {
+    case MySqlParameterKind::Null:
+      boundParameter.bind.buffer_type = MYSQL_TYPE_NULL;
+      boundParameter.bind.is_null = &boundParameter.isNull;
+      return;
+    case MySqlParameterKind::Integer:
+      boundParameter.bind.buffer_type = MYSQL_TYPE_LONGLONG;
+      boundParameter.bind.buffer = &boundParameter.integer;
+      return;
+    case MySqlParameterKind::Floating:
+      boundParameter.bind.buffer_type = MYSQL_TYPE_DOUBLE;
+      boundParameter.bind.buffer = &boundParameter.floating;
+      return;
+    case MySqlParameterKind::Text:
+      boundParameter.bind.buffer_type = MYSQL_TYPE_STRING;
+      boundParameter.bind.buffer = boundParameter.text.data();
+      boundParameter.bind.buffer_length = boundParameter.length;
+      boundParameter.bind.length = &boundParameter.length;
+      return;
+    }
+  }
 
   worm::core::Parameter mysqlValue(const MYSQL_FIELD& field, const char* value)
   {
@@ -56,7 +91,6 @@ namespace
   MySqlBoundParameter mysqlParameter(const worm::core::Parameter& parameter)
   {
     MySqlBoundParameter boundParameter;
-    std::memset(&boundParameter.bind, 0, sizeof(boundParameter.bind));
 
     std::visit(
       [&boundParameter](const auto& value) {
@@ -64,30 +98,25 @@ namespace
 
         if constexpr (std::is_same_v<Value, std::nullptr_t>) {
           boundParameter.isNull = true;
-          boundParameter.bind.buffer_type = MYSQL_TYPE_NULL;
-          boundParameter.bind.is_null = &boundParameter.isNull;
+          boundParameter.kind = MySqlParameterKind::Null;
         } else if constexpr (std::is_same_v<Value, std::int64_t>) {
+          boundParameter.kind = MySqlParameterKind::Integer;
           boundParameter.integer = value;
-          boundParameter.bind.buffer_type = MYSQL_TYPE_LONGLONG;
-          boundParameter.bind.buffer = &boundParameter.integer;
         } else if constexpr (std::is_same_v<Value, double>) {
+          boundParameter.kind = MySqlParameterKind::Floating;
           boundParameter.floating = value;
-          boundParameter.bind.buffer_type = MYSQL_TYPE_DOUBLE;
-          boundParameter.bind.buffer = &boundParameter.floating;
         } else if constexpr (std::is_same_v<Value, bool>) {
+          boundParameter.kind = MySqlParameterKind::Integer;
           boundParameter.integer = value ? 1 : 0;
-          boundParameter.bind.buffer_type = MYSQL_TYPE_LONGLONG;
-          boundParameter.bind.buffer = &boundParameter.integer;
         } else {
+          boundParameter.kind = MySqlParameterKind::Text;
           boundParameter.text = value;
           boundParameter.length = static_cast<unsigned long>(boundParameter.text.size());
-          boundParameter.bind.buffer_type = MYSQL_TYPE_STRING;
-          boundParameter.bind.buffer = boundParameter.text.data();
-          boundParameter.bind.buffer_length = boundParameter.length;
-          boundParameter.bind.length = &boundParameter.length;
         }
       },
       parameter);
+
+    refreshMySqlBind(boundParameter);
 
     return boundParameter;
   }
@@ -182,6 +211,7 @@ namespace worm::connection
     binds.reserve(parameters.size());
 
     for (MySqlBoundParameter& parameter : parameters) {
+      refreshMySqlBind(parameter);
       binds.push_back(parameter.bind);
     }
 
