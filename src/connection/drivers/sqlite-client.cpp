@@ -1,9 +1,11 @@
 #include <connection/drivers/sqlite-client.hpp>
 #include <errors/database-connection-exception.hpp>
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -31,6 +33,17 @@ namespace
       },
       parameter);
   }
+
+  int sqliteTimeoutMilliseconds(std::chrono::milliseconds timeout)
+  {
+    timeout = worm::connection::timeoutMilliseconds(timeout);
+
+    if (timeout.count() > (std::numeric_limits<int>::max)()) {
+      throw worm::InvalidArgException("SQLite timeout is too large.");
+    }
+
+    return static_cast<int>(timeout.count());
+  }
 } // namespace
 
 namespace worm::connection
@@ -51,6 +64,12 @@ namespace worm::connection
     connection_.reset(connection);
 
     if (resultCode != SQLITE_OK) {
+      throwConnectionError();
+    }
+
+    if (databaseConfig.timeoutConfig.queryTimeout.has_value() &&
+        sqlite3_busy_timeout(
+          connection_.get(), sqliteTimeoutMilliseconds(*databaseConfig.timeoutConfig.queryTimeout)) != SQLITE_OK) {
       throwConnectionError();
     }
   }

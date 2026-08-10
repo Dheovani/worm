@@ -1,6 +1,7 @@
 #include <connection/drivers/mssql-client.hpp>
 
 #include <errors/database-connection-exception.hpp>
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <utils/helpers.hpp>
 
@@ -8,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -118,6 +120,16 @@ namespace
     replaceFirst(connectionString, "{password}", quoteOdbcValue(config.password));
 
     return connectionString;
+  }
+
+  SQLULEN odbcTimeoutSeconds(std::chrono::milliseconds timeout)
+  {
+    const std::chrono::seconds seconds = worm::connection::timeoutSeconds(timeout);
+    if (seconds.count() > (std::numeric_limits<SQLULEN>::max)()) {
+      throw worm::InvalidArgException("ODBC timeout is too large.");
+    }
+
+    return static_cast<SQLULEN>(seconds.count());
   }
 
   BoundParameter makeParameter(const worm::core::Parameter& parameter)
@@ -278,7 +290,8 @@ namespace worm::connection
   MsSqlClient::MsSqlClient(const ConnectionConfig& databaseConfig)
     : Client(databaseConfig.cacheResults),
       environment_(nullptr),
-      connection_(nullptr)
+      connection_(nullptr),
+      timeoutConfig_(databaseConfig.timeoutConfig)
   {
     SQLHENV environment = SQL_NULL_HENV;
     if (!SQL_SUCCEEDED(SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &environment))) {
@@ -296,6 +309,18 @@ namespace worm::connection
       throw DatabaseConnectionException(diagnostics(SQL_HANDLE_ENV, environment_.get()));
     }
     connection_.reset(connection);
+
+    if (databaseConfig.timeoutConfig.connectionTimeout.has_value()) {
+      const SQLULEN timeout = odbcTimeoutSeconds(*databaseConfig.timeoutConfig.connectionTimeout);
+      const SQLRETURN result = SQLSetConnectAttr(connection_.get(),
+        SQL_ATTR_LOGIN_TIMEOUT,
+        reinterpret_cast<SQLPOINTER>(static_cast<std::uintptr_t>(timeout)),
+        0);
+
+      if (!SQL_SUCCEEDED(result)) {
+        throw DatabaseConnectionException(diagnostics(SQL_HANDLE_DBC, connection_.get()));
+      }
+    }
 
     std::string connectionString = buildConnectionString(databaseConfig);
     const SQLRETURN result = SQLDriverConnect(connection_.get(),
@@ -353,6 +378,19 @@ namespace worm::connection
     }
 
     std::unique_ptr<void, StatementDeleter> preparedStatement{rawStatement};
+
+    if (const auto timeout = timeoutConfig_.queryTimeout; timeout.has_value()) {
+      const SQLULEN seconds = odbcTimeoutSeconds(*timeout);
+      const SQLRETURN result = SQLSetStmtAttr(preparedStatement.get(),
+        SQL_ATTR_QUERY_TIMEOUT,
+        reinterpret_cast<SQLPOINTER>(static_cast<std::uintptr_t>(seconds)),
+        0);
+
+      if (!SQL_SUCCEEDED(result)) {
+        throw QueryExecutionException(diagnostics(SQL_HANDLE_STMT, preparedStatement.get()));
+      }
+    }
+
     if (!SQL_SUCCEEDED(SQLPrepare(preparedStatement.get(),
           reinterpret_cast<SQLCHAR*>(const_cast<char*>(statement.sql.data())),
           static_cast<SQLINTEGER>(statement.sql.size())))) {

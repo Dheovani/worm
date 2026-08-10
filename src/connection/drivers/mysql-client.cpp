@@ -1,11 +1,13 @@
 #include <connection/drivers/mysql-client.hpp>
 #include <errors/database-connection-exception.hpp>
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -120,6 +122,16 @@ namespace
 
     return boundParameter;
   }
+
+  unsigned int mysqlTimeoutSeconds(std::chrono::milliseconds timeout)
+  {
+    const std::chrono::seconds seconds = worm::connection::timeoutSeconds(timeout);
+    if (seconds.count() > (std::numeric_limits<unsigned int>::max)()) {
+      throw worm::InvalidArgException("MySQL timeout is too large.");
+    }
+
+    return static_cast<unsigned int>(seconds.count());
+  }
 } // namespace
 
 namespace worm::connection
@@ -132,6 +144,21 @@ namespace worm::connection
 
     if (connection_ == nullptr) {
       throw DatabaseConnectionException("Unable to initialize the MySQL client.");
+    }
+
+    if (databaseConfig.timeoutConfig.connectionTimeout.has_value()) {
+      unsigned int timeout = mysqlTimeoutSeconds(*databaseConfig.timeoutConfig.connectionTimeout);
+      if (mysql_options(connection_.get(), MYSQL_OPT_CONNECT_TIMEOUT, &timeout) != 0) {
+        throw DatabaseConnectionException(mysql_error(connection_.get()));
+      }
+    }
+
+    if (databaseConfig.timeoutConfig.queryTimeout.has_value()) {
+      unsigned int timeout = mysqlTimeoutSeconds(*databaseConfig.timeoutConfig.queryTimeout);
+      if (mysql_options(connection_.get(), MYSQL_OPT_READ_TIMEOUT, &timeout) != 0 ||
+          mysql_options(connection_.get(), MYSQL_OPT_WRITE_TIMEOUT, &timeout) != 0) {
+        throw DatabaseConnectionException(mysql_error(connection_.get()));
+      }
     }
 
     if (mysql_real_connect(connection_.get(),

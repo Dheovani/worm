@@ -4,6 +4,7 @@
 #include <errors/unregistered-dependency-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -67,6 +68,8 @@ int main()
   setEnvironment("DBNAME", ":memory:");
   setEnvironment("PORT", "0");
   setEnvironment("QUERY_CACHE_ENABLED", "true");
+  setEnvironment("CONNECTION_TIMEOUT_MS", "1500");
+  setEnvironment("QUERY_TIMEOUT_MS", "30000");
 
   int result = 0;
   try {
@@ -84,6 +87,31 @@ int main()
       std::cerr << "ConnectionConfig dependency injection returned invalid environment values.\n";
       result = 1;
     }
+
+    if (!config.timeoutConfig.connectionTimeout.has_value() ||
+        *config.timeoutConfig.connectionTimeout != std::chrono::milliseconds{1500} ||
+        !config.timeoutConfig.queryTimeout.has_value() ||
+        *config.timeoutConfig.queryTimeout != std::chrono::milliseconds{30000} ||
+        !config.timeoutConfig.cancelOnTimeout) {
+      std::cerr << "ConnectionConfig dependency injection returned invalid timeout values.\n";
+      result = 1;
+    }
+
+    setEnvironment("QUERY_TIMEOUT_MS", "invalid");
+    try {
+      static_cast<void>(worm::DependencyInjector<worm::connection::TimeoutConfig>::get());
+      std::cerr << "TimeoutConfig dependency injection accepted an invalid timeout.\n";
+      result = 1;
+    } catch (const worm::InvalidArgException&) {}
+    setEnvironment("QUERY_TIMEOUT_MS", "30000");
+
+    setEnvironment("CONNECTION_TIMEOUT_MS", "-1");
+    try {
+      static_cast<void>(worm::DependencyInjector<worm::connection::TimeoutConfig>::get());
+      std::cerr << "TimeoutConfig dependency injection accepted a negative timeout.\n";
+      result = 1;
+    } catch (const worm::InvalidArgException&) {}
+    setEnvironment("CONNECTION_TIMEOUT_MS", "1500");
 
     auto logger = worm::DependencyInjector<worm::Logger>::get<Value, 12>();
     logger.debug("Dependency injection logger smoke test");
@@ -130,5 +158,7 @@ int main()
   unsetEnvironment("DBNAME");
   unsetEnvironment("PORT");
   unsetEnvironment("QUERY_CACHE_ENABLED");
+  unsetEnvironment("CONNECTION_TIMEOUT_MS");
+  unsetEnvironment("QUERY_TIMEOUT_MS");
   return result;
 }

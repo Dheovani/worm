@@ -4,6 +4,7 @@
 #include <reflection/field.hpp>
 #include <sqlite3.h>
 
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
@@ -81,6 +82,10 @@ try {
   {
     const worm::connection::ConnectionConfig config{
       .dbname = databasePath.string(),
+      .timeoutConfig =
+        {
+          .queryTimeout = std::chrono::milliseconds{250},
+        },
     };
 
     const auto client = std::make_shared<Client>(config);

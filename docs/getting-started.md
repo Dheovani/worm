@@ -92,6 +92,10 @@ visíveis:
 ```cpp
 const worm::connection::ConnectionConfig config{
   .dbname = "application.db",
+  .timeoutConfig = {
+    .connectionTimeout = std::chrono::seconds{5},
+    .queryTimeout = std::chrono::seconds{30},
+  },
 };
 
 const auto client = std::make_shared<worm::connection::SqliteClient>(config);
@@ -209,6 +213,20 @@ O cache de resultados de `SELECT` é opt-in por meio de
 transações invalidam o cache. Mantenha-o desabilitado quando o mesmo banco puder
 ser alterado por outros processos e a aplicação precisar observar essas mudanças
 imediatamente.
+
+Timeouts são configurados por `ConnectionConfig::timeoutConfig` ou pelas
+variáveis `CONNECTION_TIMEOUT_MS` e `QUERY_TIMEOUT_MS`. O Worm aplica apenas o que
+cada driver suporta de forma previsível: PostgreSQL usa `connect_timeout` e
+`statement_timeout`, MySQL configura timeouts nativos de conexão e I/O, SQLite
+usa `busy_timeout` para espera por locks e SQL Server usa atributos ODBC de login
+e statement. Valores em milissegundos são arredondados para cima quando o driver
+só aceita segundos.
+
+O Worm não mantém cache de prepared statements reutilizáveis neste momento.
+Cada `Statement` é preparado e executado dentro da chamada do driver. Essa
+decisão evita uma política prematura de invalidação por conexão e será revista
+apenas com benchmark ou caso de uso real. Pelo mesmo motivo, não há pool de
+conexões: use uma `Session` e um `Client` por fluxo de trabalho concorrente.
 
 ## Limitações atuais
 

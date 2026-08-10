@@ -1,5 +1,6 @@
 #include <connection/configuration.hpp>
 
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 
 #if defined(WORM_HAS_MYSQL_DRIVER)
@@ -20,6 +21,31 @@
 
 namespace worm::connection
 {
+  std::chrono::milliseconds timeoutMilliseconds(std::chrono::milliseconds timeout)
+  {
+    if (timeout.count() < 0) {
+      throw InvalidArgException("Timeout values cannot be negative.");
+    }
+
+    return timeout;
+  }
+
+  std::chrono::seconds timeoutSeconds(std::chrono::milliseconds timeout)
+  {
+    timeout = timeoutMilliseconds(timeout);
+
+    if (timeout.count() == 0) {
+      return std::chrono::seconds{0};
+    }
+
+    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(timeout);
+    if (seconds < timeout) {
+      return seconds + std::chrono::seconds{1};
+    }
+
+    return seconds;
+  }
+
   std::unique_ptr<Client> makeClient(const ConnectionConfig& connectionData, DatabaseType type)
   {
     switch (type) {

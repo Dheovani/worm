@@ -4,13 +4,35 @@
 #include <connection/drivers/sqlite-client.hpp>
 #endif
 
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 
+#include <chrono>
 #include <iostream>
 #include <memory>
 
 int main()
 {
+  if (worm::connection::timeoutSeconds(std::chrono::milliseconds{1500}) != std::chrono::seconds{2} ||
+      worm::connection::timeoutSeconds(std::chrono::milliseconds{1000}) != std::chrono::seconds{1} ||
+      worm::connection::timeoutSeconds(std::chrono::milliseconds{0}) != std::chrono::seconds{0} ||
+      worm::connection::timeoutMilliseconds(std::chrono::milliseconds{17}) != std::chrono::milliseconds{17}) {
+    std::cerr << "Connection configuration did not normalize millisecond timeouts to driver seconds.\n";
+    return 1;
+  }
+
+  try {
+    static_cast<void>(worm::connection::timeoutSeconds(std::chrono::milliseconds{-1}));
+    std::cerr << "Connection configuration accepted a negative timeout.\n";
+    return 1;
+  } catch (const worm::InvalidArgException&) {}
+
+  try {
+    static_cast<void>(worm::connection::timeoutMilliseconds(std::chrono::milliseconds{-1}));
+    std::cerr << "Connection configuration accepted a negative millisecond timeout.\n";
+    return 1;
+  } catch (const worm::InvalidArgException&) {}
+
   const worm::connection::ConnectionConfig config{
     .dbname = ":memory:",
   };

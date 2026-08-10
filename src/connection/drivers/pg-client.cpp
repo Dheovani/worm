@@ -1,11 +1,14 @@
 #include <connection/drivers/pg-client.hpp>
 
 #include <errors/database-connection-exception.hpp>
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/transaction-exception.hpp>
 #include <utils/helpers.hpp>
 
+#include <chrono>
 #include <cstdint>
+#include <string>
 #include <type_traits>
 #include <variant>
 #include <vector>
@@ -40,6 +43,12 @@ namespace
     replaceFirst(conn, "{username}", quoteConnectionValue(databaseConfig.username));
     replaceFirst(conn, "{password}", quoteConnectionValue(databaseConfig.password));
 
+    if (databaseConfig.timeoutConfig.connectionTimeout.has_value()) {
+      const std::chrono::seconds timeout =
+        worm::connection::timeoutSeconds(*databaseConfig.timeoutConfig.connectionTimeout);
+      conn += " connect_timeout=" + std::to_string(timeout.count());
+    }
+
     return conn;
   }
 
@@ -73,6 +82,15 @@ namespace worm::connection
   {
     try {
       connection_ = std::make_unique<pqxx::connection>(pgConnectionData(databaseConfig));
+
+      if (databaseConfig.timeoutConfig.queryTimeout.has_value()) {
+        const std::chrono::milliseconds timeout = timeoutMilliseconds(*databaseConfig.timeoutConfig.queryTimeout);
+        pqxx::work worker{*connection_};
+        worker.exec("SET statement_timeout = " + std::to_string(timeout.count()));
+        worker.commit();
+      }
+    } catch (const InvalidArgException&) {
+      throw;
     } catch (const std::exception& error) {
       throw DatabaseConnectionException(error.what());
     }

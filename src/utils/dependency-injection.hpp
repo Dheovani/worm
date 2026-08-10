@@ -4,15 +4,18 @@
 #include <connection/configuration.hpp>
 #include <core/query/dialect.hpp>
 #include <core/query/sql-builder.hpp>
+#include <errors/invalid-arg-exception.hpp>
 #include <errors/missing-configuration-exception.hpp>
 #include <errors/unregistered-dependency-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 #include <utils/helpers.hpp>
 #include <utils/logger.hpp>
 
+#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <typeinfo>
 
@@ -45,6 +48,49 @@ namespace worm
   };
 
   template <>
+  struct DependencyInjector<connection::TimeoutConfig>
+  {
+    [[nodiscard]]
+    static connection::TimeoutConfig get()
+    {
+      std::optional<std::chrono::milliseconds> cTimeout = std::nullopt;
+      std::optional<std::chrono::milliseconds> qTimeout = std::nullopt;
+
+      if (utils::env::hasValue("CONNECTION_TIMEOUT_MS")) {
+        cTimeout = parseTimeout("CONNECTION_TIMEOUT_MS");
+      }
+
+      if (utils::env::hasValue("QUERY_TIMEOUT_MS")) {
+        qTimeout = parseTimeout("QUERY_TIMEOUT_MS");
+      }
+
+      return {
+        .connectionTimeout = cTimeout,
+        .queryTimeout = qTimeout,
+        .cancelOnTimeout = cTimeout.has_value() || qTimeout.has_value(),
+      };
+    }
+
+  private:
+    [[nodiscard]]
+    static std::chrono::milliseconds parseTimeout(const char* key)
+    {
+      try {
+        const long long value = std::stoll(utils::env::envValue(key));
+        if (value < 0) {
+          throw InvalidArgException(std::string{key} + " cannot be negative.");
+        }
+
+        return std::chrono::milliseconds{value};
+      } catch (const InvalidArgException&) {
+        throw;
+      } catch (const std::exception&) {
+        throw InvalidArgException(std::string{key} + " must be a timeout in milliseconds.");
+      }
+    }
+  };
+
+  template <>
   struct DependencyInjector<connection::ConnectionConfig>
   {
     [[nodiscard]]
@@ -57,6 +103,7 @@ namespace worm
         .dbname = utils::env::envValue("DBNAME"),
         .port = utils::env::envValue("PORT"),
         .cacheResults = utils::env::envValue("QUERY_CACHE_ENABLED") == "true",
+        .timeoutConfig = DependencyInjector<connection::TimeoutConfig>::get(),
       };
     }
   };

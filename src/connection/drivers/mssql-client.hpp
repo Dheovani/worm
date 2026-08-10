@@ -46,6 +46,7 @@ namespace worm::connection
 
     std::unique_ptr<void, EnvironmentDeleter> environment_;
     std::unique_ptr<void, ConnectionDeleter> connection_;
+    TimeoutConfig timeoutConfig_;
 
     void beginTransactionImpl() override;
     void rollbackTransactionImpl() override;

@@ -126,6 +126,13 @@ namespace worm::utils
 
       return {};
     }
+
+    [[nodiscard]]
+    inline bool hasValue(const char* key)
+    {
+      std::string value = envValue(key);
+      return !value.empty();
+    }
   } // namespace env
 
   namespace strings
