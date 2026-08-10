@@ -1,171 +1,165 @@
 # Roadmap
 
-O Worm pretende ser um ORM C++20 pequeno, seguro e previsível, inspirado nas
-boas ideias do Doctrine sem tentar reproduzir toda a sua complexidade. O valor
-para o desenvolvedor deve vir de uma API tipada, SQL parametrizado, integração
-simples com CMake e comportamento explícito, sem consultas ou alocações ocultas.
+Worm aims to be a small, safe, and predictable C++20 ORM inspired by Doctrine's good ideas without trying to reproduce all of its complexity. Its value for developers should come from a typed API, parameterized SQL, simple CMake integration, and explicit behavior without hidden queries or allocations.
 
-## Princípios do projeto
+## Project principles
 
-- Segurança e correção têm prioridade sobre conveniência sintática.
-- A API pública deve ser pequena, documentada e difícil de usar incorretamente.
-- Recursos devem nascer de casos de uso completos e testáveis, não apenas de
-  abstrações isoladas.
-- SQL gerado deve ser inspecionável e permitir escape controlado para SQL manual.
-- Drivers e dependências de bancos devem ser opcionais.
-- Erros, limitações e custos de desempenho devem ser explícitos.
-- O projeto deve acolher contribuições com respeito, documentação e decisões
-  técnicas transparentes.
+- Safety and correctness come before syntactic convenience.
+- The public API should be small, documented, and hard to misuse.
+- Features should grow from complete and testable use cases, not isolated abstractions.
+- Generated SQL should be inspectable and allow controlled escape hatches for manual SQL.
+- Drivers and database dependencies should be optional.
+- Errors, limitations, and performance costs should be explicit.
+- The project should welcome contributions with respect, documentation, and transparent technical decisions.
 
-## Marco 0 — Fundação concluída
+## Milestone 0 — Foundation complete
 
-- [x] Organizar o código de produção em `src/`.
-- [x] Configurar CMake com targets `Worm::*`.
-- [x] Adicionar manifesto vcpkg reproduzível.
-- [x] Integrar testes ao CTest fora de `src/`.
-- [x] Padronizar estilo, nomes e formatação com `.clang-format` e `AGENTS.md`.
-- [x] Cobrir erros, conexões, utilitários e injeção de dependências.
+- [x] Organize production code under `src/`.
+- [x] Configure CMake with `Worm::*` targets.
+- [x] Add a reproducible vcpkg manifest.
+- [x] Integrate tests with CTest outside `src/`.
+- [x] Standardize style, names, and formatting with `.clang-format` and `AGENTS.md`.
+- [x] Cover errors, connections, utilities, and dependency injection.
 
-### Reflexão
+### Reflection
 
-- [x] Implementar descritores de campos tipados com ponteiros para membros.
-- [x] Definir o conceito C++20 `Reflectable`.
-- [x] Implementar visitação `for_each_field` sem alocações ou funções virtuais.
-- [x] Adicionar metadados de coluna, chave primária, geração e campo ignorado.
-- [x] Implementar lookup por membro e coluna com tratamento de colisão de hash.
-- [x] Criar snapshots tipados e detecção de campos persistentes alterados.
-- [x] Criar testes unitários separados para cada componente da reflexão.
+- [x] Implement typed field descriptors with member pointers.
+- [x] Define the C++20 `Reflectable` concept.
+- [x] Implement `for_each_field` visitation without allocations or virtual functions.
+- [x] Add column metadata, primary key, generated field, and ignored field support.
+- [x] Implement lookup by member and column with hash collision handling.
+- [x] Create typed snapshots and persistent-field change detection.
+- [x] Create separate unit tests for each reflection component.
 
-## Marco 1 — ORM mínimo utilizável
+## Milestone 1 — Minimum usable ORM
 
-Este marco deve terminar com um exemplo completo que cria, persiste, consulta,
-altera e remove uma entidade em SQLite sem concatenar valores em SQL.
+This milestone should end with a complete example that creates, persists, queries, changes, and deletes an entity in SQLite without concatenating values into SQL.
 
-### Modelo de entidades
+### Entity model
 
-- [x] Definir metadados de entidade e tabela, separados dos metadados de campo.
-- [x] Reintroduzir o núcleo de entidades sobre o subsistema de reflexão.
-- [x] Validar em compile time, quando possível, chave primária ausente ou duplicada.
-- [x] Definir uma convenção clara para entidades novas, persistidas e removidas.
+- [x] Define entity and table metadata separately from field metadata.
+- [x] Reintroduce the entity core on top of the reflection subsystem.
+- [x] Validate missing or duplicated primary keys at compile time when possible.
+- [x] Define a clear convention for new, persisted, and removed entities.
 
-### SQL e parâmetros
+### SQL and parameters
 
-- [x] Criar uma representação `Statement` contendo SQL e parâmetros vinculados.
-- [x] Implementar geração inicial de `SELECT`, `INSERT`, `UPDATE`, `DELETE` e `INSERT ... SELECT`.
-- [x] Migrar builders para retornarem `Statement` com SQL e parâmetros, em vez de apenas `std::string`.
-- [x] Criar expressões parametrizadas e cláusulas `WHERE` e `ORDER BY`.
-- [x] Implementar operadores lógicos agrupados: `AND`, `OR` e `NOT`.
-- [x] Vincular parâmetros nos drivers sem interpolação de valores.
-- [x] Criar uma abstração de dialeto para placeholders, identificadores e recursos específicos de SQLite, PostgreSQL e MySQL.
-- [x] Permitir SQL manual parametrizado como escape controlado da abstração.
+- [x] Create a `Statement` representation containing SQL and bound parameters.
+- [x] Implement initial generation for `SELECT`, `INSERT`, `UPDATE`, `DELETE`, and `INSERT ... SELECT`.
+- [x] Migrate builders to return `Statement` with SQL and parameters instead of only `std::string`.
+- [x] Create parameterized expressions and `WHERE` and `ORDER BY` clauses.
+- [x] Implement grouped logical operators: `AND`, `OR`, and `NOT`.
+- [x] Bind parameters in drivers without value interpolation.
+- [x] Create a dialect abstraction for placeholders, identifiers, and SQLite/PostgreSQL/MySQL-specific capabilities.
+- [x] Allow parameterized manual SQL as a controlled escape hatch.
 
-### Tipos e hidratação
+### Types and hydration
 
-- [x] Definir codecs entre tipos C++ e SQL.
-- [x] Cobrir números, booleanos, texto, `std::optional` e enums.
-- [x] Cobrir datas nos codecs entre tipos C++ e SQL.
-- [x] Diferenciar corretamente `NULL`, string vazia e valor padrão.
-- [x] Hidratar resultados em entidades refletidas com diagnóstico de coluna inválida.
-- [x] Tratar conversões inválidas sem perda silenciosa de dados.
+- [x] Define codecs between C++ and SQL types.
+- [x] Cover numbers, booleans, text, `std::optional`, and enums.
+- [x] Cover dates in codecs between C++ and SQL.
+- [x] Correctly distinguish `NULL`, empty string, and default value.
+- [x] Hydrate results into reflected entities with diagnostics for invalid columns.
+- [x] Handle invalid conversions without silently losing data.
 
-### Persistência
+### Persistence
 
-- [x] Implementar repositório tipado para operações básicas.
-- [x] Implementar mapa de identidade para evitar instâncias duplicadas da mesma linha.
-- [x] Implementar unidade de trabalho usando snapshots para `UPDATE` parcial.
-- [x] Implementar transações RAII com commit e rollback explícitos.
-- [x] Criar um fluxo de erro consistente entre reflexão, SQL e drivers.
+- [x] Implement a typed repository for basic operations.
+- [x] Implement an identity map to avoid duplicated instances for the same row.
+- [x] Implement a unit-of-work-like flow using snapshots for partial `UPDATE`.
+- [x] Implement RAII transactions with explicit commit and rollback.
+- [x] Create a consistent error flow across reflection, SQL, and drivers.
 
-## Marco 2 — Conexões confiáveis e portáveis
+## Milestone 2 — Reliable and portable connections
 
-- [x] Adicionar destrutor virtual à interface `Client`.
-- [x] Remover `noexcept` de fábricas que podem falhar ao conectar.
-- [x] Padronizar nomes e tratamento básico entre os três drivers.
-- [x] Substituir ownership manual nos drivers por RAII.
-- [x] Separar conexão, representação de statement e resultado em tipos próprios.
-- [x] Avaliar statements preparados reutilizáveis e cache por conexão.
-- [x] Definir comportamento de thread safety e impedir uso concorrente inseguro.
-- [x] Implementar configuração de timeout e cancelamento quando o driver suportar.
-- [x] Separar drivers opcionais para não exigir todos os bancos em cada build.
-- [x] Criar testes de integração descartáveis para PostgreSQL e MySQL.
-- [x] Executar o mesmo contrato de integração para todos os drivers.
+- [x] Add a virtual destructor to the `Client` interface.
+- [x] Remove `noexcept` from factories that may fail while connecting.
+- [x] Standardize naming and basic handling across the three initial drivers.
+- [x] Replace manual ownership in drivers with RAII.
+- [x] Separate connection, statement representation, and result into their own types.
+- [x] Evaluate reusable prepared statements and per-connection caching.
+- [x] Define thread-safety behavior and prevent unsafe concurrent use.
+- [x] Implement timeout configuration and cancellation where supported by the driver.
+- [x] Make drivers optional so every build does not require every database.
+- [x] Create disposable integration tests for PostgreSQL and MySQL.
+- [x] Run the same integration contract for all drivers.
 
-## Marco 3 — Consultas e relacionamentos
+## Milestone 3 — Queries and relationships
 
-- [ ] Adicionar projeções, aliases, joins, paginação e agregações.
-- [ ] Criar uma API de critérios componível sem esconder o SQL resultante.
-- [ ] Implementar relações um-para-um, um-para-muitos e muitos-para-muitos.
-- [ ] Tornar carregamento eager ou lazy uma escolha explícita.
-- [ ] Detectar e documentar consultas N+1.
-- [ ] Definir cascatas e orphan removal com opções conservadoras por padrão.
+- [ ] Add projections, aliases, joins, pagination, and aggregations.
+- [ ] Create a composable criteria API without hiding the resulting SQL.
+- [ ] Implement one-to-one, one-to-many, and many-to-many relationships.
+- [ ] Make eager or lazy loading an explicit choice.
+- [ ] Detect and document N+1 queries.
+- [ ] Define cascades and orphan removal with conservative defaults.
 
-## Marco 4 — Esquema e migrações
+## Milestone 4 — Schema and migrations
 
-- [ ] Representar esquema, tabela, coluna, índice e chave estrangeira.
-- [ ] Comparar metadados de entidades com o esquema existente.
-- [ ] Gerar migrações revisáveis, sem executá-las automaticamente.
-- [ ] Manter histórico, checksum, aplicação e rollback de migrações.
-- [ ] Documentar diferenças e limitações de migração entre os bancos.
+- [ ] Represent schema, table, column, index, and foreign key metadata.
+- [ ] Compare entity metadata with the existing database schema.
+- [ ] Generate reviewable migrations without executing them automatically.
+- [ ] Keep migration history, checksum, application, and rollback information.
+- [ ] Document migration differences and limitations between databases.
 
-### Gerador bidirecional
+### Bidirectional generator
 
-- [ ] Definir a regra de decisão entre entidade como fonte da verdade, banco como fonte da verdade ou modo explícito por comando.
-- [ ] Introspectar o esquema do banco e gerar classes de entidade C++ com metadados de reflexão.
-- [ ] Ler entidades refletidas e gerar tabelas, colunas, chaves, índices e relações no banco.
-- [ ] Comparar entidade e banco para produzir um plano de sincronização revisável antes de qualquer alteração.
-- [ ] Gerar código e SQL em arquivos separados, sem aplicar mudanças destrutivas automaticamente.
-- [ ] Mapear tipos entre C++ e SQL por dialeto, incluindo nulabilidade, valores padrão, enums e datas.
-- [ ] Definir como preservar customizações manuais em entidades geradas novamente.
-- [ ] Adicionar testes com esquemas pequenos para validar os dois sentidos: banco → entidade e entidade → banco.
+- [ ] Define the decision rule between entity-as-source-of-truth, database-as-source-of-truth, or explicit command mode.
+- [ ] Introspect the database schema and generate C++ entity classes with reflection metadata.
+- [ ] Read reflected entities and generate tables, columns, keys, indexes, and relationships in the database.
+- [ ] Compare entity and database state to produce a reviewable synchronization plan before any change.
+- [ ] Generate code and SQL into separate files without applying destructive changes automatically.
+- [ ] Map C++ and SQL types per dialect, including nullability, default values, enums, and dates.
+- [ ] Define how to preserve manual customizations when generated entities are regenerated.
+- [ ] Add tests with small schemas to validate both directions: database to entity and entity to database.
 
-## Marco 5 - Experiência do desenvolvedor
+## Milestone 5 — Developer experience
 
-- [x] Criar um quick start que funcione em menos de dez minutos.
-- [x] Documentar o fluxo mínimo de build, entidade, CRUD, consultas, transações e erros.
-- [ ] Manter exemplos completos para CRUD, transações, consultas e relações.
-- [ ] Produzir mensagens de erro que indiquem entidade, campo, coluna e operação.
-- [ ] Documentar claramente ownership, lifetime e garantias de thread safety.
-- [ ] Criar documentação de API com Doxygen ou ferramenta equivalente.
-- [ ] Publicar um guia de arquitetura e decisões técnicas relevantes.
-- [ ] Adicionar changelog e guia de migração para mudanças incompatíveis.
+- [x] Create a quick start that works in less than ten minutes.
+- [x] Document the minimum build, entity, CRUD, query, transaction, and error flow.
+- [ ] Maintain complete examples for CRUD, transactions, queries, and relationships.
+- [ ] Produce error messages that identify entity, field, column, and operation.
+- [x] Document ownership, lifetime, and thread-safety guarantees.
+- [ ] Create API documentation with Doxygen or an equivalent tool.
+- [ ] Publish an architecture guide and relevant technical decisions.
+- [ ] Add a changelog and migration guide for breaking changes.
 
-## Marco 6 - Qualidade, segurança e desempenho
+## Milestone 6 — Quality, security, and performance
 
-- [x] Executar formatação e análise estática automaticamente na CI.
-- [ ] Ativar warnings rigorosos e tratar warnings do projeto como erros na CI.
-- [ ] Adicionar sanitizers no Linux e ferramentas equivalentes no Windows.
-- [ ] Medir cobertura e publicar lacunas relevantes, sem perseguir apenas percentual.
-- [ ] Adicionar testes de propriedade e fuzzing para parser, geração e parâmetros SQL.
-- [ ] Criar benchmarks para hidratação, snapshots e geração de consultas.
-- [ ] Medir custo de preparação de statements por driver e decidir se haverá cache reutilizável por conexão.
-- [ ] Medir custo de abertura de conexões e decidir se haverá pool de conexões.
-- [ ] Definir uma política de segurança e canal responsável para vulnerabilidades.
-- [ ] Auditar logs e exceções para nunca expor senhas ou parâmetros sensíveis.
+- [x] Run formatting and static analysis automatically in CI.
+- [ ] Enable strict warnings and treat project warnings as errors in CI.
+- [ ] Add sanitizers on Linux and equivalent tooling on Windows.
+- [ ] Measure coverage and publish relevant gaps without chasing only a percentage.
+- [ ] Add property tests and fuzzing for parsing, SQL generation, and SQL parameters.
+- [ ] Create benchmarks for hydration, snapshots, and query generation.
+- [ ] Measure statement preparation cost per driver and decide whether there should be a reusable per-connection cache.
+- [ ] Measure connection opening cost and decide whether there should be a connection pool.
+- [x] Define a security policy and responsible disclosure channel.
+- [ ] Audit logs and exceptions to never expose passwords or sensitive parameters.
 
-## Marco 7 - Portabilidade e distribuição
+## Milestone 7 — Portability and distribution
 
-- [x] Configurar CI para Windows e Linux com MSVC, GCC e Clang.
-- [ ] Testar versões mínimas e atuais dos compiladores suportados.
-- [ ] Criar regras CMake de instalação e exportação com `find_package(Worm)`.
-- [ ] Publicar pacotes reproduzíveis no vcpkg e, se houver demanda, Conan.
-- [x] Permitir builds mínimos apenas com SQLite.
-- [ ] Definir e seguir versionamento semântico.
-- [ ] Estabelecer critérios objetivos para versões alpha, beta e `1.0.0`.
+- [x] Configure CI for Windows and Linux with MSVC, GCC, and Clang.
+- [ ] Test minimum and current supported compiler versions.
+- [ ] Create CMake install and export rules with `find_package(Worm)`.
+- [ ] Publish reproducible packages on vcpkg and, if there is demand, Conan.
+- [x] Allow minimal SQLite-only builds.
+- [ ] Define and follow semantic versioning.
+- [ ] Establish objective criteria for alpha, beta, and `1.0.0` releases.
 
-## Marco 8 - Comunidade e sustentabilidade
+## Milestone 8 — Community and sustainability
 
-- [x] Adotar a licença MIT.
-- [ ] Criar `CONTRIBUTING.md` com setup, testes e critérios de revisão.
-- [ ] Adotar um código de conduta.
-- [ ] Criar templates para bugs, propostas e pull requests.
-- [ ] Manter uma lista pública de limitações e decisões fora de escopo.
-- [ ] Reconhecer contribuidores e registrar decisões importantes de forma aberta.
+- [x] Adopt the MIT license.
+- [x] Create `CONTRIBUTING.md` with setup, tests, and review criteria.
+- [x] Adopt a code of conduct.
+- [ ] Create templates for bugs, proposals, and pull requests.
+- [ ] Maintain a public list of limitations and out-of-scope decisions.
+- [ ] Recognize contributors and record important decisions openly.
 
-## Critérios para a versão 1.0
+## Criteria for version 1.0
 
-- [ ] API pública documentada e com política de compatibilidade definida.
-- [ ] CRUD, transações, parâmetros e hidratação validados nos três bancos.
-- [ ] Nenhum ownership manual crítico ou vulnerabilidade SQL conhecida.
-- [ ] Pacote instalável e exemplo consumido por um projeto externo limpo.
-- [ ] CI, sanitizers, análise estática e testes de integração estáveis.
-- [ ] Guia de início, referência, limitações e processo de contribuição publicados.
+- [ ] Public API documented with a compatibility policy.
+- [ ] CRUD, transactions, parameters, and hydration validated on the supported databases.
+- [ ] No critical manual ownership or known SQL vulnerability.
+- [ ] Installable package and an example consumed by a clean external project.
+- [ ] Stable CI, sanitizers, static analysis, and integration tests.
+- [ ] Published getting started guide, reference, limitations, and contribution process.

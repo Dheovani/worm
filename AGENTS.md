@@ -1,24 +1,360 @@
-# Diretrizes para agentes de IA
+# AGENTS.md
 
-Estas regras se aplicam a todo o repositório. Arquivos `AGENTS.md` em pastas
-internas podem acrescentar regras específicas ao seu escopo.
+## Purpose
 
-## Organização
+This file defines the global instructions for AI agents working in the Worm repository. It applies to the entire repository unless a closer `AGENTS.md` file defines additional or more specific rules for the files being changed.
 
-- Preserve a separação entre produção (`src/`) e testes (`tests/`).
-- Cada subsistema deve possuir seu próprio target CMake com alias `Worm::*`.
-- Use `index.hpp` como nome exclusivo para headers agregadores que apenas expõem
-  os headers públicos de uma pasta.
-- Não crie agregadores com o mesmo nome da pasta, como `core/core.hpp`.
-- Atualize includes, CMake, testes e documentação ao mover ou renomear arquivos.
-- Use também `lowercase-kebab-case` para módulos auxiliares em `cmake/`; apenas
-  nomes impostos pelas ferramentas, como `CMakeLists.txt` e `AGENTS.md`, são
-  exceções.
+Worm is a C++20 ORM inspired by Doctrine, but it is not intended to reproduce Doctrine's API or complexity. The project prioritizes a small, typed, predictable API that is difficult to misuse, with static reflection, parameterized SQL, optional database drivers, and explicit behavior.
 
-## Convenções gerais
+Before changing any code, understand the affected flow and preserve the invariants described in this file. Do not implement features merely because they appear in `TODO.md`; roadmap items only enter the scope when they are required by the current task.
 
-- Use C++20 e o namespace raiz `worm`.
-- Preserve mudanças do usuário não relacionadas à tarefa atual.
-- Compile e execute os testes relevantes antes de declarar uma alteração pronta.
-- Registre decisões estruturais duradouras neste arquivo ou no `AGENTS.md` de
-  escopo mais específico.
+## Instruction hierarchy
+
+- Read this file before making any change.
+- When working in `src/`, also read `src/AGENTS.md`.
+- When working in `tests/`, also read `tests/AGENTS.md`.
+- An `AGENTS.md` file in a nested directory complements this file for its scope.
+- If instructions conflict, the more specific instruction closest to the changed file takes precedence.
+- Preserve user changes that are unrelated to the current task.
+- Do not perform unrelated refactors, renames, formatting changes, or cleanup simply because you noticed them while working.
+
+## Project principles
+
+- Safety and correctness take priority over syntactic convenience.
+- Prefer explicit APIs over implicit or magical behavior.
+- Do not introduce hidden database queries, mutations, significant allocations, or state changes behind operations that appear trivial.
+- Generated SQL must remain inspectable.
+- Manual SQL is a controlled escape hatch, not a way to bypass ORM validation.
+- Application values, entity values, and query parameters must never be interpolated or concatenated directly into SQL text; keep SQL and parameters separate in `Statement`.
+- Validate invariants at compile time when this can be done clearly and reliably.
+- When static validation is not practical, fail explicitly at runtime instead of accepting ambiguous or potentially dangerous states.
+- Preserve explicit ownership and lifetime. Prefer RAII and smart pointers over manual ownership.
+- Do not hide important differences between database systems behind an abstraction that produces incorrect or unpredictable behavior.
+- Database drivers and their dependencies must remain optional.
+- Errors, limitations, and meaningful performance costs should be visible in the API or documented.
+- Do not expand the public API without need. Every new public symbol increases the future compatibility surface.
+- Worm is still under development and does not yet provide binary or API stability guarantees; even so, breaking changes must be deliberate and justified.
+
+## Architectural overview
+
+Use this structure as guidance when deciding where new code belongs:
+
+- `src/reflection/`: static reflection, field descriptors, reflection metadata, traits, concepts, and typed field visitation.
+- `src/core/model/`: concepts and metadata related to entities and tables.
+- `src/core/query/`: query representation and construction, `Statement`, parameters, predicates, filters, sources, dialects, builders, and SQL validation.
+- `src/core/output/`: results returned by drivers and hydration into C++ types.
+- `src/core/persistence/`: `Repository`, `Session`, registries, identity map, snapshots, and other persistence-context components.
+- `src/connection/`: connection contract, configuration, transactions, and infrastructure shared by drivers.
+- `src/connection/drivers/`: concrete SQLite, PostgreSQL, MySQL, and SQL Server implementations.
+- `src/errors/`: public exceptions and errors normalized by Worm.
+- `src/utils/`: general-purpose helpers that do not belong to a more specific domain.
+- `cmake/`: dependency discovery, configuration, and normalization.
+- `examples/`: compilable programs demonstrating real API usage.
+- `docs/`: usage documentation, architecture documentation, and limitations.
+- `tests/`: tests separated from production code and organized according to the same subsystems as `src/`.
+
+Do not create a new architectural layer or directory merely to hold one file. Prefer the existing structure while it still represents the responsibility correctly.
+
+## ORM invariants
+
+### Entities and reflection
+
+- A persistable entity must satisfy the concepts and metadata contracts defined by the project, including `table()` and `reflect()`.
+- Persistable entities must have exactly one persistent primary key when the relevant contract requires it.
+- Field metadata must continue to come from static reflection and typed descriptors; do not replace the current mechanism with global registration or dynamic reflection.
+- Fields marked as `ignored` must not participate in persistence.
+- Fields marked as `generated` must not be sent as regular insert values when the current flow treats them as generated by the database.
+- Primary keys must not be updated as ordinary fields.
+- Preserve compile-time evaluation of metadata whenever the current API allows it.
+- Reflection changes should be tested both for runtime behavior and, when relevant, for compile-time properties.
+
+### SQL, statements, and parameters
+
+- `Statement` must keep SQL text separate from its parameters.
+- Never concatenate user input, entity values, or query parameters directly into SQL.
+- Builders must produce placeholders appropriate for the target dialect and keep parameter ordering consistent with those placeholders.
+- Preserve the dialect abstraction for differences between SQLite, PostgreSQL, MySQL, and SQL Server.
+- Do not add database-specific logic to generic core code when it can remain inside the dialect or driver.
+- Overloads receiving `Statement` are still subject to the validation of the corresponding operation; manual SQL must not allow `find`, `insert`, `update`, or `delete_` to execute an incompatible operation type.
+- Do not remove or weaken SQL validation merely to make a particular test or use case pass.
+- Generated SQL should remain readable and inspectable; avoid unnecessarily opaque transformations.
+
+### UPDATE and DELETE
+
+- Never allow a change to turn a safe `UPDATE` or `DELETE` into an unfiltered operation.
+- Mutation operations that require filtering must continue to verify the presence of a `WHERE` clause related to the expected table or alias.
+- Do not replace the existing validation with a simple textual search for `"WHERE"` that ignores the expected qualifier.
+- If SQL shape changes, update the validation and add tests proving that unfiltered mutations are still rejected.
+
+### Persistence, registry, and identity map
+
+- Repositories sharing the same `Registry` must preserve the identity of registered entities.
+- Repeated lookups of the same entity identifier within the same persistence context must continue to reuse the registered instance when that is the current behavior.
+- Snapshots are used to detect changes and allow partial `UPDATE`; do not turn snapshot-based updates into full updates without an explicit architectural decision.
+- After a successful update, keep the registry, registered instance, and snapshot coherent with the existing semantics.
+- When an entity is removed, invalidate the corresponding registry entry when required by the current flow.
+- Do not introduce global state as a replacement for `Registry`, `Session`, or the existing persistence-context objects.
+- `Repository` shares ownership of the client and registry it receives; lifetime changes are architectural decisions, not local refactors.
+
+### Session and thread affinity
+
+- `Client`, `Session`, and the associated persistence context are bound to the thread in which they were created.
+- Do not make these objects shareable across threads merely by adding local mutexes.
+- Parallel work must continue to use independent contexts and connections until thread-safety architecture is explicitly redesigned.
+- Preserve concurrent-access errors when an object is used outside its owner thread.
+- Any change affecting thread safety must include specific tests and updated documentation.
+
+### Transactions
+
+- Transactions follow RAII, but `commit` and `rollback` remain explicit operations.
+- An active transaction leaving scope must continue to attempt rollback according to the current contract.
+- Do not silently allow nested transactions when the client does not support them.
+- Transactions must be completed from their owner thread.
+- The database may roll back a transaction without the `Registry` automatically reconciling every in-memory entity already modified; do not document or implement behavior that assumes such reconciliation unless it is explicitly handled.
+- Transaction changes must be exercised through the shared driver contract when relevant to more than one database.
+
+### Query cache
+
+- `SELECT` result caching is opt-in.
+- Cache keys must continue to include both SQL text and parameters.
+- Mutations must invalidate potentially stale cached results.
+- Transactions must not reuse cached results in a way that breaks isolation or consistency.
+- Do not enable caching by default or change its semantics without tests covering invalidation, parameters, and transaction interaction.
+
+### Errors
+
+- Public ORM errors must remain normalized through the `worm::WormException` hierarchy.
+- Do not allow database-library-specific exceptions to leak through the public API when the current layer is expected to normalize them.
+- Catch specific exception types only when there is a useful recovery or translation; do not add catches that merely swallow or obscure errors.
+- Error messages should provide useful context without exposing passwords, full connection strings, or sensitive parameters.
+- Do not use exceptions as a substitute for simple validation that can happen before the operation.
+
+## Database drivers
+
+The current build configuration supports PostgreSQL, MySQL, SQLite, and Microsoft SQL Server.
+
+- Each driver must remain independently buildable.
+- Never make headers or libraries from one driver unconditional dependencies of another module.
+- Respect `WORM_ENABLE_POSTGRESQL`, `WORM_ENABLE_MYSQL`, `WORM_ENABLE_SQLITE`, and `WORM_ENABLE_MSSQL`.
+- When a driver is disabled, its sources, driver-specific tests, and dependencies must not be added to the build.
+- Keep public `WORM_HAS_*_DRIVER` definitions consistent with build options.
+- Generic functionality belongs in the shared contract only when the semantics are truly shared; binding details, native handles, native types, and driver-specific APIs belong in the drivers.
+- Use RAII for native handles and connection resources.
+- Do not introduce a real database-service dependency into unit tests that can be covered with doubles or fakes.
+- When changing behavior shared by all databases, update the shared integration contract.
+- SQL Server currently has different integration coverage from the three primary drivers; do not claim integration parity with PostgreSQL, MySQL, and SQLite without adding the corresponding test.
+
+## C++ and style
+
+The production-specific rules are defined in `src/AGENTS.md`; the rules below are global and must remain compatible with them.
+
+- Use C++20.
+- Do not depend on compiler extensions when a portable C++20 solution is available.
+- Use the root namespace `worm`.
+- Use `PascalCase` for classes, structs, enums, and concepts.
+- Use `camelCase` for ordinary functions, methods, and variables.
+- Reserve `snake_case` for metaprogramming and conventions already established in that domain.
+- Use a trailing `_` for private members in new or modified production code when the more specific `src/` rule applies.
+- Use `nullptr`, smart pointers, and RAII; do not introduce `new`/`delete` for ordinary ownership.
+- Avoid C-style casts.
+- Use `[[nodiscard]]` when ignoring the result would normally indicate misuse.
+- Use `const` and references to express intent and lifetime clearly, without adding meaningless qualifiers.
+- Prefer existing project types and concepts over duplicating equivalent traits or abstractions.
+- Do not perform mass renames or unrelated reformatting just to fix older convention violations.
+- Format C++ code using the root `.clang-format`.
+- The `.clang-format` 120-column limit applies to code; it must not be used to hard-wrap documentation.
+
+## Includes and headers
+
+- Project headers must use paths rooted at `src`, for example `<core/query/statement.hpp>`.
+- Use `#pragma once` in project headers while that remains the repository convention.
+- Do not expose private dependencies through public headers unless necessary.
+- Avoid relying on transitive includes merely because another header currently provides them; files should directly include what they use when needed for robust compilation.
+- Preserve aggregator headers named `index.hpp`.
+- `index.hpp` should only aggregate the public interface of a directory; do not place implementation or independent logic in it.
+- Do not create aggregators such as `core/core.hpp`, `connection/connection.hpp`, or equivalents named after their directory.
+
+## CMake and dependencies
+
+- Each subsystem should have its own CMake target when the architecture requires an independent unit.
+- Public project targets should preserve namespaced aliases in the `Worm::*` form.
+- Express module dependencies through `target_link_libraries`; do not depend on incidental include ordering or directory structure.
+- Use `PUBLIC`, `PRIVATE`, and `INTERFACE` correctly; do not make a dependency public merely to fix a missing include.
+- When adding, removing, or moving `.cpp` files, update the responsible `CMakeLists.txt`.
+- When moving public headers, update includes, tests, examples, and related documentation.
+- Do not use source globbing to hide source lists when the existing CMake files keep sources explicit.
+- The project uses vcpkg manifest mode. Keep `vcpkg.json` features aligned with CMake driver options.
+- Do not add a new external dependency when a small, clear solution can be implemented with C++20 or existing dependencies.
+- Do not change the vcpkg `builtin-baseline` as a side effect of an unrelated task.
+- Platform-specific and driver-specific dependencies must remain conditional.
+- Preserve builds with no database drivers enabled and builds with only a single driver enabled.
+- `WORM_BUILD_EXAMPLES` must continue to allow examples to be excluded from normal builds.
+
+## Build
+
+On Windows with MSVC, prefer the versioned presets:
+
+```powershell
+cmake --preset windows-msvc
+cmake --build --preset debug
+ctest --preset debug
+```
+
+For Release:
+
+```powershell
+cmake --build --preset release
+```
+
+On other platforms, an equivalent configuration may be performed directly:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+cmake --build build --parallel
+ctest --test-dir build -C Debug --output-on-failure
+```
+
+If `VCPKG_ROOT` is not available for the project's automatic configuration, pass the vcpkg toolchain explicitly.
+
+Do not assume that a successful build on one platform is sufficient for portable code. CI covers GCC and Clang on Linux, MSVC on Windows, and AppleClang on macOS.
+
+## Tests
+
+Test-specific rules are defined in `tests/AGENTS.md`.
+
+- Every bug fix should include a test that fails without the fix when technically practical.
+- Every new validation rule should include positive and negative cases.
+- Every SQL change should test both the relevant SQL text and the ordering and typed values of parameters when those are part of the contract.
+- Prefer small, local doubles for testing `Repository`, builders, and contracts without requiring a real database.
+- Use integration tests when behavior actually depends on the database library or database server.
+- SQLite may be used for disposable local contracts when appropriate.
+- PostgreSQL and MySQL have integration contracts executed against disposable services in CI.
+- When modifying behavior shared by drivers, run the `driver-contract` label when the required environment is available.
+- Do not add a testing framework without an explicit project decision.
+- Do not reduce coverage by removing assertions, scenarios, or tests merely to make the suite pass.
+- Tests must not depend on execution order or persistent state left by another test.
+- Tests should leave databases, temporary files, and other resources in the expected state even when an operation fails.
+
+Run the smallest relevant test set first, then broaden validation. Examples:
+
+```powershell
+ctest --test-dir build -C Debug -L reflection --output-on-failure
+ctest --test-dir build -C Debug -L core --output-on-failure
+ctest --test-dir build -C Debug -L connection --output-on-failure
+ctest --test-dir build -C Debug --output-on-failure
+```
+
+If a test cannot be executed because a required service, driver, tool, or platform is unavailable, state that explicitly when finishing the task. Never claim the test suite passed if it was not executed.
+
+## Documentation
+
+- Project documentation must describe implemented behavior, not desired roadmap behavior.
+- Update documentation and examples when a change affects public API, setup, semantics, limitations, or the recommended workflow.
+- Do not present future `TODO.md` items as existing features.
+- Examples must compile or accurately match the current API.
+- Use real target names, options, classes, and methods; do not invent APIs to simplify explanations.
+- Preserve warnings about current limitations while those limitations still exist.
+- Do not arbitrarily wrap documentation lines to satisfy a maximum column width. Each prose paragraph must remain on a single physical line.
+- Break documentation lines only when starting a new paragraph or when required by the format structure, such as headings, list items, tables, blockquotes, and code blocks.
+- When editing an existing paragraph, write the modified paragraph without hard wrapping; do not mass-reformat unrelated paragraphs merely to remove old line breaks.
+- The documentation rule above also applies to Markdown files such as `README.md`, `TODO.md`, `AGENTS.md`, and files under `docs/`.
+- Do not apply the `.clang-format` `ColumnLimit` to Markdown or prose.
+
+## Roadmap and current scope
+
+Consult `TODO.md` for project direction, but treat code and tests as the source of truth for what currently exists.
+
+Do not currently assume the existence of planned features including:
+
+- a complete relationship system;
+- eager or lazy loading;
+- N+1 detection;
+- migrations and schema synchronization;
+- connection pooling;
+- prepared-statement caching;
+- a final installation contract using `find_package(Worm)`;
+- version-1.0-level API stability.
+
+Do not implement one of these features incidentally while working on another task. If a change requires expanding the scope toward a roadmap feature, keep the solution to the minimum necessary and document the architectural dependency.
+
+## Recommended change workflow
+
+1. Read the `AGENTS.md` applicable to the target directory.
+2. Identify the subsystem responsible for the change.
+3. Read the current implementation, corresponding tests, and, when relevant, the related section of `TODO.md` or documentation.
+4. Determine which invariants from this file are affected.
+5. Make the smallest coherent change that solves the task without creating duplicate or parallel behavior.
+6. Update CMake if files, targets, or dependencies change.
+7. Add or adjust tests in the corresponding subsystem.
+8. Format only modified code files when necessary.
+9. Run the subsystem-specific tests.
+10. Run the full suite when the change may affect other modules or shared contracts.
+11. Update documentation and examples when public behavior changes.
+12. Review the diff and remove accidental changes, unrelated formatting, temporary logging, and diagnostic code.
+
+## When creating new features
+
+Before adding a new abstraction, check whether an equivalent type already exists in the project. In particular, reuse concepts and components such as `Statement`, `Parameter`, `QueryBuilder`, dialects, `Repository`, `Registry`, `Session`, `Transaction`, and the existing error hierarchy instead of creating parallel paths.
+
+A new feature should, as applicable:
+
+- have a clear responsibility and an appropriate architectural location;
+- keep the public API minimal;
+- preserve SQL parameterization;
+- work with optional drivers;
+- account for dialect differences;
+- preserve thread affinity and lifetime rules;
+- include unit tests;
+- include integration coverage when real database behavior matters;
+- update public documentation;
+- avoid depending on unimplemented future functionality.
+
+## Public API changes
+
+Treat any header exposed under `src/` that consumers may include and every consumer-facing `Worm::*` target as public API.
+
+When changing public API:
+
+- prefer compatible extensions when they do not compromise the design;
+- do not keep poor overloads or aliases solely for compatibility if the task requires correcting an experimental API, but make the break deliberate;
+- update examples, tests, and documentation in the same change;
+- consider all affected drivers and dialects;
+- avoid exposing native database-library types through generic interfaces;
+- keep Worm-specific errors at the public boundary.
+
+## Compatibility and portability
+
+- Generic code must be valid C++20 on the compilers covered by CI.
+- Do not use behavior specific to MSVC, GCC, or Clang without guards and justification.
+- Do not assume operating-system-specific path separators, executable names, or build layouts in portable code.
+- Avoid dependence on global locale for persistent parsing or serialization.
+- Handle integer sizes, signedness, and numeric conversions explicitly when data loss is possible.
+- Database-to-C++ conversions must not silently lose data.
+- Do not assume SQL syntax accepted by SQLite is also valid in PostgreSQL, MySQL, or SQL Server.
+
+## Security
+
+- Never log or include passwords, secrets, or complete connection strings in error messages.
+- Never concatenate external input into SQL.
+- Do not disable `UPDATE` or `DELETE` safety validation.
+- Do not add real credentials to `.env.example`, tests, documentation, or workflows.
+- Use disposable data for integration tests.
+- Driver failures must be translated into domain-level errors when crossing the ORM's public boundary.
+- Do not introduce automatic destructive behavior for migrations, schema synchronization, or database cleanup without an explicit project decision.
+
+## Completion criteria
+
+A task should only be considered complete when, as applicable:
+
+- the implementation respects the existing architecture;
+- persistence and safety invariants are preserved;
+- new code follows the style and conventions of its directory;
+- CMake and dependency configuration remain consistent;
+- disabled drivers remain optional;
+- relevant tests are added or updated;
+- relevant tests were executed successfully, or execution limitations were explicitly reported;
+- documentation and examples were updated when public API or behavior changed;
+- no secrets, temporary logs, accidentally generated files, or unrelated changes were added to the diff;
+- the final diff was reviewed before completion.
+
+When reporting the result, state objectively what changed, which tests were executed, and any remaining limitation or risk.

@@ -1,68 +1,69 @@
 # Worm
 
-Worm é um ORM em C++20 inspirado no Doctrine. O projeto está em fase inicial,
-mas já oferece um fluxo tipado de persistência sobre reflexão estática, SQL
-parametrizado e drivers para SQLite, PostgreSQL e MySQL.
+Worm is a C++20 ORM inspired by Doctrine. The project is still in an early
+stage, but it already provides a typed persistence flow built on static
+reflection, parameterized SQL, RAII transactions, identity mapping, and optional
+drivers for SQLite, PostgreSQL, MySQL, and SQL Server.
 
-## Estado atual
+## Current status
 
-- drivers opcionais para MySQL, PostgreSQL e SQLite;
-- CRUD tipado com hidratação, identity map e updates parciais por snapshot;
-- parâmetros vinculados e transações RAII;
-- dependências opcionais gerenciadas por features do vcpkg;
-- build organizado em targets CMake namespaced (`Worm::*`);
-- testes unitários e um contrato de integração compartilhado entre drivers;
-- reflexão C++20 tipada com descritores `constexpr`, conceito `Reflectable` e
-  visitação de campos.
-- consultas com expressões parametrizadas e composição de
-  cláusulas `WHERE` e `ORDER BY`.
+- Optional drivers for PostgreSQL, MySQL, SQLite, and SQL Server.
+- Typed CRUD with hydration, identity map, and partial updates based on
+  snapshots.
+- Bound parameters and RAII transactions.
+- Optional dependencies controlled by CMake options and vcpkg features.
+- Build organized around namespaced CMake targets (`Worm::*`).
+- Unit tests and a shared integration contract for database drivers.
+- Typed C++20 reflection with `constexpr` descriptors, the `Reflectable`
+  concept, and field visitation.
+- Parameterized expressions with `WHERE` and `ORDER BY` composition.
 
-O projeto ainda não deve ser considerado pronto para produção. Consulte
-[TODO.md](TODO.md) para acompanhar as próximas etapas.
+Worm should not be considered production-ready yet. See [TODO.md](TODO.md) for
+the roadmap.
 
-## Uso real
+## Real usage
 
-O [guia de primeiros passos](docs/getting-started.md) mostra um fluxo completo
-com SQLite: integração CMake, entidade refletida, CRUD, consulta parametrizada,
-transação, erros, ownership e limitações atuais. O mesmo fluxo está disponível
-como exemplo compilável em
+The [getting started guide](docs/getting-started.md) shows a complete SQLite
+flow: CMake integration, reflected entity, CRUD, parameterized queries,
+transactions, errors, ownership, and current limitations. The same flow is also
+available as a buildable example in
 [`examples/sqlite-quick-start.cpp`](examples/sqlite-quick-start.cpp).
 
-## Requisitos
+## Requirements
 
-- CMake 3.20 ou superior;
-- compilador com suporte a C++20;
-- Git;
-- vcpkg;
-- no Windows, Visual Studio 2022 Build Tools com a carga de trabalho C++.
+- CMake 3.20 or newer.
+- A compiler with C++20 support.
+- Git.
+- vcpkg.
+- On Windows, Visual Studio 2022 Build Tools with the C++ workload.
 
-Defina `VCPKG_ROOT` apontando para a instalação do vcpkg:
+Set `VCPKG_ROOT` to your vcpkg installation:
 
 ```powershell
-$env:VCPKG_ROOT = "C:\Users\seu-usuario\vcpkg"
+$env:VCPKG_ROOT = "C:\Users\your-user\vcpkg"
 ```
 
-Copie [.env.example](.env.example) para `.env` e ajuste o driver e as
-credenciais. O valor `DATABASE_TYPE` aceita `sqlite`, `postgresql`, `mysql` ou
-`mssql`; para SQLite, `DBNAME` também pode ser `:memory:`.
+Copy [.env.example](.env.example) to `.env` and adjust the selected driver and
+credentials. `DATABASE_TYPE` accepts `sqlite`, `postgresql`, `mysql`, or
+`mssql`; for SQLite, `DBNAME` may also be `:memory:`.
 
-## Configuração e build
+## Configure and build
 
-No Windows com MSVC, os presets versionados são a forma recomendada:
+On Windows with MSVC, the versioned presets are the recommended path:
 
 ```powershell
 cmake --preset windows-msvc
 cmake --build --preset debug
 ```
 
-Para gerar uma build Release:
+To build Release:
 
 ```powershell
 cmake --build --preset release
 ```
 
-Por padrão, o manifesto [vcpkg.json](vcpkg.json) instala libmysql, libpqxx e
-SQLite. Cada driver pode ser desativado durante a configuração:
+By default, the [vcpkg.json](vcpkg.json) manifest installs libmysql, libpqxx,
+and SQLite. Each driver can be disabled during configuration:
 
 ```powershell
 cmake -S . -B build/sqlite `
@@ -72,22 +73,21 @@ cmake -S . -B build/sqlite `
   -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 ```
 
-As opções `WORM_ENABLE_POSTGRESQL`, `WORM_ENABLE_MYSQL` e
-`WORM_ENABLE_SQLITE` são independentes e vêm habilitadas por padrão. O driver
-SQL Server é habilitado explicitamente com `WORM_ENABLE_MSSQL=ON` e usa ODBC.
-Drivers desativados não têm seus fontes, testes ou dependências adicionados à
-build.
+`WORM_ENABLE_POSTGRESQL`, `WORM_ENABLE_MYSQL`, and `WORM_ENABLE_SQLITE` are
+independent and enabled by default. The SQL Server driver is enabled explicitly
+with `WORM_ENABLE_MSSQL=ON` and uses ODBC. Disabled drivers do not add their
+sources, tests, or dependencies to the build.
 
-Para usar SQL Server, instale o Microsoft ODBC Driver 18 e configure
-`MSSQL_ODBC_DRIVER`. O nome padrão é `ODBC Driver 18 for SQL Server`.
+To use SQL Server, install Microsoft ODBC Driver 18 and configure
+`MSSQL_ODBC_DRIVER`. The default name is `ODBC Driver 18 for SQL Server`.
 
-## Testes
+## Tests
 
 ```powershell
 ctest --preset debug
 ```
 
-Para executar apenas um domínio:
+To run a single domain:
 
 ```powershell
 ctest --test-dir build -C Debug -L errors --output-on-failure
@@ -95,7 +95,7 @@ ctest --test-dir build -C Debug -L connection --output-on-failure
 ctest --test-dir build -C Debug -L core --output-on-failure
 ```
 
-Os testes ficam fora do código de produção:
+Tests live outside production code:
 
 ```text
 tests/
@@ -106,28 +106,33 @@ tests/
 └── utils/
 ```
 
-SQLite, MySQL e PostgreSQL compartilham o mesmo contrato de integração. SQLite
-roda localmente; os outros bancos usam instâncias descartáveis na CI e podem ser
-executados localmente com as variáveis descritas em `.env.example`.
+SQLite, MySQL, and PostgreSQL share the same integration contract. SQLite runs
+locally; the other databases use disposable CI services and can also be run
+locally with the variables described in `.env.example`.
 
-## Estrutura
+## Structure
 
 ```text
 worm/
-├── cmake/          # descoberta e normalização de dependências
-├── docs/           # guias de uso e limitações
-├── examples/       # exemplos compiláveis opcionais
+├── cmake/          # dependency discovery and normalization
+├── docs/           # usage guides and limitations
+├── examples/       # optional buildable examples
 ├── src/
-│   ├── connection/ # clientes de banco de dados
-│   ├── core/       # expressões e cláusulas SQL parametrizadas
-│   ├── errors/     # tipos de erro públicos
-│   ├── reflection/ # descritores e visitação tipada de campos
-│   └── utils/      # helpers, factory e injeção de dependências
-├── tests/          # testes organizados por subsistema
+│   ├── connection/ # database clients, configuration, factories, transactions
+│   ├── core/       # ORM core, query model, persistence, hydration
+│   ├── errors/     # public error types
+│   ├── reflection/ # descriptors and typed field visitation
+│   └── utils/      # helpers, hashing, dependency injection
+├── tests/          # tests organized by subsystem
 ├── CMakeLists.txt
 └── vcpkg.json
 ```
 
-## Licença
+## Contributing and security
 
-Este projeto é distribuído sob a [licença MIT](LICENSE).
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [SECURITY.md](SECURITY.md).
+
+## License
+
+This project is distributed under the [MIT license](LICENSE).

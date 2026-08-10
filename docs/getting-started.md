@@ -1,20 +1,20 @@
-# Primeiros passos
+# Getting started
 
-Este guia apresenta o menor fluxo completo atualmente suportado pelo Worm:
-configurar uma build SQLite, mapear uma entidade, inserir, consultar, atualizar e
-remover registros e controlar uma transação. O exemplo compilável correspondente
-está em [`examples/sqlite-quick-start.cpp`](../examples/sqlite-quick-start.cpp).
+This guide shows the smallest complete flow currently supported by Worm:
+configure a SQLite build, map an entity, insert, query, update, delete records,
+and control a transaction. The matching buildable example lives in
+[`examples/sqlite-quick-start.cpp`](../examples/sqlite-quick-start.cpp).
 
-## Estado da API
+## API status
 
-O Worm ainda está em desenvolvimento e não possui garantia de estabilidade
-binária ou de compatibilidade entre versões. Use-o para experimentação e
-contribuição, não para dados de produção.
+Worm is still under development and does not provide binary stability or
+compatibility guarantees between versions. Use it for experimentation and
+contribution, not for production data.
 
-## Compilar o quick start
+## Build the quick start
 
-São necessários CMake 3.20, um compilador C++20 e vcpkg. Com `VCPKG_ROOT`
-configurado, uma build mínima usa somente a feature SQLite do manifesto:
+You need CMake 3.20, a C++20 compiler, and vcpkg. With `VCPKG_ROOT` configured,
+a minimal build can use only the SQLite feature from the manifest:
 
 ```powershell
 cmake -S . -B build/quick-start `
@@ -29,13 +29,13 @@ cmake --build build/quick-start --config Debug
 ./build/quick-start/examples/Debug/WormSqliteQuickStart.exe
 ```
 
-Em geradores de configuração única, como Ninja, o executável normalmente fica
-diretamente em `build/quick-start/examples/`.
+With single-configuration generators such as Ninja, the executable is usually
+placed directly under `build/quick-start/examples/`.
 
-## Consumir o Worm com CMake
+## Consume Worm with CMake
 
-Enquanto regras de instalação e `find_package(Worm)` ainda não existem, inclua o
-repositório como subdiretório:
+Until install rules and `find_package(Worm)` are available, include the
+repository as a subdirectory:
 
 ```cmake
 set(WORM_ENABLE_POSTGRESQL OFF CACHE BOOL "" FORCE)
@@ -51,10 +51,10 @@ target_compile_features(my_application PRIVATE cxx_std_20)
 target_link_libraries(my_application PRIVATE Worm::Core Worm::Connection)
 ```
 
-## Definir uma entidade
+## Define an entity
 
-Uma entidade persistível precisa fornecer `table()`, `reflect()` e exatamente uma
-chave primária persistente:
+A persistable entity must provide `table()`, `reflect()`, and exactly one
+persistent primary key:
 
 ```cpp
 struct User
@@ -78,16 +78,16 @@ struct User
 };
 ```
 
-O nome informado a `field()` é também o nome da coluna, salvo quando
-`FieldMetadata::columnName` for definido. Campos marcados como `ignored` não são
-persistidos. O fluxo portátil atual usa chaves fornecidas pela aplicação. Chaves
-marcadas como `generated` exigem que o `INSERT` devolva uma linha com o valor
-gerado, comportamento que ainda não está completo nos três drivers.
+The name passed to `field()` is also the column name unless
+`FieldMetadata::columnName` is set. Fields marked as `ignored` are not persisted.
+The current portable flow uses application-provided keys. Keys marked as
+`generated` require `INSERT` to return a row with the generated value, which is
+not yet complete across all drivers.
 
-## Criar os objetos do ORM
+## Create ORM objects
 
-A injeção explícita é o caminho recomendado porque torna conexão e lifetime
-visíveis:
+Explicit injection is the recommended path because it keeps connection ownership
+and lifetime visible:
 
 ```cpp
 const worm::connection::ConnectionConfig config{
@@ -105,8 +105,8 @@ const auto registry = std::make_shared<worm::core::Registry>();
 const worm::core::Repository<User> users{client, queryBuilder, registry};
 ```
 
-O Worm ainda não cria tabelas. Antes de usar o repositório, o esquema precisa
-existir:
+Worm does not create tables yet. The schema must exist before using the
+repository:
 
 ```sql
 CREATE TABLE users (
@@ -133,14 +133,14 @@ const std::uint64_t affected = users.update(found->id, *found);
 users.delete_(found->id);
 ```
 
-`find()` retorna `nullptr` quando não encontra a linha. Chamadas repetidas a
-`find(id)` no mesmo `Registry` reutilizam o `shared_ptr` registrado. Quando existe
-um snapshot para a entidade, `update()` envia somente campos alterados e retorna
-o número de linhas afetadas.
+`find()` returns `nullptr` when no row is found. Repeated `find(id)` calls in the
+same `Registry` reuse the registered `shared_ptr`. When a snapshot exists for
+the entity, `update()` sends only changed fields and returns the number of
+affected rows.
 
-## Consulta parametrizada
+## Parameterized queries
 
-Valores nunca devem ser concatenados ao SQL. Use os builders:
+Values should never be concatenated into SQL. Use the builders:
 
 ```cpp
 const worm::core::Statement statement = queryBuilder.selectAll(
@@ -152,14 +152,14 @@ const worm::core::Statement statement = queryBuilder.selectAll(
 const std::vector<std::shared_ptr<User>> result = users.findAll(statement);
 ```
 
-Os overloads que recebem `Statement` são o escape controlado para SQL manual,
-mas continuam aceitando apenas a operação correspondente ao método do
-repositório e parâmetros separados do texto SQL.
+The overloads that receive `Statement` are the controlled escape hatch for
+manual SQL, but they still accept only the operation that matches the repository
+method and keep parameters separate from the SQL text.
 
-## Transações
+## Transactions
 
-Uma transação precisa ser finalizada explicitamente. Se sair do escopo ainda
-ativa, seu destrutor tenta executar rollback:
+A transaction must be finalized explicitly. If it leaves scope while still
+active, its destructor attempts a rollback:
 
 ```cpp
 {
@@ -169,73 +169,73 @@ ativa, seu destrutor tenta executar rollback:
 }
 ```
 
-Após rollback, descarte ou recrie o `Registry`: o banco reverte os dados, mas o
-identity map ainda não reconcilia automaticamente entidades inseridas ou
-alteradas durante a transação.
+After rollback, discard or recreate the `Registry`: the database reverts the
+data, but the identity map does not yet reconcile entities inserted or modified
+inside the transaction.
 
-## Erros
+## Errors
 
-Erros públicos derivam de `worm::WormException`. Capture tipos específicos
-quando houver uma recuperação possível e use a base no limite da aplicação:
+Public errors derive from `worm::WormException`. Catch specific types when
+recovery is possible and the base type at the application boundary:
 
 ```cpp
 try {
   const std::shared_ptr<User> user = users.find(std::int64_t{1});
 } catch (const worm::QueryExecutionException& error) {
-  // Falha reportada pelo banco ou pelo driver.
+  // Failure reported by the database or driver.
 } catch (const worm::WormException& error) {
-  // Outro erro normalizado pelo ORM.
+  // Another normalized ORM error.
 }
 ```
 
-## Contexto de persistência e lifetime
+## Persistence context and lifetime
 
-`Session` centraliza o cliente, o identity map e os repositories. O tipo
-de banco é lido de `DATABASE_TYPE`, documentado em [`.env.example`](../.env.example):
+`Session` centralizes the client, the identity map, and repositories. The
+database type is read from `DATABASE_TYPE`, documented in
+[`.env.example`](../.env.example):
 
 ```cpp
 const worm::core::Session context(config);
 const auto& users = context.repository<User>();
 ```
 
-O contexto e os objetos associados pertencem à thread em que foram criados. O
-acesso por outra thread produz `ConcurrentAccessException`; use um contexto e uma
-conexão separados para cada fluxo concorrente. Uma transação ativa também precisa
-ser confirmada ou revertida na thread proprietária. Se sair de escopo ainda ativa,
-seu destrutor tenta executar rollback.
+The context and its associated objects belong to the thread that created them.
+Access from another thread raises `ConcurrentAccessException`; use a separate
+context and connection for each concurrent workflow. An active transaction must
+also be committed or rolled back on the owner thread. If it leaves scope while
+still active, its destructor attempts a rollback.
 
-O `Repository` mantém ownership compartilhado do cliente e do registry recebidos.
-Entidades retornadas como `shared_ptr` podem sobreviver ao contexto, mas o ponteiro
-compartilhado não sincroniza modificações feitas na própria entidade.
+`Repository` keeps shared ownership of the client and registry it receives.
+Entities returned as `shared_ptr` may outlive the context, but the shared pointer
+does not synchronize modifications made to the entity itself.
 
-O cache de resultados de `SELECT` é opt-in por meio de
-`QUERY_CACHE_ENABLED=true`. A chave inclui o SQL e seus parâmetros; mutações e
-transações invalidam o cache. Mantenha-o desabilitado quando o mesmo banco puder
-ser alterado por outros processos e a aplicação precisar observar essas mudanças
-imediatamente.
+The `SELECT` result cache is opt-in through `QUERY_CACHE_ENABLED=true`. The key
+contains the SQL and its parameters; mutations and transactions invalidate the
+cache. Keep it disabled when the same database can be changed by other processes
+and the application must observe those changes immediately.
 
-Timeouts são configurados por `ConnectionConfig::timeoutConfig` ou pelas
-variáveis `CONNECTION_TIMEOUT_MS` e `QUERY_TIMEOUT_MS`. O Worm aplica apenas o que
-cada driver suporta de forma previsível: PostgreSQL usa `connect_timeout` e
-`statement_timeout`, MySQL configura timeouts nativos de conexão e I/O, SQLite
-usa `busy_timeout` para espera por locks e SQL Server usa atributos ODBC de login
-e statement. Valores em milissegundos são arredondados para cima quando o driver
-só aceita segundos.
+Timeouts are configured through `ConnectionConfig::timeoutConfig` or the
+`CONNECTION_TIMEOUT_MS` and `QUERY_TIMEOUT_MS` environment variables. Worm only
+applies behavior that each driver supports predictably: PostgreSQL uses
+`connect_timeout` and `statement_timeout`, MySQL configures native connection
+and I/O timeouts, SQLite uses `busy_timeout` for lock waits, and SQL Server uses
+ODBC login and statement attributes. Millisecond values are rounded up when a
+driver only accepts seconds.
 
-O Worm não mantém cache de prepared statements reutilizáveis neste momento.
-Cada `Statement` é preparado e executado dentro da chamada do driver. Essa
-decisão evita uma política prematura de invalidação por conexão e será revista
-apenas com benchmark ou caso de uso real. Pelo mesmo motivo, não há pool de
-conexões: use uma `Session` e um `Client` por fluxo de trabalho concorrente.
+Worm does not keep a reusable prepared statement cache at the moment. Each
+`Statement` is prepared and executed inside the driver call. This avoids a
+premature per-connection invalidation policy and will be revisited only after
+benchmarks or a real use case. For the same reason, there is no connection pool:
+use one `Session` and one `Client` per concurrent workflow.
 
-## Limitações atuais
+## Current limitations
 
-- Migrações e criação de esquema ainda não estão implementadas.
-- Chaves geradas pelo banco ainda não têm comportamento portátil entre drivers.
-- O driver SQL Server compila e implementa o contrato ODBC, mas ainda não possui
-  um teste de contrato executado contra uma instância real na CI.
-- Relacionamentos, eager/lazy loading e detecção de N+1 ainda não existem.
-- Não existe pool de conexões nem cache de statements preparados.
-- Um mesmo `Client`, `Session`, `Repository` ou `Registry` não pode ser
-  compartilhado entre threads; crie contextos independentes para trabalho paralelo.
-- O contrato de instalação e `find_package(Worm)` ainda será definido.
+- Migrations and schema creation are not implemented yet.
+- Database-generated keys do not yet have portable behavior across drivers.
+- The SQL Server driver compiles and implements the ODBC contract, but it does
+  not yet have a contract test running against a real CI instance.
+- Relationships, eager/lazy loading, and N+1 detection do not exist yet.
+- There is no connection pool or prepared statement cache.
+- A single `Client`, `Session`, `Repository`, or `Registry` must not be shared
+  across threads; create independent contexts for parallel work.
+- Install rules and `find_package(Worm)` still need to be defined.

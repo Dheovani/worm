@@ -1,10 +1,10 @@
-# Convenções dos testes
+# Test conventions
 
-Estas regras complementam o `AGENTS.md` da raiz para todo o conteúdo de `tests/`.
+These rules extend the root `AGENTS.md` for all content under `tests/`.
 
-- Espelhe em `tests/` a organização dos subsistemas existentes em `src/`.
-- Crie um arquivo de teste próprio para cada componente testado.
-- Nomeie arquivos como `<componente>-tests.cpp`, sempre em `kebab-case`.
-- Registre cada executável no CTest e aplique os labels do subsistema.
-- Execute primeiro os testes do subsistema alterado e depois a suíte completa.
-- Não adicione um framework de testes sem uma decisão explícita para o projeto.
+- Mirror the subsystem organization from `src/` inside `tests/`.
+- Create one dedicated test file for each tested component.
+- Name files as `<component>-tests.cpp`, always in `kebab-case`.
+- Register every executable in CTest and apply subsystem labels.
+- Run the changed subsystem tests first and then the full suite.
+- Do not add a test framework without an explicit project decision.

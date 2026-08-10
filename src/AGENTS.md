@@ -1,41 +1,44 @@
-# Convenções do código de produção
+# Production code conventions
 
-Estas regras complementam o `AGENTS.md` da raiz para todo o conteúdo de `src/`.
+These rules extend the root `AGENTS.md` for all content under `src/`.
 
-## Nomes de arquivos
+## File names
 
-- Use somente letras minúsculas em nomes de arquivos próprios do projeto.
-- Use `kebab-case` para nomes compostos: `result-set.hpp`, `mysql-client.cpp`.
-- Use extensões `.hpp` para headers C++ e `.cpp` para implementações.
-- Use `index.hpp` para o header agregador público de um subsistema.
-- `CMakeLists.txt` mantém a grafia exigida pelo CMake e é uma exceção à regra.
+- Use only lowercase letters in project-owned file names.
+- Use `kebab-case` for compound names: `result-set.hpp`, `mysql-client.cpp`.
+- Use `.hpp` for C++ headers and `.cpp` for implementations.
+- Use `index.hpp` for a subsystem's public aggregator header.
+- `CMakeLists.txt` keeps the spelling required by CMake and is an exception.
 
-## Símbolos C++
+## C++ symbols
 
-- Use `PascalCase` para classes, structs, enums e conceitos.
-- Use `camelCase` para todas as funções, métodos e variáveis da aplicação.
-- Use `snake_case` apenas para símbolos de metaprogramação, como traits,
-  variable templates e funções auxiliares avaliadas em tempo de compilação.
-- Use `UPPER_SNAKE_CASE` apenas para macros e constantes que sigam essa forma.
-- Declare subnamespaces com a sintaxe compacta, como `namespace worm::connection`;
-  não use namespaces aninhados no formato `namespace worm { namespace connection { ... } }`.
-- Indente o conteúdo de cada namespace em 2 espaços.
-- Use membros privados com sufixo `_`, como `connection_`.
-- Formate C++ com o `.clang-format` versionado na raiz.
-- Use indentação de 2 espaços, sem caracteres de tabulação.
-- Abra chaves na linha seguinte para namespaces, classes, structs, enums e
-  funções ou métodos.
-- Mantenha a chave na mesma linha em blocos de controle, como `if`, `else`,
-  `switch`, `for`, `while`, `try` e `catch`.
+- Use `PascalCase` for classes, structs, enums, and concepts.
+- Use `camelCase` for application functions, methods, and variables.
+- Use `snake_case` only for metaprogramming symbols, such as traits, variable
+  templates, and compile-time helper functions.
+- Use `UPPER_SNAKE_CASE` only for macros and constants that intentionally follow
+  that form.
+- Declare subnamespaces with the compact syntax, such as
+  `namespace worm::connection`; do not use nested namespace blocks like
+  `namespace worm { namespace connection { ... } }`.
+- Indent namespace contents by 2 spaces.
+- Use a trailing `_` for private members, such as `connection_`.
+- Format C++ with the repository `.clang-format`.
+- Use 2-space indentation and no tab characters.
+- Open braces on the next line for namespaces, classes, structs, enums,
+  functions, and methods.
+- Keep braces on the same line for control blocks such as `if`, `else`,
+  `switch`, `for`, `while`, `try`, and `catch`.
 
-## Módulos
+## Modules
 
-- Headers internos devem incluir caminhos a partir de `src`, como
+- Internal headers should include paths from `src`, such as
   `<core/query/expression.hpp>`.
-- Um módulo não deve depender de executáveis de exemplo ou ferramentas locais.
-- Dependências entre módulos devem ser expressas com targets `Worm::*` no CMake.
-- Implementações concretas de bancos devem ficar em `connection/drivers/`; a raiz
-  de `connection/` fica reservada para contrato, configuração, factory e
-  transações.
-- Componentes de persistência do ORM, como repositório, registry e futuros mapas
-  de unidade de trabalho, devem ficar em `core/persistence/`.
+- A module must not depend on examples or local tooling executables.
+- Dependencies between modules must be expressed through `Worm::*` CMake
+  targets.
+- Concrete database implementations belong in `connection/drivers/`; the
+  `connection/` root is reserved for contracts, configuration, factories, and
+  transactions.
+- ORM persistence components, such as repositories, registries, and future
+  unit-of-work maps, belong in `core/persistence/`.
