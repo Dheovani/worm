@@ -3,7 +3,6 @@
 #include <connection/configuration.hpp>
 #include <connection/drivers/mysql-client.hpp>
 #include <core/query/sql-builder.hpp>
-#include <mysql/mysql.h>
 
 #include <cstdlib>
 #include <exception>

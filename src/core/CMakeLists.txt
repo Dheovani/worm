@@ -22,8 +22,9 @@ target_include_directories(
 target_link_libraries(
   WormCore
   PUBLIC
-    Worm::Connection
     Worm::Errors
     Worm::Reflection
     Worm::Utils
+  PRIVATE
+    Worm::Connection
 )

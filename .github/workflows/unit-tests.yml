@@ -78,6 +78,9 @@ jobs:
         run: >
           cmake -S . -B build
           -DBUILD_TESTING=ON
+          -DWORM_ENABLE_POSTGRESQL=OFF
+          -DWORM_ENABLE_MYSQL=ON
+          -DWORM_ENABLE_SQLITE=ON
           -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
 
       - name: Configure
