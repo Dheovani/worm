@@ -7,6 +7,7 @@ add_library(
   query/statement.cpp
   query/validator.cpp
   output/result-set.cpp
+  persistence/session.cpp
 )
 add_library(Worm::Core ALIAS WormCore)
 

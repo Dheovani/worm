@@ -21,5 +21,8 @@ add_worm_core_test(WormResultSetTests output/result-set-tests.cpp Worm.Core.Resu
 add_worm_core_test(WormHydrationTests output/hydration-tests.cpp Worm.Core.Hydration)
 add_worm_core_test(WormRegistryTests persistence/registry-tests.cpp Worm.Core.Registry)
 add_worm_core_test(WormRepositoryTests persistence/repository-tests.cpp Worm.Core.Repository)
+add_worm_core_test(WormCacheTests persistence/cache-tests.cpp Worm.Core.Cache)
+add_worm_core_test(WormSessionTests persistence/session-tests.cpp Worm.Core.Session)
 
 set_tests_properties(Worm.Core.Repository PROPERTIES TIMEOUT 10)
+set_tests_properties(Worm.Core.Session PROPERTIES LABELS "integration;core" TIMEOUT 10)

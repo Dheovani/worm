@@ -9,7 +9,3 @@ add_subdirectory(utils)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/reflection/CMakeLists.txt")
   add_subdirectory(reflection)
 endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/context/CMakeLists.txt")
-  add_subdirectory(context)
-endif()

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <context/cache.hpp>
 #include <core/model/entity-metadata.hpp>
 #include <core/output/result-set.hpp>
+#include <core/persistence/cache.hpp>
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
 
@@ -95,7 +95,7 @@ namespace worm::connection
     [[nodiscard]]
     virtual core::ResultSet executeImpl(const core::Statement& statement) = 0;
 
-    context::Cache<core::Statement, core::ResultSet, core::StatementHash> cachedResults_;
+    core::Cache<core::Statement, core::ResultSet, core::StatementHash> cachedResults_;
     const std::thread::id ownerThread_ = std::this_thread::get_id();
     const bool cacheResults_ = false;
     bool transactionActive_ = false;

@@ -6,6 +6,8 @@
 #include <core/output/result-set.hpp>
 #include <core/persistence/registry.hpp>
 #include <core/persistence/repository.hpp>
+#include <core/persistence/schema.hpp>
+#include <core/persistence/session.hpp>
 #include <core/query/dialect.hpp>
 #include <core/query/expression.hpp>
 #include <core/query/filter.hpp>

@@ -1,4 +1,4 @@
-#include <context/session.hpp>
+#include <core/persistence/session.hpp>
 
 #include <errors/concurrent-access-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
@@ -64,7 +64,7 @@ int main()
     const worm::core::SqliteBuilder sqlBuilder;
     const worm::core::QueryBuilder queryBuilder{sqlBuilder};
     const worm::connection::ConnectionConfig connectionConfig{.host = "localhost", .dbname = ":memory:"};
-    const worm::context::Session context(connectionConfig, client, queryBuilder);
+    const worm::core::Session context(connectionConfig, client, queryBuilder);
 
     retainedClient = context.client();
     clientLifetime = retainedClient;
@@ -79,7 +79,7 @@ int main()
     }
 
     try {
-      const worm::context::Session invalidSession(connectionConfig, nullptr, queryBuilder);
+      const worm::core::Session invalidSession(connectionConfig, nullptr, queryBuilder);
       std::cerr << "Session accepted a null client.\n";
       return 1;
     } catch (const worm::InvalidArgException&) {}

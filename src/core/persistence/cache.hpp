@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace worm::context
+namespace worm::core
 {
   template <typename Key, typename Value, typename Hash = std::hash<Key>>
   class Cache
@@ -63,4 +63,4 @@ namespace worm::context
   private:
     Storage items_;
   };
-} // namespace worm::context
+} // namespace worm::core

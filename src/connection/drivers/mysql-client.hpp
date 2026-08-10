@@ -2,7 +2,14 @@
 
 #include <connection/client.hpp>
 #include <connection/configuration.hpp>
+
+#if __has_include(<mysql/mysql.h>)
 #include <mysql/mysql.h>
+#elif __has_include(<mysql.h>)
+#include <mysql.h>
+#else
+#error "MySQL client headers were not found."
+#endif
 
 #include <memory>
 

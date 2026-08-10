@@ -1,11 +1,11 @@
-#include <context/cache.hpp>
+#include <core/persistence/cache.hpp>
 
 #include <iostream>
 #include <string>
 
 int main()
 {
-  worm::context::Cache<std::string, int> cache;
+  worm::core::Cache<std::string, int> cache;
 
   if (!cache.empty() || cache.size() != 0 || cache.contains("missing") || cache.get("missing").has_value()) {
     std::cerr << "A new cache did not expose an empty state.\n";

@@ -190,7 +190,7 @@ try {
 de banco é lido de `DATABASE_TYPE`, documentado em [`.env.example`](../.env.example):
 
 ```cpp
-const worm::context::Session context(config);
+const worm::core::Session context(config);
 const auto& users = context.repository<User>();
 ```
 

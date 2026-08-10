@@ -1,4 +1,4 @@
-#include <context/session.hpp>
+#include <core/persistence/session.hpp>
 
 #include <errors/concurrent-access-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
@@ -6,22 +6,22 @@
 
 #include <utility>
 
-namespace worm::context
+namespace worm::core
 {
 
   Session::Session(const connection::ConnectionConfig& connectionConfig)
     : connectionConfig_(connectionConfig),
       client_(connection::makeClient(connectionConfig_, DependencyInjector<connection::DatabaseType>::get())),
-      registry_(std::make_shared<core::Registry>()),
+      registry_(std::make_shared<Registry>()),
       queryBuilder_()
   {}
 
   Session::Session(const connection::ConnectionConfig& connectionConfig,
     std::shared_ptr<connection::Client> client,
-    const core::QueryBuilder& queryBuilder)
+    const QueryBuilder& queryBuilder)
     : connectionConfig_(connectionConfig),
       client_(std::move(client)),
-      registry_(std::make_shared<core::Registry>()),
+      registry_(std::make_shared<Registry>()),
       queryBuilder_(queryBuilder)
   {
     if (!client_) {
@@ -41,7 +41,7 @@ namespace worm::context
     return client_;
   }
 
-  std::shared_ptr<core::Registry> Session::registry() const
+  std::shared_ptr<Registry> Session::registry() const
   {
     ensureThreadAffinity();
     return registry_;
@@ -54,4 +54,4 @@ namespace worm::context
     }
   }
 
-} // namespace worm::context
+} // namespace worm::core
