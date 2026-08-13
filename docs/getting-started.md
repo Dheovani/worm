@@ -187,6 +187,32 @@ const worm::core::Statement page = queryBuilder.selectAll(
 
 SQL Server requires an ordering when pagination is present. The other supported dialects render `LIMIT` and `OFFSET`. `worm::core::Paginator` is available only when an already loaded `ResultSet` must be divided in memory; it does not reduce the number of rows fetched from the database.
 
+## Relationships
+
+Relationships are declared as explicit metadata and can be included in `Criteria` to generate joins. Worm supports one-to-one, one-to-many, and many-to-many descriptors, but it does not yet perform automatic eager or lazy loading:
+
+```cpp
+const auto userProfile = worm::core::oneToOne<User, Profile>("profile", "id", "user_id");
+const auto userPosts = worm::core::oneToMany<User, Post>("posts", "id", "user_id");
+const auto userRoles = worm::core::manyToMany<User, Role>(
+  "roles", "user_roles", "id", "user_id", "role_id", "id");
+
+worm::core::Criteria criteria;
+criteria.include(userProfile, "u", "p")
+  .include(userPosts, "u", "po")
+  .include(userRoles, "u", "ur", "r");
+
+const worm::core::Statement statement = queryBuilder.select(
+  {
+    worm::core::Field{"id", {"users", "u"}},
+    worm::core::Field{"id", {"profiles", "p"}, "profile_id"},
+  },
+  {"users", "u"},
+  criteria);
+```
+
+The descriptors only produce relationship-aware join metadata. Hydrating object graphs, choosing eager versus lazy loading, detecting N+1 queries, and defining cascades are separate features still tracked in the roadmap.
+
 ## Transactions
 
 A transaction must be finalized explicitly. If it leaves scope while still
@@ -265,7 +291,7 @@ use one `Session` and one `Client` per concurrent workflow.
 - Database-generated keys do not yet have portable behavior across drivers.
 - The SQL Server driver compiles and implements the ODBC contract, but it does
   not yet have a contract test running against a real CI instance.
-- Relationships, eager/lazy loading, and N+1 detection do not exist yet.
+- Automatic relationship loading, eager/lazy loading, and N+1 detection do not exist yet.
 - There is no connection pool or prepared statement cache.
 - A single `Client`, `Session`, `Repository`, or `Registry` must not be shared
   across threads; create independent contexts for parallel work.

@@ -1,11 +1,50 @@
 #include <core/query/criteria.hpp>
 
 #include <core/query/predicate.hpp>
+#include <reflection/field.hpp>
 
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include <variant>
+
+namespace
+{
+  struct User
+  {
+    std::int64_t id{};
+
+    [[nodiscard]]
+    static constexpr worm::core::Table table() noexcept
+    {
+      return worm::core::Table{"users"};
+    }
+
+    [[nodiscard]]
+    static constexpr auto reflect()
+    {
+      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true})};
+    }
+  };
+
+  struct Role
+  {
+    std::int64_t id{};
+
+    [[nodiscard]]
+    static constexpr worm::core::Table table() noexcept
+    {
+      return worm::core::Table{"roles"};
+    }
+
+    [[nodiscard]]
+    static constexpr auto reflect()
+    {
+      return std::tuple{worm::reflection::field("id", &Role::id, {.primaryKey = true})};
+    }
+  };
+} // namespace
 
 int main()
 {
@@ -52,6 +91,17 @@ int main()
       !criteria.pagination().has_value() || criteria.pagination()->limit() != 10 ||
       criteria.pagination()->offset() != 20) {
     std::cerr << "Criteria did not preserve ordering or pagination.\n";
+    return 1;
+  }
+
+  Criteria relationshipCriteria;
+  relationshipCriteria.include(
+    worm::core::manyToMany<User, Role>("roles", "user_roles", "id", "user_id", "role_id", "id"), "u", "ur", "r");
+
+  if (relationshipCriteria.relations().size() != 2 ||
+      relationshipCriteria.relations()[0].condition.sql != "u.id = ur.user_id" ||
+      relationshipCriteria.relations()[1].condition.sql != "ur.role_id = r.id") {
+    std::cerr << "Criteria did not include relationship joins.\n";
     return 1;
   }
 

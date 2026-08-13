@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/model/relationship.hpp>
 #include <core/query/clauses.hpp>
 #include <core/query/filter.hpp>
 #include <core/query/pagination.hpp>
@@ -32,6 +33,26 @@ namespace worm::core
     const std::optional<Filter>& having() const noexcept;
 
     Criteria& addRelation(Relation relation);
+
+    template <Entity Owner, Entity Target>
+    Criteria& include(
+      const DirectRelationship<Owner, Target>& relationship, std::string_view ownerAlias, std::string_view targetAlias)
+    {
+      return addRelation(relationship.relation(ownerAlias, targetAlias));
+    }
+
+    template <Entity Owner, Entity Target>
+    Criteria& include(const ManyToManyRelationship<Owner, Target>& relationship,
+      std::string_view ownerAlias,
+      std::string_view joinAlias,
+      std::string_view targetAlias)
+    {
+      for (auto&& relation : relationship.relations(ownerAlias, joinAlias, targetAlias)) {
+        addRelation(std::move(relation));
+      }
+
+      return *this;
+    }
 
     Criteria& where(Filter filter);
 

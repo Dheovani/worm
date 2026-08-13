@@ -8,6 +8,7 @@ function(add_worm_core_test target source test_name)
 endfunction()
 
 add_worm_core_test(WormEntityTests model/entity-tests.cpp Worm.Core.Entity)
+add_worm_core_test(WormRelationshipTests model/relationship-tests.cpp Worm.Core.Relationship)
 add_worm_core_test(WormParameterTests query/parameter-tests.cpp Worm.Core.Parameter)
 add_worm_core_test(WormDialectTests query/dialect-tests.cpp Worm.Core.Dialect)
 add_worm_core_test(WormStatementTests query/statement-tests.cpp Worm.Core.Statement)
