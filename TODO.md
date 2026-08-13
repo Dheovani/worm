@@ -89,7 +89,7 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Add projections, projection aliases, joins, and basic aggregate projections.
 - [x] Add `GROUP BY` and `HAVING` for grouped aggregations.
 - [x] Add dialect-aware pagination with bound limit and offset parameters.
-- [ ] Create a composable criteria API without hiding the resulting SQL.
+- [x] Create a composable criteria API without hiding the resulting SQL.
 - [ ] Implement one-to-one, one-to-many, and many-to-many relationships.
 - [ ] Make eager or lazy loading an explicit choice.
 - [ ] Detect and document N+1 queries.

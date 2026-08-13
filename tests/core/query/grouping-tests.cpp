@@ -1,4 +1,4 @@
-#include <core/query/grouping.hpp>
+#include <core/query/clauses.hpp>
 
 #include <iostream>
 

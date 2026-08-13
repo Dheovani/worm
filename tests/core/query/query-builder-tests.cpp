@@ -120,6 +120,7 @@ namespace
 
 int main()
 {
+  using worm::core::Criteria;
   using worm::core::Expression;
   using worm::core::Field;
   using worm::core::Filter;
@@ -170,6 +171,22 @@ int main()
     return 1;
   }
 
+  Criteria criteria;
+  criteria.addRelation(Relation{Join::Inner, users, orders, Expression{"u.id = o.user_id", {}}})
+    .where(Filter{Predicate::equal("u.active", true)})
+    .orderBy(Ordering{"o.total", OrderDirection::Descending})
+    .paginate(worm::core::Pagination{10, 20})
+    .groupBy(Grouping{"u.id"})
+    .having(Filter{Predicate::compare("sum(o.total)", worm::core::Comparison::Greater, std::int64_t{100})});
+
+  const auto criteriaQuery = queryBuilder.select(fields, users, criteria);
+  if (criteriaQuery.sql != "select delegated" || sqlBuilder.fieldsCount_ != 2 || sqlBuilder.sourceName_ != "users" ||
+      sqlBuilder.relationsCount_ != 1 || !sqlBuilder.hasFilter_ || sqlBuilder.orderingCount_ != 1 ||
+      !sqlBuilder.hasPagination_ || sqlBuilder.groupingCount_ != 1 || !sqlBuilder.hasHaving_) {
+    std::cerr << "QueryBuilder did not delegate Criteria data to the concrete builder.\n";
+    return 1;
+  }
+
   const std::vector<std::pair<std::string, worm::core::Parameter>> insertColumns{
     {"name", std::string{"Ada"}},
     {"active", true},
@@ -214,6 +231,17 @@ int main()
       !sqlBuilder.hasFilter_ || sqlBuilder.orderingCount_ != 1 || !sqlBuilder.hasPagination_ ||
       sqlBuilder.groupingCount_ != 1 || !sqlBuilder.hasHaving_) {
     std::cerr << "QueryBuilder did not delegate structured insert-from-select data to the concrete builder.\n";
+    return 1;
+  }
+
+  const worm::core::Statement criteriaInsertFromSelectQuery =
+    queryBuilder.insertFromSelect(archivedUsers, targetColumns, fields, users, criteria);
+  if (criteriaInsertFromSelectQuery.sql != "structured insert from select delegated" ||
+      sqlBuilder.targetName_ != "archived_users" || sqlBuilder.sourceName_ != "users" ||
+      sqlBuilder.targetColumnsCount_ != 2 || sqlBuilder.fieldsCount_ != 2 || sqlBuilder.relationsCount_ != 1 ||
+      !sqlBuilder.hasFilter_ || sqlBuilder.orderingCount_ != 1 || !sqlBuilder.hasPagination_ ||
+      sqlBuilder.groupingCount_ != 1 || !sqlBuilder.hasHaving_) {
+    std::cerr << "QueryBuilder did not delegate structured insert-from-select Criteria data.\n";
     return 1;
   }
 

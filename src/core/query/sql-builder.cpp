@@ -424,6 +424,17 @@ namespace worm::core
     return {std::move(sql), std::move(parameters)};
   }
 
+  Statement SqlBuilder::selectAll(const Source& source, const Criteria& criteria) const
+  {
+    return selectAll(source,
+      criteria.relations(),
+      criteria.filter(),
+      criteria.ordering(),
+      criteria.pagination(),
+      criteria.grouping(),
+      criteria.having());
+  }
+
   Statement SqlBuilder::select(const std::vector<worm::core::Field>& fields,
     const Source& source,
     const std::vector<Relation>& relations,
@@ -479,6 +490,19 @@ namespace worm::core
     }
 
     return {std::move(sql), std::move(parameters)};
+  }
+
+  Statement SqlBuilder::select(
+    const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const
+  {
+    return select(fields,
+      source,
+      criteria.relations(),
+      criteria.filter(),
+      criteria.ordering(),
+      criteria.pagination(),
+      criteria.grouping(),
+      criteria.having());
   }
 
   Statement SqlBuilder::insert(
@@ -547,6 +571,24 @@ namespace worm::core
       select(selectedFields, source, relations, filter, ordering, pagination, grouping, having);
 
     return insertFromSelect(target, targetColumns, selectStatement);
+  }
+
+  Statement SqlBuilder::insertFromSelect(const Source& target,
+    const std::vector<std::string>& targetColumns,
+    const std::vector<Field>& selectedFields,
+    const Source& source,
+    const Criteria& criteria) const
+  {
+    return insertFromSelect(target,
+      targetColumns,
+      selectedFields,
+      source,
+      criteria.relations(),
+      criteria.filter(),
+      criteria.ordering(),
+      criteria.pagination(),
+      criteria.grouping(),
+      criteria.having());
   }
 
   Statement SqlBuilder::update(const Source& source,

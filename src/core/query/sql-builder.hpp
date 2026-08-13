@@ -10,12 +10,11 @@
 #include <utility>
 #include <vector>
 
+#include <core/query/clauses.hpp>
+#include <core/query/criteria.hpp>
 #include <core/query/expression.hpp>
 #include <core/query/filter.hpp>
-#include <core/query/grouping.hpp>
-#include <core/query/ordering.hpp>
 #include <core/query/pagination.hpp>
-#include <core/query/source.hpp>
 #include <core/query/statement.hpp>
 
 namespace worm::core
@@ -34,6 +33,9 @@ namespace worm::core
       const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
+    Statement selectAll(const Source& source, const Criteria& criteria) const;
+
+    [[nodiscard]]
     virtual Statement select(const std::vector<worm::core::Field>& fields,
       const Source& source,
       const std::vector<Relation>& relations,
@@ -42,6 +44,10 @@ namespace worm::core
       const std::optional<Pagination>& pagination = std::nullopt,
       const std::vector<Grouping>& grouping = {},
       const std::optional<Filter>& having = std::nullopt) const;
+
+    [[nodiscard]]
+    Statement select(
+      const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const;
 
     [[nodiscard]]
     virtual Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
@@ -61,6 +67,13 @@ namespace worm::core
       const std::optional<Pagination>& pagination = std::nullopt,
       const std::vector<Grouping>& grouping = {},
       const std::optional<Filter>& having = std::nullopt) const;
+
+    [[nodiscard]]
+    Statement insertFromSelect(const Source& target,
+      const std::vector<std::string>& targetColumns,
+      const std::vector<Field>& selectedFields,
+      const Source& source,
+      const Criteria& criteria) const;
 
     [[nodiscard]]
     virtual Statement update(const Source& source,

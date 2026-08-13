@@ -1,8 +1,10 @@
 add_library(
   WormCore
+  query/criteria.cpp
   query/dialect.cpp
   query/filter.cpp
   query/predicate.cpp
+  query/query-builder.cpp
   query/sql-builder.cpp
   query/statement.cpp
   query/validator.cpp

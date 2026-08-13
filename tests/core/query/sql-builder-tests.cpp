@@ -66,6 +66,7 @@ int main()
 {
   using worm::core::Aggregate;
   using worm::core::Comparison;
+  using worm::core::Criteria;
   using worm::core::Field;
   using worm::core::Filter;
   using worm::core::Grouping;
@@ -128,6 +129,20 @@ int main()
                        " having sum(o.total) > $3 order by o.total desc" ||
       projected.parameters != std::vector<worm::core::Parameter>{std::int64_t{7}, true, std::int64_t{100}}) {
     std::cerr << "Select builder did not render aliased, grouped, and aggregate projections correctly.\n";
+    return 1;
+  }
+
+  Criteria aggregateCriteria;
+  aggregateCriteria
+    .addRelation(Relation{Join::Inner, users, orders, Predicate::compare("u.id", Comparison::Equal, std::int64_t{7})})
+    .where(Filter{Predicate::equal("u.active", true)})
+    .groupBy(Grouping{"u.id"})
+    .having(Filter{Predicate::compare("sum(o.total)", Comparison::Greater, std::int64_t{100})})
+    .orderBy(Ordering{"o.total", OrderDirection::Descending});
+
+  const worm::core::Statement criteriaProjection = pgBuilder.select(projections, users, aggregateCriteria);
+  if (criteriaProjection.sql != projected.sql || criteriaProjection.parameters != projected.parameters) {
+    std::cerr << "Select builder did not render Criteria-based grouped projections consistently.\n";
     return 1;
   }
 

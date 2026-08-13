@@ -143,35 +143,33 @@ affected rows.
 Values should never be concatenated into SQL. Use the builders:
 
 ```cpp
-const worm::core::Statement statement = queryBuilder.selectAll(
-  {User::table().name()},
-  {},
-  worm::core::Filter{
-    worm::core::Predicate::equal("users.name", std::string{"Ada Lovelace"})});
+worm::core::Criteria criteria;
+criteria.where(worm::core::Filter{
+  worm::core::Predicate::equal("users.name", std::string{"Ada Lovelace"})});
+
+const worm::core::Statement statement = queryBuilder.selectAll({User::table().name()}, criteria);
 
 const std::vector<std::shared_ptr<User>> result = users.findAll(statement);
 ```
 
-The overloads that receive `Statement` are the controlled escape hatch for
-manual SQL, but they still accept only the operation that matches the repository
-method and keep parameters separate from the SQL text.
+`Criteria` is only an explicit query envelope for relations, filters, grouping, ordering, having, and pagination. The generated `Statement` remains inspectable and keeps parameters separate from SQL text. The overloads that receive `Statement` are the controlled escape hatch for manual SQL, but they still accept only the operation that matches the repository method and keep parameters separate from the SQL text.
 
 Use `Field` entries to select specific columns, assign result aliases, or request the supported `COUNT`, `SUM`, `AVG`, `MIN`, and `MAX` aggregates. When a query mixes aggregate and non-aggregate projections, pass explicit `Grouping` entries and, when needed, a `HAVING` filter:
 
 ```cpp
 const worm::core::Source usersSource{User::table().name(), "u"};
+worm::core::Criteria aggregateCriteria;
+aggregateCriteria.groupBy(worm::core::Grouping{"u.id"})
+  .having(worm::core::Filter{
+    worm::core::Predicate::compare("count(*)", worm::core::Comparison::Greater, std::int64_t{0})});
+
 const worm::core::Statement countUsers = queryBuilder.select(
   {
     worm::core::Field{"id", usersSource, "user_id"},
     worm::core::Field{"*", usersSource, worm::core::Aggregate::Count, "user_count"},
   },
   usersSource,
-  {},
-  std::nullopt,
-  {},
-  std::nullopt,
-  {worm::core::Grouping{"u.id"}},
-  worm::core::Filter{worm::core::Predicate::compare("count(*)", worm::core::Comparison::Greater, std::int64_t{0})});
+  aggregateCriteria);
 ```
 
 `HAVING` requires `GROUP BY`. Worm also rejects mixed aggregate and non-aggregate projections when no grouping is provided, because the resulting SQL would be ambiguous or invalid on stricter databases.
