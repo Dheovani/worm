@@ -15,6 +15,7 @@ option(WORM_ENABLE_MYSQL "Build the MySQL driver" ON)
 option(WORM_ENABLE_SQLITE "Build the SQLite driver" ON)
 option(WORM_ENABLE_MSSQL "Build the Microsoft SQL Server driver" OFF)
 option(WORM_BUILD_EXAMPLES "Build Worm usage examples" OFF)
+option(WORM_BUILD_GENERATOR "Build the Worm entity and schema generator" OFF)
 
 set(WORM_VCPKG_FEATURES)
 if(WORM_ENABLE_POSTGRESQL)
@@ -66,6 +67,10 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(dependencies)
 
 add_subdirectory(src)
+
+if(WORM_BUILD_GENERATOR)
+  add_subdirectory(generator)
+endif()
 
 # Keep the root ready for future test suites without requiring the directory now.
 if(BUILD_TESTING AND EXISTS "${PROJECT_SOURCE_DIR}/tests/CMakeLists.txt")

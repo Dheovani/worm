@@ -156,6 +156,19 @@ The overloads that receive `Statement` are the controlled escape hatch for
 manual SQL, but they still accept only the operation that matches the repository
 method and keep parameters separate from the SQL text.
 
+Pass `Pagination{limit, offset}` to a select operation to paginate in the database. The limit and offset remain bound parameters instead of being interpolated into SQL:
+
+```cpp
+const worm::core::Statement page = queryBuilder.selectAll(
+  {User::table().name()},
+  {},
+  std::nullopt,
+  {worm::core::Ordering{"users.id"}},
+  worm::core::Pagination{25, 50});
+```
+
+SQL Server requires an ordering when pagination is present. The other supported dialects render `LIMIT` and `OFFSET`. `worm::core::Paginator` is available only when an already loaded `ResultSet` must be divided in memory; it does not reduce the number of rows fetched from the database.
+
 ## Transactions
 
 A transaction must be finalized explicitly. If it leaves scope while still

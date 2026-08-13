@@ -3,6 +3,7 @@
 #include <core/model/entity-metadata.hpp>
 #include <core/model/entity.hpp>
 #include <core/output/hydration.hpp>
+#include <core/output/paginator.hpp>
 #include <core/output/result-set.hpp>
 #include <core/persistence/registry.hpp>
 #include <core/persistence/repository.hpp>
@@ -12,6 +13,7 @@
 #include <core/query/expression.hpp>
 #include <core/query/filter.hpp>
 #include <core/query/ordering.hpp>
+#include <core/query/pagination.hpp>
 #include <core/query/predicate.hpp>
 #include <core/query/query-builder.hpp>
 #include <core/query/source.hpp>

@@ -138,6 +138,41 @@ int main()
     return 1;
   }
 
+  const worm::core::Pagination pagination{10, 20};
+  const worm::core::Statement pgPaginated = pgBuilder.select(fields, users, relations, filter, ordering, pagination);
+  if (pgPaginated.sql != "select u.id,o.total from users u inner join orders o on (u.id = $1)"
+                         " where u.active = $2 order by o.total desc limit $3 offset $4" ||
+      pgPaginated.parameters !=
+        std::vector<worm::core::Parameter>{std::int64_t{7}, true, std::int64_t{10}, std::int64_t{20}}) {
+    std::cerr << "PostgreSQL pagination did not preserve SQL or parameter ordering.\n";
+    return 1;
+  }
+
+  const worm::core::Statement mySqlPaginated =
+    mySqlBuilder.select(fields, users, relations, filter, ordering, pagination);
+  if (mySqlPaginated.sql != "select u.id,o.total from users u inner join orders o on (u.id = ?)"
+                            " where u.active = ? order by o.total desc limit ? offset ?" ||
+      mySqlPaginated.parameters != pgPaginated.parameters) {
+    std::cerr << "MySQL pagination did not preserve SQL or parameter ordering.\n";
+    return 1;
+  }
+
+  const worm::core::Statement sqlServerPaginated =
+    sqlServerBuilder.select(fields, users, relations, filter, ordering, pagination);
+  if (sqlServerPaginated.sql != "select u.id,o.total from users u inner join orders o on (u.id = ?)"
+                                " where u.active = ? order by o.total desc offset ? rows fetch next ? rows only" ||
+      sqlServerPaginated.parameters !=
+        std::vector<worm::core::Parameter>{std::int64_t{7}, true, std::int64_t{20}, std::int64_t{10}}) {
+    std::cerr << "SQL Server pagination did not preserve SQL or parameter ordering.\n";
+    return 1;
+  }
+
+  try {
+    static_cast<void>(sqlServerBuilder.select(fields, users, relations, filter, {}, pagination));
+    std::cerr << "SQL Server pagination accepted a query without ordering.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
+
   const std::vector<std::pair<std::string, worm::core::Parameter>> insertColumns{
     {"name", std::string{"Ada"}},
     {"active", true},

@@ -4,6 +4,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdlib>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -79,6 +80,24 @@ namespace worm::utils
   template <typename Type>
   inline constexpr bool is_attribute =
     !is_function<Type> && (std::is_member_object_pointer_v<Type> || std::is_object_v<std::remove_pointer_t<Type>>);
+
+  template <class T, class = void>
+  struct is_iterable : std::false_type
+  {};
+
+  template <class T>
+  struct is_iterable<T, std::void_t<
+    typename std::iterator_traits<decltype(std::begin(std::declval<T>()))>::value_type,
+    typename std::iterator_traits<decltype(std::end(std::declval<T>()))>::value_type
+  >> : std::true_type
+  {};
+
+  template <class T>
+  inline constexpr bool is_iterable_v = is_iterable<T>::value;
+
+  template <class T>
+    requires is_iterable_v<T>
+  using iterator_t = std::iterator_traits<T>::value_type;
 
   namespace detail
   {

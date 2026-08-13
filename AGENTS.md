@@ -170,8 +170,6 @@ The production-specific rules are defined in `src/AGENTS.md`; the rules below ar
 - Use `#pragma once` in project headers while that remains the repository convention.
 - Do not expose private dependencies through public headers unless necessary.
 - Avoid relying on transitive includes merely because another header currently provides them; files should directly include what they use when needed for robust compilation.
-- Preserve aggregator headers named `index.hpp`.
-- `index.hpp` should only aggregate the public interface of a directory; do not place implementation or independent logic in it.
 - Do not create aggregators such as `core/core.hpp`, `connection/connection.hpp`, or equivalents named after their directory.
 
 ## CMake and dependencies

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include <core/model/entity-metadata.hpp>
 #include <core/query/expression.hpp>
 
 namespace worm::core
@@ -21,6 +22,7 @@ namespace worm::core
   struct ResultRow
   {
     std::vector<ResultColumn> columns;
+    bool affected{false};
 
     [[nodiscard]]
     bool empty() const noexcept;
@@ -31,6 +33,10 @@ namespace worm::core
     friend bool operator==(const ResultRow&, const ResultRow&) = default;
   };
 
+  template <PersistableEntity T>
+  [[nodiscard]]
+  T hydrate(const ResultRow& row);
+
   class ResultSet
   {
   public:
@@ -39,6 +45,11 @@ namespace worm::core
     ResultSet() = default;
 
     explicit ResultSet(std::vector<ResultRow> rows, std::uint64_t affectedRows = 0);
+
+    ResultSet(const ResultSet&) = default;
+    ResultSet(ResultSet&&) noexcept = default;
+    ResultSet& operator=(const ResultSet&) = default;
+    ResultSet& operator=(ResultSet&&) noexcept = default;
 
     explicit ResultSet(std::uint64_t affectedRows);
 
@@ -59,6 +70,20 @@ namespace worm::core
 
     [[nodiscard]]
     Iterator end() const noexcept;
+
+    template <PersistableEntity T>
+    [[nodiscard]]
+    std::vector<T> hydrateAll() const
+    {
+      std::vector<T> entities;
+      entities.reserve(rows_.size());
+
+      for (const auto& row : rows_) {
+        entities.push_back(core::hydrate<T>(row));
+      }
+
+      return entities;
+    }
 
     [[nodiscard]]
     bool operator==(const ResultSet& other) const noexcept;

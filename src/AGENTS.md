@@ -7,7 +7,6 @@ These rules extend the root `AGENTS.md` for all content under `src/`.
 - Use only lowercase letters in project-owned file names.
 - Use `kebab-case` for compound names: `result-set.hpp`, `mysql-client.cpp`.
 - Use `.hpp` for C++ headers and `.cpp` for implementations.
-- Use `index.hpp` for a subsystem's public aggregator header.
 - `CMakeLists.txt` keeps the spelling required by CMake and is an exception.
 
 ## C++ symbols

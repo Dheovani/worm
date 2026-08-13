@@ -46,7 +46,6 @@ ctest --test-dir build/sqlite -C Debug --output-on-failure
 
 - Production code lives in `src/`; tests live in `tests/`.
 - Each subsystem has its own CMake target and `Worm::*` alias.
-- Public folder aggregators are named `index.hpp`.
 - Project-owned file names use lowercase `kebab-case`.
 - C++ uses C++20 and the root namespace `worm`.
 - Classes, structs, enums, and concepts use `PascalCase`.

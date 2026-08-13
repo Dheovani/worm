@@ -101,7 +101,8 @@ namespace
     worm::core::Statement selectAll(const worm::core::Source& source,
       const std::vector<worm::core::Relation>&,
       const std::optional<worm::core::Filter>& filter = std::nullopt,
-      const std::vector<worm::core::Ordering>& = {}) const override
+      const std::vector<worm::core::Ordering>& = {},
+      const std::optional<worm::core::Pagination>& = std::nullopt) const override
     {
       sourceName = source.name;
       sourceAlias = source.alias.value_or("");
@@ -152,7 +153,8 @@ namespace
       const worm::core::Source& source,
       const std::vector<worm::core::Relation>& relations,
       const std::optional<worm::core::Filter>& filter = std::nullopt,
-      const std::vector<worm::core::Ordering>& ordering = {}) const override
+      const std::vector<worm::core::Ordering>& ordering = {},
+      const std::optional<worm::core::Pagination>& = std::nullopt) const override
     {
       sourceName = source.name;
       targetName = target.name;

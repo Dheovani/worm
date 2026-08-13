@@ -138,6 +138,17 @@ namespace worm::core
     return "delete from " + renderMutationSource(source);
   }
 
+  Expression SqlBuilder::renderPagination(const Pagination& pagination, std::size_t firstParameterIndex, bool) const
+  {
+    return {
+      " limit " + placeholder(firstParameterIndex) + " offset " + placeholder(firstParameterIndex + 1),
+      {
+        static_cast<std::int64_t>(pagination.limit()),
+        static_cast<std::int64_t>(pagination.offset()),
+      },
+    };
+  }
+
   std::string SqlServerBuilder::renderMutationSource(const Source& source) const
   {
     return std::string{source.alias.value_or(source.name)};
@@ -160,6 +171,23 @@ namespace worm::core
 
     return "delete " + std::string{source.alias.value()} + " from " + std::string{source.name} + " " +
            std::string{source.alias.value()};
+  }
+
+  Expression SqlServerBuilder::renderPagination(
+    const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const
+  {
+    if (!hasOrdering) {
+      throw worm::SqlBuildException("SQL Server pagination requires an ORDER BY clause.");
+    }
+
+    return {
+      " offset " + placeholder(firstParameterIndex) + " rows fetch next " + placeholder(firstParameterIndex + 1) +
+        " rows only",
+      {
+        static_cast<std::int64_t>(pagination.offset()),
+        static_cast<std::int64_t>(pagination.limit()),
+      },
+    };
   }
 
   std::string SqlBuilder::renderExpression(const Expression& expression, std::size_t firstParameterIndex) const
@@ -238,7 +266,8 @@ namespace worm::core
   Statement SqlBuilder::selectAll(const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
-    const std::vector<Ordering>& ordering) const
+    const std::vector<Ordering>& ordering,
+    const std::optional<Pagination>& pagination) const
   {
     const std::string fieldsList = std::string{source.alias.value_or(source.name)} + ".*";
     const std::string sourceName = std::string{source.name} + " " + std::string{source.alias.value_or("")};
@@ -262,6 +291,13 @@ namespace worm::core
       appendParameters(parameters, filter.value().expression().parameters);
     }
 
+    if (pagination.has_value()) {
+      const Expression renderedPagination =
+        renderPagination(pagination.value(), parameters.size() + 1, !ordering.empty());
+      sql += renderedPagination.sql;
+      appendParameters(parameters, renderedPagination.parameters);
+    }
+
     return {std::move(sql), std::move(parameters)};
   }
 
@@ -269,7 +305,8 @@ namespace worm::core
     const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
-    const std::vector<Ordering>& ordering) const
+    const std::vector<Ordering>& ordering,
+    const std::optional<Pagination>& pagination) const
   {
     const std::string fieldsList = listSelectFields(fields);
     const std::string sourceName = std::string{source.name} + " " + std::string{source.alias.value_or("")};
@@ -291,6 +328,13 @@ namespace worm::core
     std::vector<Parameter> parameters = relationParameters(relations);
     if (filter.has_value()) {
       appendParameters(parameters, filter.value().expression().parameters);
+    }
+
+    if (pagination.has_value()) {
+      const Expression renderedPagination =
+        renderPagination(pagination.value(), parameters.size() + 1, !ordering.empty());
+      sql += renderedPagination.sql;
+      appendParameters(parameters, renderedPagination.parameters);
     }
 
     return {std::move(sql), std::move(parameters)};
@@ -353,9 +397,10 @@ namespace worm::core
     const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
-    const std::vector<Ordering>& ordering) const
+    const std::vector<Ordering>& ordering,
+    const std::optional<Pagination>& pagination) const
   {
-    const Statement selectStatement = select(selectedFields, source, relations, filter, ordering);
+    const Statement selectStatement = select(selectedFields, source, relations, filter, ordering, pagination);
 
     return insertFromSelect(target, targetColumns, selectStatement);
   }

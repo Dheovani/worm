@@ -13,6 +13,7 @@
 #include <core/query/expression.hpp>
 #include <core/query/filter.hpp>
 #include <core/query/ordering.hpp>
+#include <core/query/pagination.hpp>
 #include <core/query/source.hpp>
 #include <core/query/statement.hpp>
 
@@ -26,14 +27,16 @@ namespace worm::core
     virtual Statement selectAll(const Source& source,
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
-      const std::vector<Ordering>& ordering = {}) const;
+      const std::vector<Ordering>& ordering = {},
+      const std::optional<Pagination>& pagination = std::nullopt) const;
 
     [[nodiscard]]
     virtual Statement select(const std::vector<worm::core::Field>& fields,
       const Source& source,
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
-      const std::vector<Ordering>& ordering = {}) const;
+      const std::vector<Ordering>& ordering = {},
+      const std::optional<Pagination>& pagination = std::nullopt) const;
 
     [[nodiscard]]
     virtual Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
@@ -49,7 +52,8 @@ namespace worm::core
       const Source& source,
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
-      const std::vector<Ordering>& ordering = {}) const;
+      const std::vector<Ordering>& ordering = {},
+      const std::optional<Pagination>& pagination = std::nullopt) const;
 
     [[nodiscard]]
     virtual Statement update(const Source& source,
@@ -73,6 +77,10 @@ namespace worm::core
 
     [[nodiscard]]
     virtual std::string renderDeletePrefix(const Source& source) const;
+
+    [[nodiscard]]
+    virtual Expression renderPagination(
+      const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const;
 
   private:
     [[nodiscard]]
@@ -116,6 +124,10 @@ namespace worm::core
 
     [[nodiscard]]
     std::string renderDeletePrefix(const Source& source) const override;
+
+    [[nodiscard]]
+    Expression renderPagination(
+      const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const override;
   };
 
   template <typename T>

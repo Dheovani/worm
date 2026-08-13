@@ -196,10 +196,11 @@ namespace worm::core
       const Source& source,
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
-      const std::vector<Ordering>& ordering = {}) const
+      const std::vector<Ordering>& ordering = {},
+      const std::optional<Pagination>& pagination = std::nullopt) const
     try {
       const Statement statement = queryBuilder.insertFromSelect(
-        {T::table().name()}, targetColumns, selectedFields, source, relations, filter, ordering);
+        {T::table().name()}, targetColumns, selectedFields, source, relations, filter, ordering, pagination);
 
       return insert(statement);
     } catch (const worm::WormException&) {

@@ -86,7 +86,8 @@ This milestone should end with a complete example that creates, persists, querie
 
 ## Milestone 3 — Queries and relationships
 
-- [ ] Add projections, aliases, joins, pagination, and aggregations.
+- [ ] Add projections, aliases, joins, and aggregations.
+- [x] Add dialect-aware pagination with bound limit and offset parameters.
 - [ ] Create a composable criteria API without hiding the resulting SQL.
 - [ ] Implement one-to-one, one-to-many, and many-to-many relationships.
 - [ ] Make eager or lazy loading an explicit choice.
@@ -163,3 +164,4 @@ This milestone should end with a complete example that creates, persists, querie
 - [ ] Installable package and an example consumed by a clean external project.
 - [ ] Stable CI, sanitizers, static analysis, and integration tests.
 - [ ] Published getting started guide, reference, limitations, and contribution process.
+- [ ] Update README.md with the main project information.
