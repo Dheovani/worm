@@ -189,13 +189,25 @@ SQL Server requires an ordering when pagination is present. The other supported 
 
 ## Relationships
 
-Relationships are declared as explicit metadata and can be included in `Criteria` to generate joins. Worm supports one-to-one, one-to-many, and many-to-many descriptors, but it does not yet perform automatic eager or lazy loading:
+Relationships are declared as explicit metadata and can be included in `Criteria` to generate joins. Worm supports one-to-one, one-to-many, and many-to-many descriptors. Each descriptor also declares a `RelationshipLoadStrategy`, making `Explicit`, `Eager`, or `Lazy` a visible model choice even though automatic eager/lazy loading is not implemented yet:
 
 ```cpp
 const auto userProfile = worm::core::oneToOne<User, Profile>("profile", "id", "user_id");
-const auto userPosts = worm::core::oneToMany<User, Post>("posts", "id", "user_id");
+const auto userPosts = worm::core::oneToMany<User, Post>(
+  "posts",
+  "id",
+  "user_id",
+  worm::core::Join::Left,
+  worm::core::RelationshipLoadStrategy::Eager);
 const auto userRoles = worm::core::manyToMany<User, Role>(
-  "roles", "user_roles", "id", "user_id", "role_id", "id");
+  "roles",
+  "user_roles",
+  "id",
+  "user_id",
+  "role_id",
+  "id",
+  worm::core::Join::Left,
+  worm::core::RelationshipLoadStrategy::Lazy);
 
 worm::core::Criteria criteria;
 criteria.include(userProfile, "u", "p")
@@ -211,7 +223,7 @@ const worm::core::Statement statement = queryBuilder.select(
   criteria);
 ```
 
-The descriptors only produce relationship-aware join metadata. Hydrating object graphs, choosing eager versus lazy loading, detecting N+1 queries, and defining cascades are separate features still tracked in the roadmap.
+The descriptors only produce relationship-aware join metadata today. Hydrating object graphs, executing eager/lazy loaders, detecting N+1 queries, and defining cascades are separate features still tracked in the roadmap.
 
 ## Transactions
 
@@ -291,7 +303,7 @@ use one `Session` and one `Client` per concurrent workflow.
 - Database-generated keys do not yet have portable behavior across drivers.
 - The SQL Server driver compiles and implements the ODBC contract, but it does
   not yet have a contract test running against a real CI instance.
-- Automatic relationship loading, eager/lazy loading, and N+1 detection do not exist yet.
+- Automatic relationship loading, eager/lazy execution, and N+1 detection do not exist yet.
 - There is no connection pool or prepared statement cache.
 - A single `Client`, `Session`, `Repository`, or `Registry` must not be shared
   across threads; create independent contexts for parallel work.

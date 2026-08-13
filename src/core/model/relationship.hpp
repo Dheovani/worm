@@ -21,6 +21,13 @@ namespace worm::core
     ManyToMany
   };
 
+  enum class RelationshipLoadStrategy
+  {
+    Explicit,
+    Eager,
+    Lazy
+  };
+
   namespace detail
   {
 
@@ -53,12 +60,14 @@ namespace worm::core
       RelationshipKind kind,
       std::string_view ownerColumn,
       std::string_view targetColumn,
-      Join joinType = Join::Left)
+      Join joinType = Join::Left,
+      RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
       : name_(name),
         kind_(kind),
         ownerColumn_(ownerColumn),
         targetColumn_(targetColumn),
-        joinType_(joinType)
+        joinType_(joinType),
+        loadStrategy_(loadStrategy)
     {
       if (kind != RelationshipKind::OneToOne && kind != RelationshipKind::OneToMany) {
         throw InvalidArgException("Direct relationships must be one-to-one or one-to-many.");
@@ -112,6 +121,12 @@ namespace worm::core
     }
 
     [[nodiscard]]
+    constexpr RelationshipLoadStrategy loadStrategy() const noexcept
+    {
+      return loadStrategy_;
+    }
+
+    [[nodiscard]]
     Relation relation(std::string_view ownerAlias, std::string_view targetAlias) const
     {
       detail::validateRelationshipText(ownerAlias, "Relationship owner alias must not be empty.");
@@ -131,6 +146,7 @@ namespace worm::core
     std::string_view ownerColumn_;
     std::string_view targetColumn_;
     Join joinType_;
+    RelationshipLoadStrategy loadStrategy_;
   };
 
   template <Entity Owner, Entity Target>
@@ -143,14 +159,16 @@ namespace worm::core
       std::string_view joinOwnerColumn,
       std::string_view joinTargetColumn,
       std::string_view targetColumn,
-      Join joinType = Join::Left)
+      Join joinType = Join::Left,
+      RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
       : name_(name),
         joinTable_(joinTable),
         ownerColumn_(ownerColumn),
         joinOwnerColumn_(joinOwnerColumn),
         joinTargetColumn_(joinTargetColumn),
         targetColumn_(targetColumn),
-        joinType_(joinType)
+        joinType_(joinType),
+        loadStrategy_(loadStrategy)
     {
       detail::validateRelationshipText(name_, "Relationship name must not be empty.");
       detail::validateRelationshipText(joinTable_, "Relationship join table must not be empty.");
@@ -221,6 +239,12 @@ namespace worm::core
     }
 
     [[nodiscard]]
+    constexpr RelationshipLoadStrategy loadStrategy() const noexcept
+    {
+      return loadStrategy_;
+    }
+
+    [[nodiscard]]
     std::vector<Relation> relations(
       std::string_view ownerAlias, std::string_view joinAlias, std::string_view targetAlias) const
     {
@@ -252,22 +276,29 @@ namespace worm::core
     std::string_view joinTargetColumn_;
     std::string_view targetColumn_;
     Join joinType_;
+    RelationshipLoadStrategy loadStrategy_;
   };
 
   template <Entity Owner, Entity Target>
   [[nodiscard]]
-  constexpr DirectRelationship<Owner, Target> oneToOne(
-    std::string_view name, std::string_view ownerColumn, std::string_view targetColumn, Join joinType = Join::Left)
+  constexpr DirectRelationship<Owner, Target> oneToOne(std::string_view name,
+    std::string_view ownerColumn,
+    std::string_view targetColumn,
+    Join joinType = Join::Left,
+    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
   {
-    return {name, RelationshipKind::OneToOne, ownerColumn, targetColumn, joinType};
+    return {name, RelationshipKind::OneToOne, ownerColumn, targetColumn, joinType, loadStrategy};
   }
 
   template <Entity Owner, Entity Target>
   [[nodiscard]]
-  constexpr DirectRelationship<Owner, Target> oneToMany(
-    std::string_view name, std::string_view ownerColumn, std::string_view targetColumn, Join joinType = Join::Left)
+  constexpr DirectRelationship<Owner, Target> oneToMany(std::string_view name,
+    std::string_view ownerColumn,
+    std::string_view targetColumn,
+    Join joinType = Join::Left,
+    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
   {
-    return {name, RelationshipKind::OneToMany, ownerColumn, targetColumn, joinType};
+    return {name, RelationshipKind::OneToMany, ownerColumn, targetColumn, joinType, loadStrategy};
   }
 
   template <Entity Owner, Entity Target>
@@ -278,9 +309,10 @@ namespace worm::core
     std::string_view joinOwnerColumn,
     std::string_view joinTargetColumn,
     std::string_view targetColumn,
-    Join joinType = Join::Left)
+    Join joinType = Join::Left,
+    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
   {
-    return {name, joinTable, ownerColumn, joinOwnerColumn, joinTargetColumn, targetColumn, joinType};
+    return {name, joinTable, ownerColumn, joinOwnerColumn, joinTargetColumn, targetColumn, joinType, loadStrategy};
   }
 
   namespace detail

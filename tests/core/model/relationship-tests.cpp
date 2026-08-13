@@ -112,6 +112,7 @@ int main()
 {
   using worm::core::Join;
   using worm::core::RelationshipKind;
+  using worm::core::RelationshipLoadStrategy;
 
   static_assert(worm::core::relationship_count<User> == 0);
   static_assert(worm::core::relationship_count<UserWithRelationships> == 3);
@@ -121,6 +122,7 @@ int main()
   static_assert(profile.name() == "profile");
   static_assert(profile.ownerColumn() == "id");
   static_assert(profile.targetColumn() == "user_id");
+  static_assert(profile.loadStrategy() == RelationshipLoadStrategy::Explicit);
 
   const auto profileRelation = profile.relation("u", "p");
   if (profileRelation.joinType != Join::Left || profileRelation.baseSource.name != "users" ||
@@ -130,17 +132,21 @@ int main()
     return 1;
   }
 
-  constexpr auto posts = worm::core::oneToMany<User, Post>("posts", "id", "user_id", Join::Inner);
+  constexpr auto posts =
+    worm::core::oneToMany<User, Post>("posts", "id", "user_id", Join::Inner, RelationshipLoadStrategy::Eager);
   static_assert(posts.kind() == RelationshipKind::OneToMany);
+  static_assert(posts.loadStrategy() == RelationshipLoadStrategy::Eager);
   const auto postsRelation = posts.relation("u", "po");
   if (postsRelation.joinType != Join::Inner || postsRelation.condition.sql != "u.id = po.user_id") {
     std::cerr << "One-to-many relationship did not preserve its join type or condition.\n";
     return 1;
   }
 
-  constexpr auto roles = worm::core::manyToMany<User, Role>("roles", "user_roles", "id", "user_id", "role_id", "id");
+  constexpr auto roles = worm::core::manyToMany<User, Role>(
+    "roles", "user_roles", "id", "user_id", "role_id", "id", Join::Left, RelationshipLoadStrategy::Lazy);
   static_assert(roles.kind() == RelationshipKind::ManyToMany);
   static_assert(roles.joinTable() == "user_roles");
+  static_assert(roles.loadStrategy() == RelationshipLoadStrategy::Lazy);
 
   const auto roleRelations = roles.relations("u", "ur", "r");
   if (roleRelations.size() != 2 || roleRelations[0].joinedSource.name != "user_roles" ||
