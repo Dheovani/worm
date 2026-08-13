@@ -19,14 +19,37 @@ namespace worm::core
     {}
   };
 
+  enum class Aggregate
+  {
+    Count,
+    Sum,
+    Average,
+    Minimum,
+    Maximum
+  };
+
   struct Field
   {
     const std::string_view name;
     const Source source;
+    const std::optional<std::string_view> alias;
+    const std::optional<Aggregate> aggregate;
 
-    Field(std::string_view name, Source source) noexcept
+    Field(std::string_view name, Source source, std::optional<std::string_view> alias = std::nullopt) noexcept
       : name(name),
-        source(source)
+        source(source),
+        alias(alias),
+        aggregate(std::nullopt)
+    {}
+
+    Field(std::string_view name,
+      Source source,
+      Aggregate aggregate,
+      std::optional<std::string_view> alias = std::nullopt) noexcept
+      : name(name),
+        source(source),
+        alias(alias),
+        aggregate(aggregate)
     {}
   };
 

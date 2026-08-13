@@ -18,6 +18,7 @@ namespace
 
 int main()
 {
+  using worm::core::Aggregate;
   using worm::core::Expression;
   using worm::core::Field;
   using worm::core::Join;
@@ -38,8 +39,21 @@ int main()
   }
 
   const Field id{"id", aliasedUsers};
-  if (id.name != "id" || id.source.name != "users" || id.source.alias.value() != "u") {
+  if (id.name != "id" || id.source.name != "users" || id.source.alias.value() != "u" || id.alias.has_value() ||
+      id.aggregate.has_value()) {
     std::cerr << "Field did not preserve its name and source envelope.\n";
+    return 1;
+  }
+
+  const Field displayName{"name", aliasedUsers, "display_name"};
+  if (displayName.alias != "display_name" || displayName.aggregate.has_value()) {
+    std::cerr << "Field did not preserve its projection alias.\n";
+    return 1;
+  }
+
+  const Field count{"*", aliasedUsers, Aggregate::Count, "user_count"};
+  if (count.alias != "user_count" || count.aggregate != Aggregate::Count) {
+    std::cerr << "Field did not preserve its aggregate projection.\n";
     return 1;
   }
 

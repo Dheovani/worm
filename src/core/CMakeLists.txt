@@ -6,6 +6,7 @@ add_library(
   query/sql-builder.cpp
   query/statement.cpp
   query/validator.cpp
+  output/paginator.cpp
   output/result-set.cpp
   persistence/session.cpp
 )

@@ -18,16 +18,79 @@ namespace worm::core
   namespace
   {
 
+    std::string aggregateName(Aggregate aggregate)
+    {
+      using enum Aggregate;
+
+      switch (aggregate) {
+      case Count:
+        return "count";
+      case Sum:
+        return "sum";
+      case Average:
+        return "avg";
+      case Minimum:
+        return "min";
+      case Maximum:
+        return "max";
+      }
+
+      throw worm::SqlBuildException("Unsupported aggregate operation.");
+    }
+
+    std::string renderSelectField(const Field& field)
+    {
+      if (field.name.empty()) {
+        throw worm::SqlBuildException("A projection must have a field name.");
+      }
+
+      if (field.alias.has_value() && field.alias.value().empty()) {
+        throw worm::SqlBuildException("A projection alias must not be empty.");
+      }
+
+      if (field.name == "*" && field.aggregate.has_value() && field.aggregate.value() != Aggregate::Count) {
+        throw worm::SqlBuildException("Only COUNT can aggregate the wildcard projection.");
+      }
+
+      std::string rendered;
+
+      if (field.aggregate.has_value()) {
+        rendered += aggregateName(field.aggregate.value());
+        rendered += "(";
+      }
+
+      if (field.name != "*") {
+        rendered += std::string{field.source.alias.value_or(field.source.name)};
+        rendered += ".";
+      } else if (!field.aggregate.has_value()) {
+        rendered += std::string{field.source.alias.value_or(field.source.name)};
+        rendered += ".";
+      }
+
+      rendered += std::string{field.name};
+
+      if (field.aggregate.has_value()) {
+        rendered += ")";
+      }
+
+      if (field.alias.has_value()) {
+        rendered += " as ";
+        rendered += std::string{field.alias.value()};
+      }
+
+      return rendered;
+    }
+
     std::string listSelectFields(const std::vector<worm::core::Field>& fields)
     {
+      if (fields.empty()) {
+        throw worm::SqlBuildException("SELECT operation must receive at least one projection.");
+      }
+
       std::string list;
 
       for (std::size_t index = 0; index < fields.size(); ++index) {
-        const auto& field = fields[index];
-
-        list += std::string{field.source.alias.value_or(field.source.name)};
-        list += ".";
-        list += std::string{field.name};
+        list += renderSelectField(fields[index]);
 
         if (index + 1 < fields.size()) {
           list += ",";

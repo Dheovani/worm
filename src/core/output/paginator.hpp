@@ -1,13 +1,8 @@
 #pragma once
 
 #include <core/output/result-set.hpp>
-#include <errors/invalid-arg-exception.hpp>
 
-#include <algorithm>
 #include <cstddef>
-#include <limits>
-#include <utility>
-#include <vector>
 
 namespace worm::core
 {
@@ -17,97 +12,30 @@ namespace worm::core
     static constexpr std::size_t defaultItemsPerPage = 5;
 
   public:
-    explicit Paginator(
-      ResultSet resultSet, std::size_t initialPage = defaultInitialPage, std::size_t itemsPerPage = defaultItemsPerPage)
-      : resultSet_(std::move(resultSet)),
-        page_(validatePage(initialPage)),
-        size_(validatePageSize(itemsPerPage))
-    {}
+    explicit Paginator(ResultSet resultSet,
+      std::size_t initialPage = defaultInitialPage,
+      std::size_t itemsPerPage = defaultItemsPerPage);
 
     [[nodiscard]]
-    ResultSet paginate()
-    {
-      const std::size_t rowCount = resultSet_.rowCount();
-      const std::size_t pageIndex = page_ - 1;
-      if (rowCount == 0 || pageIndex > rowCount / size_) {
-        advancePage();
-        return {};
-      }
+    ResultSet paginate();
 
-      const std::size_t beginIndex = pageIndex * size_;
-      const std::size_t pageLength = (std::min)(size_, rowCount - beginIndex);
-      const std::size_t endIndex = beginIndex + pageLength;
-      ResultSet::Iterator iterator = resultSet_.begin() + static_cast<std::ptrdiff_t>(beginIndex);
-      const ResultSet::Iterator end = resultSet_.begin() + static_cast<std::ptrdiff_t>(endIndex);
+    Paginator& setCurrentPage(std::size_t page);
 
-      ResultSet pageResult = paginate(iterator, end);
-      advancePage();
-      return pageResult;
-    }
+    Paginator& setPageSize(std::size_t pageSize);
 
-    Paginator& setCurrentPage(std::size_t page)
-    {
-      page_ = validatePage(page);
-      return *this;
-    }
-
-    Paginator& setPageSize(std::size_t pageSize)
-    {
-      size_ = validatePageSize(pageSize);
-      return *this;
-    }
-
-    Paginator& reset(std::size_t page = defaultInitialPage, std::size_t pageSize = defaultItemsPerPage)
-    {
-      page_ = validatePage(page);
-      size_ = validatePageSize(pageSize);
-      return *this;
-    }
+    Paginator& reset(std::size_t page = defaultInitialPage, std::size_t pageSize = defaultItemsPerPage);
 
   private:
     [[nodiscard]]
-    static std::size_t validatePage(std::size_t page)
-    {
-      if (page == 0) {
-        throw InvalidArgException("Paginator page numbers start at 1.");
-      }
-
-      return page;
-    }
+    static std::size_t validatePage(std::size_t page);
 
     [[nodiscard]]
-    static std::size_t validatePageSize(std::size_t pageSize)
-    {
-      if (pageSize == 0) {
-        throw InvalidArgException("Paginator page size must be greater than zero.");
-      }
+    static std::size_t validatePageSize(std::size_t pageSize);
 
-      return pageSize;
-    }
-
-    void advancePage() noexcept
-    {
-      if (page_ < (std::numeric_limits<std::size_t>::max)()) {
-        ++page_;
-      }
-    }
+    void advancePage() noexcept;
 
     [[nodiscard]]
-    ResultSet paginate(ResultSet::Iterator iterator, const ResultSet::Iterator& end) const
-    {
-      std::uint64_t affectedRows = 0;
-      std::vector<ResultRow> rows;
-
-      while (iterator != end) {
-        rows.push_back(*iterator);
-        if (iterator->affected) {
-          ++affectedRows;
-        }
-        ++iterator;
-      }
-
-      return ResultSet{std::move(rows), affectedRows};
-    }
+    ResultSet paginate(ResultSet::Iterator iterator, const ResultSet::Iterator& end) const;
 
     ResultSet resultSet_;
     std::size_t page_;

@@ -156,6 +156,17 @@ The overloads that receive `Statement` are the controlled escape hatch for
 manual SQL, but they still accept only the operation that matches the repository
 method and keep parameters separate from the SQL text.
 
+Use `Field` entries to select specific columns, assign result aliases, or request the supported `COUNT`, `SUM`, `AVG`, `MIN`, and `MAX` aggregates:
+
+```cpp
+const worm::core::Source usersSource{User::table().name(), "u"};
+const worm::core::Statement countUsers = queryBuilder.select(
+  {worm::core::Field{"*", usersSource, worm::core::Aggregate::Count, "user_count"}},
+  usersSource);
+```
+
+Grouped aggregations with `GROUP BY` and `HAVING` are not implemented yet.
+
 Pass `Pagination{limit, offset}` to a select operation to paginate in the database. The limit and offset remain bound parameters instead of being interpolated into SQL:
 
 ```cpp

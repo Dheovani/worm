@@ -64,6 +64,7 @@ namespace
 
 int main()
 {
+  using worm::core::Aggregate;
   using worm::core::Comparison;
   using worm::core::Field;
   using worm::core::Filter;
@@ -108,6 +109,41 @@ int main()
     std::cerr << "Select builder did not preserve relation and filter parameters.\n";
     return 1;
   }
+
+  const std::vector<Field> projections{
+    Field{"id", users, "user_id"},
+    Field{"total", orders, Aggregate::Sum, "total_spent"},
+    Field{"total", orders, Aggregate::Average, "average_spent"},
+    Field{"total", orders, Aggregate::Minimum, "minimum_spent"},
+    Field{"total", orders, Aggregate::Maximum, "maximum_spent"},
+    Field{"*", users, Aggregate::Count, "row_count"},
+  };
+  const worm::core::Statement projected = pgBuilder.select(projections, users, relations, filter, ordering);
+  if (projected.sql != "select u.id as user_id,sum(o.total) as total_spent,avg(o.total) as average_spent,"
+                       "min(o.total) as minimum_spent,max(o.total) as maximum_spent,count(*) as row_count"
+                       " from users u inner join orders o on (u.id = $1) where u.active = $2 order by o.total desc" ||
+      projected.parameters != select.parameters) {
+    std::cerr << "Select builder did not render aliased and aggregate projections correctly.\n";
+    return 1;
+  }
+
+  try {
+    static_cast<void>(pgBuilder.select({}, users, relations, filter, ordering));
+    std::cerr << "Select builder accepted an empty projection list.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
+
+  try {
+    static_cast<void>(pgBuilder.select({Field{"*", users, Aggregate::Sum}}, users, {}, std::nullopt, {}));
+    std::cerr << "Select builder accepted a wildcard for an aggregate other than COUNT.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
+
+  try {
+    static_cast<void>(pgBuilder.select({Field{"id", users, ""}}, users, {}, std::nullopt, {}));
+    std::cerr << "Select builder accepted an empty projection alias.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
 
   const worm::core::Statement mySqlSelect = mySqlBuilder.select(fields, users, relations, filter, ordering);
   const worm::core::Statement sqliteSelect = sqliteBuilder.select(fields, users, relations, filter, ordering);
