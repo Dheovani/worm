@@ -28,6 +28,20 @@ namespace worm::core
     Lazy
   };
 
+  struct CascadePolicy
+  {
+    bool persist = false;
+    bool update = false;
+    bool remove = false;
+    bool refresh = false;
+
+    [[nodiscard]]
+    constexpr bool empty() const noexcept
+    {
+      return !persist && !update && !remove && !refresh;
+    }
+  };
+
   namespace detail
   {
 
@@ -61,13 +75,17 @@ namespace worm::core
       std::string_view ownerColumn,
       std::string_view targetColumn,
       Join joinType = Join::Left,
-      RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
+      RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit,
+      CascadePolicy cascadePolicy = {},
+      bool orphanRemoval = false)
       : name_(name),
         kind_(kind),
         ownerColumn_(ownerColumn),
         targetColumn_(targetColumn),
         joinType_(joinType),
-        loadStrategy_(loadStrategy)
+        loadStrategy_(loadStrategy),
+        cascadePolicy_(cascadePolicy),
+        orphanRemoval_(orphanRemoval)
     {
       if (kind != RelationshipKind::OneToOne && kind != RelationshipKind::OneToMany) {
         throw InvalidArgException("Direct relationships must be one-to-one or one-to-many.");
@@ -127,6 +145,18 @@ namespace worm::core
     }
 
     [[nodiscard]]
+    constexpr CascadePolicy cascadePolicy() const noexcept
+    {
+      return cascadePolicy_;
+    }
+
+    [[nodiscard]]
+    constexpr bool orphanRemoval() const noexcept
+    {
+      return orphanRemoval_;
+    }
+
+    [[nodiscard]]
     Relation relation(std::string_view ownerAlias, std::string_view targetAlias) const
     {
       detail::validateRelationshipText(ownerAlias, "Relationship owner alias must not be empty.");
@@ -147,6 +177,8 @@ namespace worm::core
     std::string_view targetColumn_;
     Join joinType_;
     RelationshipLoadStrategy loadStrategy_;
+    CascadePolicy cascadePolicy_;
+    bool orphanRemoval_;
   };
 
   template <Entity Owner, Entity Target>
@@ -160,7 +192,9 @@ namespace worm::core
       std::string_view joinTargetColumn,
       std::string_view targetColumn,
       Join joinType = Join::Left,
-      RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
+      RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit,
+      CascadePolicy cascadePolicy = {},
+      bool orphanRemoval = false)
       : name_(name),
         joinTable_(joinTable),
         ownerColumn_(ownerColumn),
@@ -168,7 +202,9 @@ namespace worm::core
         joinTargetColumn_(joinTargetColumn),
         targetColumn_(targetColumn),
         joinType_(joinType),
-        loadStrategy_(loadStrategy)
+        loadStrategy_(loadStrategy),
+        cascadePolicy_(cascadePolicy),
+        orphanRemoval_(orphanRemoval)
     {
       detail::validateRelationshipText(name_, "Relationship name must not be empty.");
       detail::validateRelationshipText(joinTable_, "Relationship join table must not be empty.");
@@ -245,6 +281,18 @@ namespace worm::core
     }
 
     [[nodiscard]]
+    constexpr CascadePolicy cascadePolicy() const noexcept
+    {
+      return cascadePolicy_;
+    }
+
+    [[nodiscard]]
+    constexpr bool orphanRemoval() const noexcept
+    {
+      return orphanRemoval_;
+    }
+
+    [[nodiscard]]
     std::vector<Relation> relations(
       std::string_view ownerAlias, std::string_view joinAlias, std::string_view targetAlias) const
     {
@@ -277,6 +325,8 @@ namespace worm::core
     std::string_view targetColumn_;
     Join joinType_;
     RelationshipLoadStrategy loadStrategy_;
+    CascadePolicy cascadePolicy_;
+    bool orphanRemoval_;
   };
 
   template <Entity Owner, Entity Target>
@@ -285,9 +335,18 @@ namespace worm::core
     std::string_view ownerColumn,
     std::string_view targetColumn,
     Join joinType = Join::Left,
-    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
+    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit,
+    CascadePolicy cascadePolicy = {},
+    bool orphanRemoval = false)
   {
-    return {name, RelationshipKind::OneToOne, ownerColumn, targetColumn, joinType, loadStrategy};
+    return {name,
+      RelationshipKind::OneToOne,
+      ownerColumn,
+      targetColumn,
+      joinType,
+      loadStrategy,
+      cascadePolicy,
+      orphanRemoval};
   }
 
   template <Entity Owner, Entity Target>
@@ -296,9 +355,18 @@ namespace worm::core
     std::string_view ownerColumn,
     std::string_view targetColumn,
     Join joinType = Join::Left,
-    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
+    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit,
+    CascadePolicy cascadePolicy = {},
+    bool orphanRemoval = false)
   {
-    return {name, RelationshipKind::OneToMany, ownerColumn, targetColumn, joinType, loadStrategy};
+    return {name,
+      RelationshipKind::OneToMany,
+      ownerColumn,
+      targetColumn,
+      joinType,
+      loadStrategy,
+      cascadePolicy,
+      orphanRemoval};
   }
 
   template <Entity Owner, Entity Target>
@@ -310,9 +378,20 @@ namespace worm::core
     std::string_view joinTargetColumn,
     std::string_view targetColumn,
     Join joinType = Join::Left,
-    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit)
+    RelationshipLoadStrategy loadStrategy = RelationshipLoadStrategy::Explicit,
+    CascadePolicy cascadePolicy = {},
+    bool orphanRemoval = false)
   {
-    return {name, joinTable, ownerColumn, joinOwnerColumn, joinTargetColumn, targetColumn, joinType, loadStrategy};
+    return {name,
+      joinTable,
+      ownerColumn,
+      joinOwnerColumn,
+      joinTargetColumn,
+      targetColumn,
+      joinType,
+      loadStrategy,
+      cascadePolicy,
+      orphanRemoval};
   }
 
   namespace detail

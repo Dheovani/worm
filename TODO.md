@@ -93,7 +93,7 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Implement one-to-one, one-to-many, and many-to-many relationships.
 - [x] Make eager or lazy loading an explicit choice.
 - [x] Detect and document N+1 queries.
-- [ ] Define cascades and orphan removal with conservative defaults.
+- [x] Define cascades and orphan removal with conservative defaults.
 
 ## Milestone 4 — Schema and migrations
 

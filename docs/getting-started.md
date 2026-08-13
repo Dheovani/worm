@@ -189,16 +189,19 @@ SQL Server requires an ordering when pagination is present. The other supported 
 
 ## Relationships
 
-Relationships are declared as explicit metadata and can be included in `Criteria` to generate joins. Worm supports one-to-one, one-to-many, and many-to-many descriptors. Each descriptor also declares a `RelationshipLoadStrategy`, making `Explicit`, `Eager`, or `Lazy` a visible model choice even though automatic eager/lazy loading is not implemented yet:
+Relationships are declared as explicit metadata and can be included in `Criteria` to generate joins. Worm supports one-to-one, one-to-many, and many-to-many descriptors. Each descriptor also declares a `RelationshipLoadStrategy`, making `Explicit`, `Eager`, or `Lazy` a visible model choice even though automatic eager/lazy loading is not implemented yet. Cascades and orphan removal are also explicit metadata and default to disabled:
 
 ```cpp
 const auto userProfile = worm::core::oneToOne<User, Profile>("profile", "id", "user_id");
+const worm::core::CascadePolicy postCascade{.persist = true, .update = true, .remove = true};
 const auto userPosts = worm::core::oneToMany<User, Post>(
   "posts",
   "id",
   "user_id",
   worm::core::Join::Left,
-  worm::core::RelationshipLoadStrategy::Eager);
+  worm::core::RelationshipLoadStrategy::Eager,
+  postCascade,
+  true);
 const auto userRoles = worm::core::manyToMany<User, Role>(
   "roles",
   "user_roles",
@@ -223,7 +226,7 @@ const worm::core::Statement statement = queryBuilder.select(
   criteria);
 ```
 
-The descriptors only produce relationship-aware join metadata today. Hydrating object graphs, executing eager/lazy loaders, detecting N+1 queries, and defining cascades are separate features still tracked in the roadmap.
+The descriptors only produce relationship-aware join metadata today. Hydrating object graphs and executing eager/lazy loaders are separate features still tracked in the roadmap. Cascade metadata and orphan removal do not perform automatic mutations yet; they make the intended ownership policy visible for future persistence flows.
 
 ## N+1 diagnostics
 

@@ -114,6 +114,13 @@ int main()
   using worm::core::RelationshipKind;
   using worm::core::RelationshipLoadStrategy;
 
+  constexpr worm::core::CascadePolicy defaultCascade;
+  static_assert(defaultCascade.empty());
+  static_assert(!defaultCascade.persist);
+  static_assert(!defaultCascade.update);
+  static_assert(!defaultCascade.remove);
+  static_assert(!defaultCascade.refresh);
+
   static_assert(worm::core::relationship_count<User> == 0);
   static_assert(worm::core::relationship_count<UserWithRelationships> == 3);
 
@@ -123,6 +130,8 @@ int main()
   static_assert(profile.ownerColumn() == "id");
   static_assert(profile.targetColumn() == "user_id");
   static_assert(profile.loadStrategy() == RelationshipLoadStrategy::Explicit);
+  static_assert(profile.cascadePolicy().empty());
+  static_assert(!profile.orphanRemoval());
 
   const auto profileRelation = profile.relation("u", "p");
   if (profileRelation.joinType != Join::Left || profileRelation.baseSource.name != "users" ||
@@ -132,10 +141,18 @@ int main()
     return 1;
   }
 
-  constexpr auto posts =
-    worm::core::oneToMany<User, Post>("posts", "id", "user_id", Join::Inner, RelationshipLoadStrategy::Eager);
+  constexpr worm::core::CascadePolicy postCascade{.persist = true, .update = true, .remove = true};
+  static_assert(!postCascade.empty());
+
+  constexpr auto posts = worm::core::oneToMany<User, Post>(
+    "posts", "id", "user_id", Join::Inner, RelationshipLoadStrategy::Eager, postCascade, true);
   static_assert(posts.kind() == RelationshipKind::OneToMany);
   static_assert(posts.loadStrategy() == RelationshipLoadStrategy::Eager);
+  static_assert(posts.cascadePolicy().persist);
+  static_assert(posts.cascadePolicy().update);
+  static_assert(posts.cascadePolicy().remove);
+  static_assert(!posts.cascadePolicy().refresh);
+  static_assert(posts.orphanRemoval());
   const auto postsRelation = posts.relation("u", "po");
   if (postsRelation.joinType != Join::Inner || postsRelation.condition.sql != "u.id = po.user_id") {
     std::cerr << "One-to-many relationship did not preserve its join type or condition.\n";
@@ -147,6 +164,8 @@ int main()
   static_assert(roles.kind() == RelationshipKind::ManyToMany);
   static_assert(roles.joinTable() == "user_roles");
   static_assert(roles.loadStrategy() == RelationshipLoadStrategy::Lazy);
+  static_assert(roles.cascadePolicy().empty());
+  static_assert(!roles.orphanRemoval());
 
   const auto roleRelations = roles.relations("u", "ur", "r");
   if (roleRelations.size() != 2 || roleRelations[0].joinedSource.name != "user_roles" ||
