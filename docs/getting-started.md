@@ -225,6 +225,22 @@ const worm::core::Statement statement = queryBuilder.select(
 
 The descriptors only produce relationship-aware join metadata today. Hydrating object graphs, executing eager/lazy loaders, detecting N+1 queries, and defining cascades are separate features still tracked in the roadmap.
 
+## N+1 diagnostics
+
+`NPlusOneDetector` can be used in tests, development tooling, or repository wrappers to inspect executed statements and detect repeated parameterized `SELECT` shapes with different parameter sets:
+
+```cpp
+worm::core::NPlusOneDetector detector;
+detector.record({"select * from posts where user_id = ?", {std::int64_t{1}}});
+detector.record({"select * from posts where user_id = ?", {std::int64_t{2}}});
+
+for (const worm::core::NPlusOneWarning& warning : detector.warnings()) {
+  // warning.sql contains the parameterized SQL, never the concrete parameter values.
+}
+```
+
+The detector is intentionally opt-in. It does not collect statements globally, does not block execution, and does not inspect parameter values in diagnostics. Repeated parameterized `SELECT` statements are a strong signal that a relationship query may be running once per parent row; use `Criteria::include()` and explicit joins when the relationship should be loaded in one query.
+
 ## Transactions
 
 A transaction must be finalized explicitly. If it leaves scope while still
@@ -303,7 +319,7 @@ use one `Session` and one `Client` per concurrent workflow.
 - Database-generated keys do not yet have portable behavior across drivers.
 - The SQL Server driver compiles and implements the ODBC contract, but it does
   not yet have a contract test running against a real CI instance.
-- Automatic relationship loading, eager/lazy execution, and N+1 detection do not exist yet.
+- Automatic relationship loading and eager/lazy execution do not exist yet.
 - There is no connection pool or prepared statement cache.
 - A single `Client`, `Session`, `Repository`, or `Registry` must not be shared
   across threads; create independent contexts for parallel work.
