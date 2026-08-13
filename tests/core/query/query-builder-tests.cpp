@@ -19,7 +19,9 @@ namespace
       const std::vector<worm::core::Relation>& relations,
       const std::optional<worm::core::Filter>& filter = std::nullopt,
       const std::vector<worm::core::Ordering>& ordering = {},
-      const std::optional<worm::core::Pagination>& pagination = std::nullopt) const override
+      const std::optional<worm::core::Pagination>& pagination = std::nullopt,
+      const std::vector<worm::core::Grouping>& grouping = {},
+      const std::optional<worm::core::Filter>& having = std::nullopt) const override
     {
       fieldsCount_ = fields.size();
       sourceName_ = source.name;
@@ -27,6 +29,8 @@ namespace
       hasFilter_ = filter.has_value();
       orderingCount_ = ordering.size();
       hasPagination_ = pagination.has_value();
+      groupingCount_ = grouping.size();
+      hasHaving_ = having.has_value();
       return {std::string{query_}};
     }
 
@@ -55,7 +59,9 @@ namespace
       const std::vector<worm::core::Relation>& relations,
       const std::optional<worm::core::Filter>& filter,
       const std::vector<worm::core::Ordering>& ordering,
-      const std::optional<worm::core::Pagination>& pagination) const override
+      const std::optional<worm::core::Pagination>& pagination,
+      const std::vector<worm::core::Grouping>& grouping,
+      const std::optional<worm::core::Filter>& having) const override
     {
       sourceName_ = source.name;
       targetName_ = target.name;
@@ -65,6 +71,8 @@ namespace
       hasFilter_ = filter.has_value();
       orderingCount_ = ordering.size();
       hasPagination_ = pagination.has_value();
+      groupingCount_ = grouping.size();
+      hasHaving_ = having.has_value();
       return {std::string{structuredInsertFromSelectQuery_}};
     }
 
@@ -92,7 +100,9 @@ namespace
     mutable std::size_t relationsCount_{0};
     mutable bool hasFilter_{false};
     mutable bool hasPagination_{false};
+    mutable bool hasHaving_{false};
     mutable std::size_t orderingCount_{0};
+    mutable std::size_t groupingCount_{0};
     mutable std::size_t insertColumnsCount_{0};
     mutable std::size_t updateColumnsCount_{0};
     mutable std::size_t targetColumnsCount_{0};
@@ -113,6 +123,7 @@ int main()
   using worm::core::Expression;
   using worm::core::Field;
   using worm::core::Filter;
+  using worm::core::Grouping;
   using worm::core::Join;
   using worm::core::OrderDirection;
   using worm::core::Ordering;
@@ -139,7 +150,9 @@ int main()
     relations,
     Filter{Predicate::equal("u.active", true)},
     {Ordering{"o.total", OrderDirection::Descending}},
-    worm::core::Pagination{10, 20});
+    worm::core::Pagination{10, 20},
+    {Grouping{"u.id"}},
+    Filter{Predicate::compare("sum(o.total)", worm::core::Comparison::Greater, std::int64_t{100})});
 
   if (query.sql != "select delegated") {
     std::cerr << "QueryBuilder did not return the SQL produced by the concrete builder.\n";
@@ -149,6 +162,11 @@ int main()
   if (sqlBuilder.fieldsCount_ != 2 || sqlBuilder.sourceName_ != "users" || sqlBuilder.relationsCount_ != 1 ||
       !sqlBuilder.hasFilter_ || sqlBuilder.orderingCount_ != 1 || !sqlBuilder.hasPagination_) {
     std::cerr << "QueryBuilder did not delegate the query envelope to the concrete builder.\n";
+    return 1;
+  }
+
+  if (sqlBuilder.groupingCount_ != 1 || !sqlBuilder.hasHaving_) {
+    std::cerr << "QueryBuilder did not delegate grouping and having to the concrete builder.\n";
     return 1;
   }
 
@@ -187,11 +205,14 @@ int main()
     relations,
     Filter{Predicate::equal("u.active", true)},
     {Ordering{"o.total", OrderDirection::Descending}},
-    worm::core::Pagination{10, 20});
+    worm::core::Pagination{10, 20},
+    {Grouping{"u.id"}},
+    Filter{Predicate::compare("sum(o.total)", worm::core::Comparison::Greater, std::int64_t{100})});
   if (structuredInsertFromSelectQuery.sql != "structured insert from select delegated" ||
       sqlBuilder.targetName_ != "archived_users" || sqlBuilder.sourceName_ != "users" ||
       sqlBuilder.targetColumnsCount_ != 2 || sqlBuilder.fieldsCount_ != 2 || sqlBuilder.relationsCount_ != 1 ||
-      !sqlBuilder.hasFilter_ || sqlBuilder.orderingCount_ != 1 || !sqlBuilder.hasPagination_) {
+      !sqlBuilder.hasFilter_ || sqlBuilder.orderingCount_ != 1 || !sqlBuilder.hasPagination_ ||
+      sqlBuilder.groupingCount_ != 1 || !sqlBuilder.hasHaving_) {
     std::cerr << "QueryBuilder did not delegate structured insert-from-select data to the concrete builder.\n";
     return 1;
   }

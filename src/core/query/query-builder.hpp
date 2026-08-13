@@ -7,6 +7,7 @@
 
 #include <core/query/expression.hpp>
 #include <core/query/filter.hpp>
+#include <core/query/grouping.hpp>
 #include <core/query/ordering.hpp>
 #include <core/query/pagination.hpp>
 #include <core/query/source.hpp>
@@ -33,9 +34,11 @@ namespace worm::core
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
-      const std::optional<Pagination>& pagination = std::nullopt) const
+      const std::optional<Pagination>& pagination = std::nullopt,
+      const std::vector<Grouping>& grouping = {},
+      const std::optional<Filter>& having = std::nullopt) const
     {
-      return sqlBuilder.selectAll(source, relations, filter, ordering, pagination);
+      return sqlBuilder.selectAll(source, relations, filter, ordering, pagination, grouping, having);
     }
 
     [[nodiscard]]
@@ -44,9 +47,11 @@ namespace worm::core
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
-      const std::optional<Pagination>& pagination = std::nullopt) const
+      const std::optional<Pagination>& pagination = std::nullopt,
+      const std::vector<Grouping>& grouping = {},
+      const std::optional<Filter>& having = std::nullopt) const
     {
-      return sqlBuilder.select(fields, source, relations, filter, ordering, pagination);
+      return sqlBuilder.select(fields, source, relations, filter, ordering, pagination, grouping, having);
     }
 
     [[nodiscard]]
@@ -70,10 +75,12 @@ namespace worm::core
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
-      const std::optional<Pagination>& pagination = std::nullopt) const
+      const std::optional<Pagination>& pagination = std::nullopt,
+      const std::vector<Grouping>& grouping = {},
+      const std::optional<Filter>& having = std::nullopt) const
     {
       return sqlBuilder.insertFromSelect(
-        target, targetColumns, selectedFields, source, relations, filter, ordering, pagination);
+        target, targetColumns, selectedFields, source, relations, filter, ordering, pagination, grouping, having);
     }
 
     [[nodiscard]]

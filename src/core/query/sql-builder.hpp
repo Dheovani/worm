@@ -12,6 +12,7 @@
 
 #include <core/query/expression.hpp>
 #include <core/query/filter.hpp>
+#include <core/query/grouping.hpp>
 #include <core/query/ordering.hpp>
 #include <core/query/pagination.hpp>
 #include <core/query/source.hpp>
@@ -28,7 +29,9 @@ namespace worm::core
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
-      const std::optional<Pagination>& pagination = std::nullopt) const;
+      const std::optional<Pagination>& pagination = std::nullopt,
+      const std::vector<Grouping>& grouping = {},
+      const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
     virtual Statement select(const std::vector<worm::core::Field>& fields,
@@ -36,7 +39,9 @@ namespace worm::core
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
-      const std::optional<Pagination>& pagination = std::nullopt) const;
+      const std::optional<Pagination>& pagination = std::nullopt,
+      const std::vector<Grouping>& grouping = {},
+      const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
     virtual Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
@@ -53,7 +58,9 @@ namespace worm::core
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
-      const std::optional<Pagination>& pagination = std::nullopt) const;
+      const std::optional<Pagination>& pagination = std::nullopt,
+      const std::vector<Grouping>& grouping = {},
+      const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
     virtual Statement update(const Source& source,
@@ -91,6 +98,9 @@ namespace worm::core
 
     [[nodiscard]]
     std::string renderFilter(const Filter& filter, std::size_t firstParameterIndex = 1) const;
+
+    [[nodiscard]]
+    std::string renderGrouping(const std::vector<Grouping>& grouping) const;
 
     [[nodiscard]]
     std::string renderOrdering(const std::vector<Ordering>& ordering) const;

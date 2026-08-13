@@ -81,6 +81,28 @@ namespace worm::core
       return rendered;
     }
 
+    bool hasAggregateProjection(const std::vector<worm::core::Field>& fields)
+    {
+      for (const auto& field : fields) {
+        if (field.aggregate.has_value()) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    bool hasPlainProjection(const std::vector<worm::core::Field>& fields)
+    {
+      for (const auto& field : fields) {
+        if (!field.aggregate.has_value()) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
     std::string listSelectFields(const std::vector<worm::core::Field>& fields)
     {
       if (fields.empty()) {
@@ -304,6 +326,30 @@ namespace worm::core
     return renderExpression(filter.expression(), firstParameterIndex);
   }
 
+  std::string SqlBuilder::renderGrouping(const std::vector<Grouping>& grouping) const
+  {
+    if (grouping.empty()) {
+      return {};
+    }
+
+    std::string sql = " group by ";
+    for (std::size_t index = 0; index < grouping.size(); ++index) {
+      const auto& group = grouping[index];
+
+      if (group.column.empty()) {
+        throw worm::SqlBuildException("GROUP BY operation must not receive an empty column.");
+      }
+
+      if (index != 0) {
+        sql += ",";
+      }
+
+      sql += std::string{group.column};
+    }
+
+    return sql;
+  }
+
   std::string SqlBuilder::renderOrdering(const std::vector<Ordering>& ordering) const
   {
     if (ordering.empty()) {
@@ -330,8 +376,14 @@ namespace worm::core
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
     const std::vector<Ordering>& ordering,
-    const std::optional<Pagination>& pagination) const
+    const std::optional<Pagination>& pagination,
+    const std::vector<Grouping>& grouping,
+    const std::optional<Filter>& having) const
   {
+    if (having.has_value() && grouping.empty()) {
+      throw worm::SqlBuildException("HAVING requires a GROUP BY clause.");
+    }
+
     const std::string fieldsList = std::string{source.alias.value_or(source.name)} + ".*";
     const std::string sourceName = std::string{source.name} + " " + std::string{source.alias.value_or("")};
     const std::string _relations = buildRelations(relations);
@@ -347,12 +399,20 @@ namespace worm::core
       sql += renderFilter(filter.value(), parameterIndex);
     }
 
-    sql += renderOrdering(ordering);
+    sql += renderGrouping(grouping);
 
     std::vector<Parameter> parameters = relationParameters(relations);
     if (filter.has_value()) {
       appendParameters(parameters, filter.value().expression().parameters);
     }
+
+    if (having.has_value()) {
+      sql += " having ";
+      sql += renderFilter(having.value(), parameters.size() + 1);
+      appendParameters(parameters, having.value().expression().parameters);
+    }
+
+    sql += renderOrdering(ordering);
 
     if (pagination.has_value()) {
       const Expression renderedPagination =
@@ -369,8 +429,18 @@ namespace worm::core
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
     const std::vector<Ordering>& ordering,
-    const std::optional<Pagination>& pagination) const
+    const std::optional<Pagination>& pagination,
+    const std::vector<Grouping>& grouping,
+    const std::optional<Filter>& having) const
   {
+    if (having.has_value() && grouping.empty()) {
+      throw worm::SqlBuildException("HAVING requires a GROUP BY clause.");
+    }
+
+    if (hasAggregateProjection(fields) && hasPlainProjection(fields) && grouping.empty()) {
+      throw worm::SqlBuildException("Mixed aggregate and non-aggregate projections require a GROUP BY clause.");
+    }
+
     const std::string fieldsList = listSelectFields(fields);
     const std::string sourceName = std::string{source.name} + " " + std::string{source.alias.value_or("")};
     const std::string _relations = buildRelations(relations);
@@ -386,12 +456,20 @@ namespace worm::core
       sql += renderFilter(filter.value(), parameterIndex);
     }
 
-    sql += renderOrdering(ordering);
+    sql += renderGrouping(grouping);
 
     std::vector<Parameter> parameters = relationParameters(relations);
     if (filter.has_value()) {
       appendParameters(parameters, filter.value().expression().parameters);
     }
+
+    if (having.has_value()) {
+      sql += " having ";
+      sql += renderFilter(having.value(), parameters.size() + 1);
+      appendParameters(parameters, having.value().expression().parameters);
+    }
+
+    sql += renderOrdering(ordering);
 
     if (pagination.has_value()) {
       const Expression renderedPagination =
@@ -461,9 +539,12 @@ namespace worm::core
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
     const std::vector<Ordering>& ordering,
-    const std::optional<Pagination>& pagination) const
+    const std::optional<Pagination>& pagination,
+    const std::vector<Grouping>& grouping,
+    const std::optional<Filter>& having) const
   {
-    const Statement selectStatement = select(selectedFields, source, relations, filter, ordering, pagination);
+    const Statement selectStatement =
+      select(selectedFields, source, relations, filter, ordering, pagination, grouping, having);
 
     return insertFromSelect(target, targetColumns, selectStatement);
   }

@@ -156,16 +156,25 @@ The overloads that receive `Statement` are the controlled escape hatch for
 manual SQL, but they still accept only the operation that matches the repository
 method and keep parameters separate from the SQL text.
 
-Use `Field` entries to select specific columns, assign result aliases, or request the supported `COUNT`, `SUM`, `AVG`, `MIN`, and `MAX` aggregates:
+Use `Field` entries to select specific columns, assign result aliases, or request the supported `COUNT`, `SUM`, `AVG`, `MIN`, and `MAX` aggregates. When a query mixes aggregate and non-aggregate projections, pass explicit `Grouping` entries and, when needed, a `HAVING` filter:
 
 ```cpp
 const worm::core::Source usersSource{User::table().name(), "u"};
 const worm::core::Statement countUsers = queryBuilder.select(
-  {worm::core::Field{"*", usersSource, worm::core::Aggregate::Count, "user_count"}},
-  usersSource);
+  {
+    worm::core::Field{"id", usersSource, "user_id"},
+    worm::core::Field{"*", usersSource, worm::core::Aggregate::Count, "user_count"},
+  },
+  usersSource,
+  {},
+  std::nullopt,
+  {},
+  std::nullopt,
+  {worm::core::Grouping{"u.id"}},
+  worm::core::Filter{worm::core::Predicate::compare("count(*)", worm::core::Comparison::Greater, std::int64_t{0})});
 ```
 
-Grouped aggregations with `GROUP BY` and `HAVING` are not implemented yet.
+`HAVING` requires `GROUP BY`. Worm also rejects mixed aggregate and non-aggregate projections when no grouping is provided, because the resulting SQL would be ambiguous or invalid on stricter databases.
 
 Pass `Pagination{limit, offset}` to a select operation to paginate in the database. The limit and offset remain bound parameters instead of being interpolated into SQL:
 

@@ -68,6 +68,7 @@ int main()
   using worm::core::Comparison;
   using worm::core::Field;
   using worm::core::Filter;
+  using worm::core::Grouping;
   using worm::core::Join;
   using worm::core::MySqlBuilder;
   using worm::core::OrderDirection;
@@ -118,14 +119,37 @@ int main()
     Field{"total", orders, Aggregate::Maximum, "maximum_spent"},
     Field{"*", users, Aggregate::Count, "row_count"},
   };
-  const worm::core::Statement projected = pgBuilder.select(projections, users, relations, filter, ordering);
+  const Filter having{Predicate::compare("sum(o.total)", Comparison::Greater, std::int64_t{100})};
+  const worm::core::Statement projected =
+    pgBuilder.select(projections, users, relations, filter, ordering, std::nullopt, {Grouping{"u.id"}}, having);
   if (projected.sql != "select u.id as user_id,sum(o.total) as total_spent,avg(o.total) as average_spent,"
                        "min(o.total) as minimum_spent,max(o.total) as maximum_spent,count(*) as row_count"
-                       " from users u inner join orders o on (u.id = $1) where u.active = $2 order by o.total desc" ||
-      projected.parameters != select.parameters) {
-    std::cerr << "Select builder did not render aliased and aggregate projections correctly.\n";
+                       " from users u inner join orders o on (u.id = $1) where u.active = $2 group by u.id"
+                       " having sum(o.total) > $3 order by o.total desc" ||
+      projected.parameters != std::vector<worm::core::Parameter>{std::int64_t{7}, true, std::int64_t{100}}) {
+    std::cerr << "Select builder did not render aliased, grouped, and aggregate projections correctly.\n";
     return 1;
   }
+
+  try {
+    static_cast<void>(pgBuilder.select(projections, users, relations, filter, ordering));
+    std::cerr << "Select builder accepted mixed aggregate and non-aggregate projections without grouping.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
+
+  try {
+    static_cast<void>(pgBuilder.select(
+      {Field{"*", users, Aggregate::Count, "row_count"}}, users, {}, std::nullopt, {}, std::nullopt, {}, having));
+    std::cerr << "Select builder accepted HAVING without GROUP BY.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
+
+  try {
+    static_cast<void>(pgBuilder.select(
+      {Field{"*", users, Aggregate::Count, "row_count"}}, users, {}, std::nullopt, {}, std::nullopt, {Grouping{""}}));
+    std::cerr << "Select builder accepted an empty GROUP BY column.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
 
   try {
     static_cast<void>(pgBuilder.select({}, users, relations, filter, ordering));

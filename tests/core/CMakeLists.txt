@@ -17,6 +17,7 @@ add_worm_core_test(WormSqlBuilderTests query/sql-builder-tests.cpp Worm.Core.Sql
 add_worm_core_test(WormSourceTests query/source-tests.cpp Worm.Core.Source)
 add_worm_core_test(WormQueryBuilderTests query/query-builder-tests.cpp Worm.Core.QueryBuilder)
 add_worm_core_test(WormFilterTests query/filter-tests.cpp Worm.Core.Filter)
+add_worm_core_test(WormGroupingTests query/grouping-tests.cpp Worm.Core.Grouping)
 add_worm_core_test(WormPaginationTests query/pagination-tests.cpp Worm.Core.Pagination)
 add_worm_core_test(WormResultSetTests output/result-set-tests.cpp Worm.Core.ResultSet)
 add_worm_core_test(WormPaginatorTests output/paginator-tests.cpp Worm.Core.Paginator)
