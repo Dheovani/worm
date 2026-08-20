@@ -8,7 +8,6 @@ add_library(
   query/query-builder.cpp
   query/sql-builder.cpp
   query/statement.cpp
-  query/validator.cpp
   output/paginator.cpp
   output/result-set.cpp
   persistence/session.cpp

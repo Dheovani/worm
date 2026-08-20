@@ -22,13 +22,15 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace worm::core
 {
 
-  template <PersistableEntity T>
+  template <Model T>
   class Repository final
   {
   public:
@@ -40,7 +42,8 @@ namespace worm::core
       ensureDependencies();
     }
 
-    explicit Repository(std::shared_ptr<connection::Client> dbClient,
+    explicit Repository(
+      std::shared_ptr<connection::Client> dbClient,
       const QueryBuilder& queryBuilder,
       std::shared_ptr<Registry> registry)
       : dbClient(std::move(dbClient)),
@@ -53,24 +56,24 @@ namespace worm::core
     template <EncodableParameter ID>
     [[nodiscard]]
     std::shared_ptr<T> find(const ID& id) const
-    try {
+      requires PersistableEntity<T>
+    {
       if (std::shared_ptr<T> registered = registry->instances<T>().get(id)) {
         return registered;
       }
 
+      constexpr auto primaryKey = primaryKeyField();
       const std::string alias = generateEntityAlias();
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
       const Statement statement =
         queryBuilder.selectAll({T::table().name(), alias}, {}, Filter{Predicate::equal(column, encode(id))});
 
       return findOne(statement);
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     [[nodiscard]]
     std::shared_ptr<T> findOne(const Statement& statement) const
-    try {
+    {
       if (!isOperationValid(statement, core::Operation::Select)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
@@ -86,14 +89,20 @@ namespace worm::core
         throw worm::MappingException("More than one row returned for a single-result repository query.");
       }
 
-      return hydrateAndRegister(resultSet.rows().front());
-    } catch (const worm::WormException&) {
-      throw;
+      return hydrateModel(resultSet.rows().front());
+    }
+
+    [[nodiscard]]
+    std::shared_ptr<T> findOne(
+      const std::string& sql,
+      std::vector<Parameter> parameters = {}) const
+    {
+      return findOne(Statement::prepare(sql, parameters));
     }
 
     [[nodiscard]]
     std::vector<std::shared_ptr<T>> findAll(const Statement& statement) const
-    try {
+    {
       if (!isOperationValid(statement, core::Operation::Select)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
@@ -108,30 +117,38 @@ namespace worm::core
       results.reserve(resultSet.rowCount());
 
       for (const ResultRow& row : resultSet) {
-        results.push_back(hydrateAndRegister(row));
+        results.push_back(hydrateModel(row));
       }
 
       return results;
-    } catch (const worm::WormException&) {
-      throw;
+    }
+
+    [[nodiscard]]
+    std::vector<std::shared_ptr<T>> findAll(
+      const std::string& sql,
+      std::vector<Parameter> parameters = {}) const
+    {
+      return findAll(Statement::prepare(sql, parameters));
     }
 
     [[nodiscard]]
     std::shared_ptr<T> insert(const T& entity) const
-    try {
+      requires PersistableEntity<T>
+    {
       const std::string alias = generateEntityAlias();
       const Statement statement =
         queryBuilder.insert({T::table().name(), alias}, mapFields(entity, core::Operation::Insert));
       const ResultSet resultSet = execute(statement);
 
       if (resultSet.rowCount() == 1) {
-        return hydrateAndRegister(resultSet.rows().front());
+        return hydrateModel(resultSet.rows().front());
       }
 
       if (resultSet.rowCount() > 1) {
         throw worm::MappingException("More than one row returned for a single-result insert operation.");
       }
 
+      constexpr auto primaryKey = primaryKeyField();
       if (primaryKey.isGenerated()) {
         throw worm::MappingException(
           "Insert operation did not return the generated primary key required to hydrate the created entity.");
@@ -143,13 +160,12 @@ namespace worm::core
       }
 
       return createdEntity;
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     [[nodiscard]]
     std::uint64_t insert(const std::vector<T>& entities) const
-    try {
+      requires PersistableEntity<T>
+    {
       std::uint64_t affectedRows = 0;
 
       for (const T& entity : entities) {
@@ -158,27 +174,26 @@ namespace worm::core
       }
 
       return affectedRows;
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     [[nodiscard]]
     std::uint64_t insert(const Statement& statement) const
-    try {
+      requires PersistableEntity<T>
+    {
       if (!isOperationValid(statement, core::Operation::Insert)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
 
       const ResultSet resultSet = execute(statement);
       return resultSet.affectedRows();
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     [[nodiscard]]
     std::uint64_t insertFromSelect(
-      const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
-    try {
+      const std::vector<std::string>& targetColumns,
+      const Statement& sourceStatement) const
+      requires PersistableEntity<T>
+    {
       if (!isOperationValid(sourceStatement, core::Operation::Select)) {
         throw worm::InvalidOperationException("The provided source statement performs an invalid operation.");
       }
@@ -186,31 +201,31 @@ namespace worm::core
       const Statement statement = queryBuilder.insertFromSelect({T::table().name()}, targetColumns, sourceStatement);
 
       return insert(statement);
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     [[nodiscard]]
-    std::uint64_t insertFromSelect(const std::vector<std::string>& targetColumns,
+    std::uint64_t insertFromSelect(
+      const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
       const std::optional<Pagination>& pagination = std::nullopt) const
-    try {
+      requires PersistableEntity<T>
+    {
       const Statement statement = queryBuilder.insertFromSelect(
         {T::table().name()}, targetColumns, selectedFields, source, relations, filter, ordering, pagination);
 
       return insert(statement);
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     template <EncodableParameter ID>
     [[nodiscard]]
     std::uint64_t update(const ID& id, const T& newStateEntity) const
-    try {
+      requires PersistableEntity<T>
+    {
+      constexpr auto primaryKey = primaryKeyField();
       const std::string alias = generateEntityAlias();
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
       const bool shouldUseSnapshot = registry->instances<T>().hasSnapshot(id);
@@ -234,26 +249,25 @@ namespace worm::core
       }
 
       return resultSet.affectedRows();
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     [[nodiscard]]
     std::uint64_t update(const Statement& statement) const
-    try {
+      requires PersistableEntity<T>
+    {
       if (!isOperationValid(statement, core::Operation::Update)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
 
       const ResultSet resultSet = executeFiltered(statement, T::table().name(), "UPDATE");
       return resultSet.affectedRows();
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     template <EncodableParameter ID>
     void delete_(const ID& id) const
-    try {
+      requires PersistableEntity<T>
+    {
+      constexpr auto primaryKey = primaryKeyField();
       const std::string alias = generateEntityAlias();
       const std::string column = alias + "." + std::string{primaryKey.columnName()};
       const Statement statement =
@@ -261,11 +275,10 @@ namespace worm::core
 
       delete_(statement, alias);
       registry->instances<T>().remove(id);
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     void delete_(const Statement& statement) const
+      requires PersistableEntity<T>
     {
       if (!isOperationValid(statement, core::Operation::Delete)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
@@ -286,11 +299,32 @@ namespace worm::core
       }
     }
 
-    std::shared_ptr<T> hydrateAndRegister(const ResultRow& row) const
+    std::shared_ptr<T> hydrateModel(const ResultRow& row) const
     {
       T entity = hydrate<T>(row);
-      registry->instances<T>().put(primaryKey.get(entity), entity);
-      return registry->instances<T>().get(primaryKey.get(entity));
+
+      if constexpr (PersistableEntity<T>) {
+        constexpr auto primaryKey = primaryKeyField();
+        registry->instances<T>().put(primaryKey.get(entity), entity);
+        return registry->instances<T>().get(primaryKey.get(entity));
+      }
+
+      return std::make_shared<T>(std::move(entity));
+    }
+
+    [[nodiscard]]
+    static constexpr auto primaryKeyField() noexcept
+      requires PersistableEntity<T>
+    {
+      return primary_key_field_of<T>();
+    }
+
+    template <typename Field>
+    [[nodiscard]]
+    static constexpr bool isPrimaryKeyField(Field field) noexcept
+      requires PersistableEntity<T>
+    {
+      return detail::PrimaryKeyFieldSelector::template matches<T>(field);
     }
 
     [[nodiscard]]
@@ -323,7 +357,7 @@ namespace worm::core
         [&](const auto&... fields) {
           (
             [&] {
-              if (fields.isGenerated() || (kind == core::Operation::Update && fields.isPrimaryKey())) {
+              if (fields.isGenerated() || (kind == core::Operation::Update && isPrimaryKeyField(fields))) {
                 return;
               }
 
@@ -345,7 +379,7 @@ namespace worm::core
 
       registry->instances<T>().forEachChangedField(
         id, entity, [&](const auto& field, const auto&, const auto& currentValue) {
-          if (!field.isPrimaryKey() && !field.isGenerated()) {
+          if (!isPrimaryKeyField(field) && !field.isGenerated()) {
             result.emplace_back(std::string{field.columnName()}, encode(currentValue));
           }
         });
@@ -365,7 +399,7 @@ namespace worm::core
         [&](const auto&... fields) {
           (
             [&] {
-              if (fields.isPrimaryKey() || fields.isGenerated()) {
+              if (isPrimaryKeyField(fields) || fields.isGenerated()) {
                 return;
               }
 
@@ -390,27 +424,25 @@ namespace worm::core
 
     [[nodiscard]]
     core::ResultSet executeFiltered(
-      const Statement& statement, std::string_view filterQualifier, std::string_view operation) const
-    try {
+      const Statement& statement,
+      std::string_view filterQualifier,
+      std::string_view operation) const
+    {
       if (!core::hasFilterWhere(statement.sql, filterQualifier)) {
         throw worm::SqlBuildException(
           std::string{operation} + " operation's statement must have a `WHERE` filter clause.");
       }
 
       return execute(statement);
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     void delete_(const Statement& statement, std::string_view filterQualifier) const
-    try {
+    {
       if (!isOperationValid(statement, core::Operation::Delete)) {
         throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
       }
 
       static_cast<void>(executeFiltered(statement, filterQualifier, "DELETE"));
-    } catch (const worm::WormException&) {
-      throw;
     }
 
     [[nodiscard]]
@@ -429,8 +461,6 @@ namespace worm::core
     std::shared_ptr<connection::Client> dbClient;
     const QueryBuilder queryBuilder;
     std::shared_ptr<Registry> registry;
-
-    static constexpr auto primaryKey = primary_key_field_of<T>();
   };
 
 } // namespace worm::core

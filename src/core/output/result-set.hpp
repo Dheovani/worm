@@ -33,7 +33,7 @@ namespace worm::core
     friend bool operator==(const ResultRow&, const ResultRow&) = default;
   };
 
-  template <PersistableEntity T>
+  template <Model T>
   [[nodiscard]]
   T hydrate(const ResultRow& row);
 

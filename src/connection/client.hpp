@@ -13,7 +13,7 @@
 
 namespace worm::core
 {
-  template <PersistableEntity T>
+  template <Model T>
   class Repository;
 }
 
@@ -38,7 +38,7 @@ namespace worm::connection
 
   class Client
   {
-    template <core::PersistableEntity T>
+    template <core::Model T>
     friend class core::Repository;
 
     friend class Transaction;

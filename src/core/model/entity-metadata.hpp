@@ -10,23 +10,32 @@
 
 namespace worm::core
 {
-
   namespace detail
   {
-
     struct PrimaryKeyFieldSelector
     {
-      template <typename Field>
-      static consteval bool matches(Field field)
+      template <typename T, typename Field>
+      static constexpr bool matches(Field field)
       {
-        return field.isPersistent() && field.isPrimaryKey();
+        if (!field.isPersistent()) {
+          return false;
+        }
+
+        constexpr auto primaryKey = std::remove_cvref_t<T>::primaryKey();
+        for (const auto& column : primaryKey.columns()) {
+          if (column.columnName == field.columnName()) {
+            return true;
+          }
+        }
+
+        return false;
       }
     };
 
     struct PersistentFieldSelector
     {
-      template <typename Field>
-      static consteval bool matches(Field field)
+      template <typename T, typename Field>
+      static constexpr bool matches(Field field)
       {
         return field.isPersistent();
       }
@@ -38,7 +47,7 @@ namespace worm::core
       constexpr auto fields = std::remove_cvref_t<T>::reflect();
       constexpr auto field = std::get<Index>(fields);
 
-      if constexpr (Selector::matches(field)) {
+      if constexpr (Selector::template matches<T>(field)) {
         return std::tuple{field};
       } else {
         return std::tuple{};
@@ -59,7 +68,6 @@ namespace worm::core
 
       return selected_fields_impl<Selector, EntityType>(std::make_index_sequence<std::tuple_size_v<Fields>>{});
     }
-
   } // namespace detail
 
   template <Entity T>
@@ -132,4 +140,40 @@ namespace worm::core
     return std::get<0>(primary_key_fields_of<T>());
   }
 
+  template <Viewable T>
+  [[nodiscard]]
+  constexpr View view_of()
+  {
+    return std::remove_cvref_t<T>::view();
+  }
+
+  template <Viewable T>
+  [[nodiscard]]
+  constexpr bool has_valid_view()
+  {
+    return !view_of<T>().empty();
+  }
+
+  template <Viewable T>
+  [[nodiscard]]
+  constexpr auto fields_of()
+  {
+    return std::remove_cvref_t<T>::reflect();
+  }
+
+  template <Viewable T>
+  inline constexpr std::size_t view_field_count = reflection::field_count<T>;
+
+  template <Viewable T>
+  [[nodiscard]]
+  constexpr bool is_valid_view()
+  {
+    return has_valid_view<T>() && view_field_count<T> > 0;
+  }
+
+  template <typename T>
+  concept QueryableView = Viewable<T> && is_valid_view<std::remove_cvref_t<T>>();
+
+  template <typename T>
+  concept Model = PersistableEntity<T> || QueryableView<T>;
 } // namespace worm::core

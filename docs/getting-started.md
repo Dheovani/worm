@@ -68,10 +68,15 @@ struct User
     return worm::core::Table{"users"};
   }
 
+  static constexpr worm::core::PrimaryKey primaryKey() noexcept
+  {
+    return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+  }
+
   static constexpr auto reflect() noexcept
   {
     return std::tuple{
-      worm::reflection::field("id", &User::id, {.primaryKey = true}),
+      worm::reflection::field("id", &User::id),
       worm::reflection::field("name", &User::name),
       worm::reflection::field("email", &User::email)};
   }
@@ -79,7 +84,7 @@ struct User
 ```
 
 The name passed to `field()` is also the column name unless
-`FieldMetadata::columnName` is set. Fields marked as `ignored` are not persisted.
+`FieldMetadata::columnName` is set. `PrimaryKey` is declared separately from field metadata so schema constraints can be represented independently from C++ member descriptors. Fields marked as `ignored` are not persisted.
 The current portable flow uses application-provided keys. Keys marked as
 `generated` require `INSERT` to return a row with the generated value, which is
 not yet complete across all drivers.

@@ -4,6 +4,7 @@
 #include <core/query/clauses.hpp>
 #include <core/query/expression.hpp>
 #include <errors/invalid-arg-exception.hpp>
+#include <utils/helpers.hpp>
 
 #include <cstddef>
 #include <string_view>
@@ -13,7 +14,6 @@
 
 namespace worm::core
 {
-
   enum class RelationshipKind
   {
     OneToOne,
@@ -44,7 +44,6 @@ namespace worm::core
 
   namespace detail
   {
-
     constexpr void validateRelationshipText(std::string_view value, const char* message)
     {
       if (value.empty()) {
@@ -52,25 +51,31 @@ namespace worm::core
       }
     }
 
-    inline Expression joinExpression(std::string_view leftAlias,
+    inline Expression joinExpression(
+      std::string_view leftAlias,
       std::string_view leftColumn,
       std::string_view rightAlias,
       std::string_view rightColumn)
     {
-      return {
-        std::string{leftAlias} + "." + std::string{leftColumn} + " = " + std::string{rightAlias} + "." +
-          std::string{rightColumn},
-        {},
-      };
-    }
+      using worm::utils::strings::replaceFirst;
 
+      std::string sql = "{leftAlias}.{leftColumn} = {rightAlias}.{rightColumn}";
+
+      replaceFirst(sql, "{leftAlias}", leftAlias);
+      replaceFirst(sql, "{leftColumn}", leftColumn);
+      replaceFirst(sql, "{rightAlias}", rightAlias);
+      replaceFirst(sql, "{rightColumn}", rightColumn);
+
+      return { sql, {} };
+    }
   } // namespace detail
 
   template <Entity Owner, Entity Target>
   class DirectRelationship final
   {
   public:
-    constexpr DirectRelationship(std::string_view name,
+    constexpr DirectRelationship(
+      std::string_view name,
       RelationshipKind kind,
       std::string_view ownerColumn,
       std::string_view targetColumn,
@@ -164,7 +169,8 @@ namespace worm::core
 
       const Source ownerSource{ownerTable().name(), ownerAlias};
       const Source targetSource{targetTable().name(), targetAlias};
-      return Relation{joinType_,
+      return Relation{
+        joinType_,
         ownerSource,
         targetSource,
         detail::joinExpression(ownerAlias, ownerColumn_, targetAlias, targetColumn_)};
@@ -185,7 +191,8 @@ namespace worm::core
   class ManyToManyRelationship final
   {
   public:
-    constexpr ManyToManyRelationship(std::string_view name,
+    constexpr ManyToManyRelationship(
+      std::string_view name,
       std::string_view joinTable,
       std::string_view ownerColumn,
       std::string_view joinOwnerColumn,
@@ -294,7 +301,9 @@ namespace worm::core
 
     [[nodiscard]]
     std::vector<Relation> relations(
-      std::string_view ownerAlias, std::string_view joinAlias, std::string_view targetAlias) const
+      std::string_view ownerAlias,
+      std::string_view joinAlias,
+      std::string_view targetAlias) const
     {
       detail::validateRelationshipText(ownerAlias, "Relationship owner alias must not be empty.");
       detail::validateRelationshipText(joinAlias, "Relationship join alias must not be empty.");
@@ -331,7 +340,8 @@ namespace worm::core
 
   template <Entity Owner, Entity Target>
   [[nodiscard]]
-  constexpr DirectRelationship<Owner, Target> oneToOne(std::string_view name,
+  constexpr DirectRelationship<Owner, Target> oneToOne(
+    std::string_view name,
     std::string_view ownerColumn,
     std::string_view targetColumn,
     Join joinType = Join::Left,
@@ -339,7 +349,8 @@ namespace worm::core
     CascadePolicy cascadePolicy = {},
     bool orphanRemoval = false)
   {
-    return {name,
+    return {
+      name,
       RelationshipKind::OneToOne,
       ownerColumn,
       targetColumn,
@@ -351,7 +362,8 @@ namespace worm::core
 
   template <Entity Owner, Entity Target>
   [[nodiscard]]
-  constexpr DirectRelationship<Owner, Target> oneToMany(std::string_view name,
+  constexpr DirectRelationship<Owner, Target> oneToMany(
+    std::string_view name,
     std::string_view ownerColumn,
     std::string_view targetColumn,
     Join joinType = Join::Left,
@@ -359,7 +371,8 @@ namespace worm::core
     CascadePolicy cascadePolicy = {},
     bool orphanRemoval = false)
   {
-    return {name,
+    return {
+      name,
       RelationshipKind::OneToMany,
       ownerColumn,
       targetColumn,
@@ -371,7 +384,8 @@ namespace worm::core
 
   template <Entity Owner, Entity Target>
   [[nodiscard]]
-  constexpr ManyToManyRelationship<Owner, Target> manyToMany(std::string_view name,
+  constexpr ManyToManyRelationship<Owner, Target> manyToMany(
+    std::string_view name,
     std::string_view joinTable,
     std::string_view ownerColumn,
     std::string_view joinOwnerColumn,
@@ -382,7 +396,8 @@ namespace worm::core
     CascadePolicy cascadePolicy = {},
     bool orphanRemoval = false)
   {
-    return {name,
+    return {
+      name,
       joinTable,
       ownerColumn,
       joinOwnerColumn,
@@ -396,10 +411,8 @@ namespace worm::core
 
   namespace detail
   {
-
     template <typename T>
     concept HasRelationships = requires { std::remove_cvref_t<T>::relationships(); };
-
   } // namespace detail
 
   template <Entity T>
@@ -416,5 +429,4 @@ namespace worm::core
   template <Entity T>
   inline constexpr std::size_t relationship_count =
     std::tuple_size_v<std::remove_cvref_t<decltype(relationships_of<T>())>>;
-
 } // namespace worm::core

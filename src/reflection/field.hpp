@@ -40,12 +40,6 @@ namespace worm::reflection
     }
 
     [[nodiscard]]
-    constexpr bool isPrimaryKey() const noexcept
-    {
-      return metadata_.primaryKey;
-    }
-
-    [[nodiscard]]
     constexpr bool isGenerated() const noexcept
     {
       return metadata_.generated;

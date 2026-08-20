@@ -21,9 +21,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true})};
+      return std::tuple{worm::reflection::field("id", &User::id)};
     }
   };
 
@@ -39,9 +45,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_profiles", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &Profile::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &Profile::id),
         worm::reflection::field("userId", &Profile::userId, {.columnName = "user_id"})};
     }
   };
@@ -58,9 +70,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_posts", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &Post::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &Post::id),
         worm::reflection::field("userId", &Post::userId, {.columnName = "user_id"})};
     }
   };
@@ -76,9 +94,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_roles", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &Role::id, {.primaryKey = true})};
+      return std::tuple{worm::reflection::field("id", &Role::id)};
     }
   };
 
@@ -93,9 +117,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &UserWithRelationships::id, {.primaryKey = true})};
+      return std::tuple{worm::reflection::field("id", &UserWithRelationships::id)};
     }
 
     [[nodiscard]]

@@ -21,10 +21,15 @@ namespace
       return worm::core::Table{"users"};
     }
 
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+    }
+
     [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true})};
+      return std::tuple{worm::reflection::field("id", &User::id)};
     }
   };
 
@@ -38,10 +43,15 @@ namespace
       return worm::core::Table{"roles"};
     }
 
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_roles", {worm::core::Column{"id", table()}}};
+    }
+
     [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &Role::id, {.primaryKey = true})};
+      return std::tuple{worm::reflection::field("id", &Role::id)};
     }
   };
 } // namespace

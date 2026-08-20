@@ -84,7 +84,7 @@ namespace worm::core
     }
   } // namespace detail
 
-  template <PersistableEntity T>
+  template <Model T>
   [[nodiscard]]
   T hydrate(const ResultRow& row)
   {

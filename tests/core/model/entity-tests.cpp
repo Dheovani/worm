@@ -19,9 +19,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &User::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &User::id),
         worm::reflection::field("name", &User::name),
         worm::reflection::field("transientValue", &User::transientValue, {.ignored = true})};
     }
@@ -38,9 +44,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_empty_tables", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &EmptyTable::id, {.primaryKey = true})};
+      return std::tuple{worm::reflection::field("id", &EmptyTable::id)};
     }
   };
 
@@ -52,6 +64,12 @@ namespace
     static constexpr worm::core::Table table() noexcept
     {
       return worm::core::Table{"missing_primary_keys"};
+    }
+
+    [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_missing_primary_keys", {}};
     }
 
     [[nodiscard]]
@@ -73,10 +91,18 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{
+        "pk_duplicated_primary_keys",
+        {worm::core::Column{"id", table()}, worm::core::Column{"external_id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &DuplicatedPrimaryKey::id, {.primaryKey = true}),
-        worm::reflection::field("externalId", &DuplicatedPrimaryKey::externalId, {.primaryKey = true})};
+      return std::tuple{worm::reflection::field("id", &DuplicatedPrimaryKey::id),
+        worm::reflection::field("externalId", &DuplicatedPrimaryKey::externalId, {.columnName = "external_id"})};
     }
   };
 
@@ -92,9 +118,15 @@ namespace
     }
 
     [[nodiscard]]
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_ignored_primary_keys", {worm::core::Column{"id", table()}}};
+    }
+
+    [[nodiscard]]
     static constexpr auto reflect()
     {
-      return std::tuple{worm::reflection::field("id", &IgnoredPrimaryKey::id, {.primaryKey = true, .ignored = true}),
+      return std::tuple{worm::reflection::field("id", &IgnoredPrimaryKey::id, {.ignored = true}),
         worm::reflection::field("name", &IgnoredPrimaryKey::name)};
     }
   };

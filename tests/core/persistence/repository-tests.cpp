@@ -28,10 +28,15 @@ namespace
       return worm::core::Table{"users"};
     }
 
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+    }
+
     static constexpr auto reflect() noexcept
     {
       return std::tuple{
-        worm::reflection::field("id", &User::id, {.primaryKey = true}), worm::reflection::field("name", &User::name)};
+        worm::reflection::field("id", &User::id), worm::reflection::field("name", &User::name)};
     }
   };
 
@@ -45,10 +50,32 @@ namespace
       return worm::core::Table{"users"};
     }
 
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+    }
+
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{worm::reflection::field("id", &GeneratedUser::id, {.primaryKey = true, .generated = true}),
+      return std::tuple{worm::reflection::field("id", &GeneratedUser::id, {.generated = true}),
         worm::reflection::field("name", &GeneratedUser::name)};
+    }
+  };
+
+  struct UserView
+  {
+    std::int64_t id{};
+    std::string name;
+
+    static constexpr worm::core::View view() noexcept
+    {
+      return worm::core::View{"active_users"}.definedBy("select id, name from users where active = true");
+    }
+
+    static constexpr auto reflect() noexcept
+    {
+      return std::tuple{
+        worm::reflection::field("id", &UserView::id), worm::reflection::field("name", &UserView::name)};
     }
   };
 
@@ -285,16 +312,28 @@ int main()
 
   RecordingClient emptyClient{{worm::core::ResultSet{}}};
   const worm::core::Repository<User> emptyRepository{nonOwning(emptyClient), queryBuilder};
-  if (emptyRepository.findOne({"select empty"}) != nullptr) {
+  if (emptyRepository.findOne("select empty") != nullptr) {
     std::cerr << "Repository findOne did not return nullopt for an empty result.\n";
     return 1;
   }
 
   RecordingClient allClient{{usersResult({{1, "Ada"}, {2, "Grace"}})}};
   const worm::core::Repository<User> allRepository{nonOwning(allClient), queryBuilder};
-  const std::vector<std::shared_ptr<User>> users = allRepository.findAll({"select many"});
+  const std::vector<std::shared_ptr<User>> users = allRepository.findAll("select many");
   if (users.size() != 2 || users[0]->name != "Ada" || users[1]->name != "Grace") {
     std::cerr << "Repository findAll did not hydrate all rows.\n";
+    return 1;
+  }
+
+  static_assert(worm::core::QueryableView<UserView>);
+  static_assert(worm::core::Model<UserView>);
+  static_assert(!worm::core::PersistableEntity<UserView>);
+
+  RecordingClient viewClient{{usersResult({{1, "Ada"}, {2, "Grace"}})}};
+  const worm::core::Repository<UserView> viewRepository{nonOwning(viewClient), queryBuilder};
+  const std::vector<std::shared_ptr<UserView>> activeUsers = viewRepository.findAll("select view rows");
+  if (activeUsers.size() != 2 || activeUsers[0]->name != "Ada" || activeUsers[1]->name != "Grace") {
+    std::cerr << "Repository did not hydrate models backed by a database view.\n";
     return 1;
   }
 
@@ -302,7 +341,7 @@ int main()
   try {
     RecordingClient duplicatedClient{{usersResult({{1, "Ada"}, {2, "Grace"}})}};
     const worm::core::Repository<User> duplicatedRepository{nonOwning(duplicatedClient), queryBuilder};
-    static_cast<void>(duplicatedRepository.findOne({"select duplicated"}));
+    static_cast<void>(duplicatedRepository.findOne("select duplicated"));
   } catch (const worm::MappingException&) {
     nonUniqueFailed = true;
   }
@@ -316,7 +355,7 @@ int main()
   const worm::core::Repository<User> failingRepository{nonOwning(failingClient), queryBuilder};
   bool driverFailureWrapped = false;
   try {
-    static_cast<void>(failingRepository.findOne({"select failing"}));
+    static_cast<void>(failingRepository.findOne("select failing"));
   } catch (const worm::QueryExecutionException& error) {
     driverFailureWrapped = std::string{error.what()} == "driver failure";
   } catch (const std::exception& error) {
@@ -329,7 +368,7 @@ int main()
     return 1;
   }
 
-  if (failingRepository.findOne({"select after failure"}) != nullptr || failingClient.statements.size() != 1) {
+  if (failingRepository.findOne("select after failure") != nullptr || failingClient.statements.size() != 1) {
     std::cerr << "Client did not recover after a failed query execution.\n";
     return 1;
   }

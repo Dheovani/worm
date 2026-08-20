@@ -1,9 +1,61 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
 namespace worm::core
 {
+  namespace detail
+  {
+    [[nodiscard]]
+    constexpr bool isSqlSpace(const char character) noexcept
+    {
+      return character == ' ' || character == '\t' || character == '\n' || character == '\r' || character == '\f' ||
+             character == '\v';
+    }
+
+    [[nodiscard]]
+    constexpr char toSqlUpper(const char character) noexcept
+    {
+      if (character >= 'a' && character <= 'z') {
+        return static_cast<char>(character - ('a' - 'A'));
+      }
+
+      return character;
+    }
+
+    [[nodiscard]]
+    constexpr bool equalsKeyword(std::string_view left, std::string_view right) noexcept
+    {
+      if (left.size() != right.size()) {
+        return false;
+      }
+
+      for (std::size_t index = 0; index < left.size(); ++index) {
+        if (toSqlUpper(left[index]) != right[index]) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    [[nodiscard]]
+    constexpr std::string_view extractFirstWord(std::string_view query) noexcept
+    {
+      std::size_t begin = 0;
+
+      while (begin < query.size() && isSqlSpace(query[begin])) {
+        ++begin;
+      }
+
+      std::size_t end = begin;
+      while (end < query.size() && !isSqlSpace(query[end])) {
+        ++end;
+      }
+
+      return query.substr(begin, end - begin);
+    }
+  } // namespace detail
 
   enum class Operation
   {
@@ -13,21 +65,32 @@ namespace worm::core
     Select
   };
 
-  inline constexpr const char* insertKeyword = "INSERT";
-  inline constexpr const char* updateKeyword = "UPDATE";
-  inline constexpr const char* deleteKeyword = "DELETE";
-  inline constexpr const char* selectKeyword = "SELECT";
+  inline constexpr std::string_view insertKeyword = "INSERT";
+  inline constexpr std::string_view updateKeyword = "UPDATE";
+  inline constexpr std::string_view deleteKeyword = "DELETE";
+  inline constexpr std::string_view selectKeyword = "SELECT";
 
   [[nodiscard]]
-  bool isInsert(const std::string& query) noexcept;
+  constexpr bool isInsert(std::string_view query) noexcept
+  {
+    return detail::equalsKeyword(detail::extractFirstWord(query), insertKeyword);
+  }
 
   [[nodiscard]]
-  bool isUpdate(const std::string& query) noexcept;
+  constexpr bool isUpdate(std::string_view query) noexcept
+  {
+    return detail::equalsKeyword(detail::extractFirstWord(query), updateKeyword);
+  }
 
   [[nodiscard]]
-  bool isDelete(const std::string& query) noexcept;
+  constexpr bool isDelete(std::string_view query) noexcept
+  {
+    return detail::equalsKeyword(detail::extractFirstWord(query), deleteKeyword);
+  }
 
   [[nodiscard]]
-  bool isSelect(const std::string& query) noexcept;
-
+  constexpr bool isSelect(std::string_view query) noexcept
+  {
+    return detail::equalsKeyword(detail::extractFirstWord(query), selectKeyword);
+  }
 } // namespace worm::core

@@ -22,10 +22,15 @@ namespace
       return worm::core::Table{"users"};
     }
 
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", table()}}};
+    }
+
     static constexpr auto reflect() noexcept
     {
       return std::tuple{
-        worm::reflection::field("id", &User::id, {.primaryKey = true}), worm::reflection::field("name", &User::name)};
+        worm::reflection::field("id", &User::id), worm::reflection::field("name", &User::name)};
     }
   };
 
@@ -39,10 +44,15 @@ namespace
       return worm::core::Table{"posts"};
     }
 
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_posts", {worm::core::Column{"id", table()}}};
+    }
+
     static constexpr auto reflect() noexcept
     {
       return std::tuple{
-        worm::reflection::field("id", &Post::id, {.primaryKey = true}), worm::reflection::field("title", &Post::title)};
+        worm::reflection::field("id", &Post::id), worm::reflection::field("title", &Post::title)};
     }
   };
 } // namespace

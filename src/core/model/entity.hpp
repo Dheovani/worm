@@ -6,40 +6,13 @@
 #include <type_traits>
 #include <utility>
 
+#include <core/model/constraint.hpp>
+#include <core/model/schema.hpp>
 #include <reflection/concepts.hpp>
 #include <reflection/snapshot.hpp>
 
 namespace worm::core
 {
-  class Table
-  {
-  public:
-    explicit constexpr Table(std::string_view name) noexcept
-      : name_(name)
-    {}
-
-    [[nodiscard]]
-    constexpr std::string_view name() const noexcept
-    {
-      return name_;
-    }
-
-    [[nodiscard]]
-    constexpr bool empty() const noexcept
-    {
-      return name_.empty();
-    }
-
-    [[nodiscard]]
-    friend constexpr bool operator==(const Table& left, const Table& right) noexcept
-    {
-      return left.name_ == right.name_;
-    }
-
-  private:
-    const std::string_view name_;
-  };
-
   enum class EntityState
   {
     // The object exists only in user code and is not tracked by the ORM yet.
@@ -57,7 +30,6 @@ namespace worm::core
 
   namespace detail
   {
-
     template <typename T>
     consteval bool hasConstexprTable()
     {
@@ -65,6 +37,19 @@ namespace worm::core
       return true;
     }
 
+    template <typename T>
+    consteval bool hasConstexprPrimaryKey()
+    {
+      static_cast<void>(std::remove_cvref_t<T>::primaryKey());
+      return true;
+    }
+
+    template <typename T>
+    consteval bool hasConstexprView()
+    {
+      static_cast<void>(std::remove_cvref_t<T>::view());
+      return true;
+    }
   } // namespace detail
 
   template <typename T>
@@ -73,7 +58,14 @@ namespace worm::core
     reflection::Snapshotable<std::remove_cvref_t<T>> &&
     requires {
       { std::remove_cvref_t<T>::table() } -> std::same_as<Table>;
+      { std::remove_cvref_t<T>::primaryKey() } -> std::same_as<PrimaryKey>;
       requires detail::hasConstexprTable<std::remove_cvref_t<T>>();
+      requires detail::hasConstexprPrimaryKey<std::remove_cvref_t<T>>();
     };
 
+  template <typename T>
+  concept Viewable = reflection::Reflectable<std::remove_cvref_t<T>> && requires {
+    { std::remove_cvref_t<T>::view() } -> std::same_as<View>;
+    requires detail::hasConstexprView<std::remove_cvref_t<T>>();
+  };
 } // namespace worm::core

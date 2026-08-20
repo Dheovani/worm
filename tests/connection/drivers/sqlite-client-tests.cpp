@@ -27,9 +27,14 @@ namespace
       return worm::core::Table{"people"};
     }
 
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_people", {worm::core::Column{"id", table()}}};
+    }
+
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{worm::reflection::field("id", &Person::id, {.primaryKey = true}),
+      return std::tuple{worm::reflection::field("id", &Person::id),
         worm::reflection::field("name", &Person::name),
         worm::reflection::field("active", &Person::active)};
     }

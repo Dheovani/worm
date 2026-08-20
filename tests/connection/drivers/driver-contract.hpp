@@ -27,9 +27,14 @@ namespace worm::tests
       return core::Table{"worm_driver_contract"};
     }
 
+    static constexpr core::PrimaryKey primaryKey() noexcept
+    {
+      return core::PrimaryKey{"pk_worm_driver_contract", {core::Column{"id", table()}}};
+    }
+
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{reflection::field("id", &DriverContractEntity::id, {.primaryKey = true}),
+      return std::tuple{reflection::field("id", &DriverContractEntity::id),
         reflection::field("label", &DriverContractEntity::label),
         reflection::field("note", &DriverContractEntity::note)};
     }

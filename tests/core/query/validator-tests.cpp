@@ -7,6 +7,12 @@
 
 namespace
 {
+  static_assert(worm::core::isInsert("  insert into users values (1)"));
+  static_assert(worm::core::isUpdate("\nupdate users set name = ?"));
+  static_assert(worm::core::isDelete("\tdelete from users where id = ?"));
+  static_assert(worm::core::isSelect("SeLeCt 1"));
+  static_assert(!worm::core::isSelect("WITH users AS (SELECT 1) SELECT * FROM users"));
+
   struct ValidationCase
   {
     std::string query;
