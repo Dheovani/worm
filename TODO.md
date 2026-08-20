@@ -101,7 +101,7 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Compare entity metadata with the existing database schema.
 - [x] Generate reviewable migrations without executing them automatically.
 - [x] Keep migration history, checksum, application, and rollback information.
-- [ ] Document migration differences and limitations between databases.
+- [x] Document migration differences and limitations between databases.
 
 ### Bidirectional generator
 

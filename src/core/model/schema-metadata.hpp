@@ -5,7 +5,6 @@
 
 #include <optional>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 namespace worm::core
@@ -18,56 +17,25 @@ namespace worm::core
       std::vector<Column> columns = {},
       std::optional<PrimaryKey> primaryKey = std::nullopt,
       std::vector<Index> indexes = {},
-      std::vector<ForeignKey> foreignKeys = {})
-      : table_(table),
-        columns_(std::move(columns)),
-        primaryKey_(std::move(primaryKey)),
-        indexes_(std::move(indexes)),
-        foreignKeys_(std::move(foreignKeys))
-    {
-    }
+      std::vector<ForeignKey> foreignKeys = {});
 
     [[nodiscard]]
-    const Table& table() const noexcept
-    {
-      return table_;
-    }
+    const Table& table() const noexcept;
 
     [[nodiscard]]
-    const std::vector<Column>& columns() const noexcept
-    {
-      return columns_;
-    }
+    const std::vector<Column>& columns() const noexcept;
 
     [[nodiscard]]
-    const std::optional<PrimaryKey>& primaryKey() const noexcept
-    {
-      return primaryKey_;
-    }
+    const std::optional<PrimaryKey>& primaryKey() const noexcept;
 
     [[nodiscard]]
-    const std::vector<Index>& indexes() const noexcept
-    {
-      return indexes_;
-    }
+    const std::vector<Index>& indexes() const noexcept;
 
     [[nodiscard]]
-    const std::vector<ForeignKey>& foreignKeys() const noexcept
-    {
-      return foreignKeys_;
-    }
+    const std::vector<ForeignKey>& foreignKeys() const noexcept;
 
     [[nodiscard]]
-    const Column* findColumn(std::string_view name) const noexcept
-    {
-      for (const Column& column : columns_) {
-        if (column.columnName == name) {
-          return &column;
-        }
-      }
-
-      return nullptr;
-    }
+    const Column* findColumn(std::string_view name) const noexcept;
 
   private:
     Table table_;
@@ -80,35 +48,16 @@ namespace worm::core
   class SchemaMetadata
   {
   public:
-    explicit SchemaMetadata(Schema schema, std::vector<TableMetadata> tables = {})
-      : schema_(schema),
-        tables_(std::move(tables))
-    {
-    }
+    explicit SchemaMetadata(Schema schema, std::vector<TableMetadata> tables = {});
 
     [[nodiscard]]
-    const Schema& schema() const noexcept
-    {
-      return schema_;
-    }
+    const Schema& schema() const noexcept;
 
     [[nodiscard]]
-    const std::vector<TableMetadata>& tables() const noexcept
-    {
-      return tables_;
-    }
+    const std::vector<TableMetadata>& tables() const noexcept;
 
     [[nodiscard]]
-    const TableMetadata* findTable(Table table) const noexcept
-    {
-      for (const TableMetadata& metadata : tables_) {
-        if (metadata.table() == table) {
-          return &metadata;
-        }
-      }
-
-      return nullptr;
-    }
+    const TableMetadata* findTable(Table table) const noexcept;
 
   private:
     Schema schema_;

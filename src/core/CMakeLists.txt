@@ -1,5 +1,8 @@
 add_library(
   WormCore
+  model/migration.cpp
+  model/migration-history.cpp
+  model/schema-metadata.cpp
   query/criteria.cpp
   query/dialect.cpp
   query/filter.cpp
