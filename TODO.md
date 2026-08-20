@@ -98,7 +98,7 @@ This milestone should end with a complete example that creates, persists, querie
 ## Milestone 4 — Schema and migrations
 
 - [x] Represent schema, table, view, column, index, primary key, and foreign key metadata.
-- [ ] Compare entity metadata with the existing database schema.
+- [x] Compare entity metadata with the existing database schema.
 - [ ] Generate reviewable migrations without executing them automatically.
 - [ ] Keep migration history, checksum, application, and rollback information.
 - [ ] Document migration differences and limitations between databases.
