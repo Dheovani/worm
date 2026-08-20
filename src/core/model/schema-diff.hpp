@@ -141,7 +141,7 @@ namespace worm::core
         .expected = std::string{expectedTable.name()},
         .actual = std::string{existing.table().name()},
       });
-      
+
       return differences;
     }
 
