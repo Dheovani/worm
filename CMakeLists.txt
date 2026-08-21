@@ -15,7 +15,7 @@ option(WORM_ENABLE_MYSQL "Build the MySQL driver" ON)
 option(WORM_ENABLE_SQLITE "Build the SQLite driver" ON)
 option(WORM_ENABLE_MSSQL "Build the Microsoft SQL Server driver" OFF)
 option(WORM_BUILD_EXAMPLES "Build Worm usage examples" OFF)
-option(WORM_BUILD_GENERATOR "Build the Worm entity and schema generator" OFF)
+option(WORM_BUILD_CLI "Build the Worm entity and schema cli" OFF)
 
 set(WORM_VCPKG_FEATURES)
 if(WORM_ENABLE_POSTGRESQL)
@@ -68,8 +68,8 @@ include(dependencies)
 
 add_subdirectory(src)
 
-if(WORM_BUILD_GENERATOR)
-  add_subdirectory(generator)
+if(WORM_BUILD_CLI)
+  add_subdirectory(cli)
 endif()
 
 # Keep the root ready for future test suites without requiring the directory now.

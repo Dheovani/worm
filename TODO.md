@@ -105,7 +105,7 @@ This milestone should end with a complete example that creates, persists, querie
 
 ### Bidirectional generator
 
-- [ ] Define the decision rule between entity-as-source-of-truth, database-as-source-of-truth, or explicit command mode.
+- [x] Define the decision rule between entity-as-source-of-truth, database-as-source-of-truth, or explicit command mode.
 - [ ] Introspect the database schema and generate C++ entity classes with reflection metadata.
 - [ ] Read reflected entities and generate tables, columns, keys, indexes, and relationships in the database.
 - [ ] Compare entity and database state to produce a reviewable synchronization plan before any change.
