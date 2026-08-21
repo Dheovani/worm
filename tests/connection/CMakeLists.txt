@@ -46,6 +46,12 @@ add_worm_connection_test(
   Worm.Connection.Transaction
 )
 
+add_worm_connection_test(
+  WormSchemaInspectorTests
+  schema-inspector-tests.cpp
+  Worm.Connection.SchemaInspector
+)
+
 set_tests_properties(Worm.Connection.Transaction PROPERTIES TIMEOUT 10)
 
 if(WORM_ENABLE_MYSQL)
@@ -96,6 +102,13 @@ if(WORM_ENABLE_SQLITE)
     WormSqliteDriverContractTests
     drivers/sqlite-contract-tests.cpp
     Worm.Connection.Contract.SQLite
+    sqlite
+  )
+
+  add_worm_driver_contract_test(
+    WormSqliteSchemaInspectorTests
+    drivers/sqlite-schema-inspector-tests.cpp
+    Worm.Connection.SchemaInspector.SQLite
     sqlite
   )
 endif()

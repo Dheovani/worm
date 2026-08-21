@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "entities": [
+    {
+      "name": "User",
+      "table": "users",
+      "columns": [
+        {
+          "name": "id",
+          "nullable": false,
+          "generated": true,
+          "unique": false
+        },
+        {
+          "name": "email",
+          "nullable": false,
+          "generated": false,
+          "unique": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ]
+    },
+    {
+      "name": "SchemaContract",
+      "table": "schema_contract",
+      "columns": [
+        {
+          "name": "id",
+          "nullable": false,
+          "generated": true,
+          "unique": false
+        },
+        {
+          "name": "email",
+          "nullable": true,
+          "generated": false,
+          "unique": true
+        },
+        {
+          "name": "tenant",
+          "nullable": true,
+          "generated": false,
+          "unique": false
+        },
+        {
+          "name": "external_id",
+          "nullable": true,
+          "generated": false,
+          "unique": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ]
+    }
+  ]
+}

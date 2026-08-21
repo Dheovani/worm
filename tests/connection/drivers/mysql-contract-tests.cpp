@@ -2,6 +2,7 @@
 
 #include <connection/configuration.hpp>
 #include <connection/drivers/mysql-client.hpp>
+#include <connection/schema-inspector.hpp>
 #include <core/query/sql-builder.hpp>
 
 #include <cstdlib>
@@ -10,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -51,9 +53,14 @@ namespace
     }
 
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_driver_contract");
+    executeSql(connection.get(), "DROP TABLE IF EXISTS worm_schema_contract");
     executeSql(connection.get(),
       "CREATE TABLE worm_driver_contract ("
       "id VARCHAR(64) PRIMARY KEY, label VARCHAR(255) NOT NULL, note VARCHAR(255) NULL)");
+    executeSql(connection.get(),
+      "CREATE TABLE worm_schema_contract ("
+      "id VARCHAR(64) PRIMARY KEY, email VARCHAR(255) UNIQUE, tenant VARCHAR(64), external_id VARCHAR(64), "
+      "UNIQUE (tenant, external_id))");
   }
 } // namespace
 
@@ -78,6 +85,14 @@ try {
   const worm::core::MySqlBuilder sqlBuilder;
 
   worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::MySQL);
+
+  const worm::connection::SchemaInspector inspector{*client};
+  const auto schema = inspector.inspect();
+  const auto* table = schema.findTable(databaseName, "worm_schema_contract");
+  if (table == nullptr || table->columns.size() != 4 || table->primaryKey != std::vector<std::string>{"id"} ||
+      !table->columns[1].unique || table->columns[2].unique || table->columns[3].unique) {
+    throw std::runtime_error("MySQL schema introspection did not return the contract table.");
+  }
 
   return 0;
 } catch (const std::exception& error) {

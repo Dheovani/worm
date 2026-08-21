@@ -1,0 +1,37 @@
+name: worm-cli-tests
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: worm-cli-postgres
+    environment:
+      POSTGRES_DB: worm_cli
+      POSTGRES_USER: worm
+      POSTGRES_PASSWORD: worm
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./docker/postgresql-init.sql:/docker-entrypoint-initdb.d/worm-cli.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U worm -d worm_cli"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  mysql:
+    image: mysql:8.4
+    container_name: worm-cli-mysql
+    environment:
+      MYSQL_DATABASE: worm_cli
+      MYSQL_USER: worm
+      MYSQL_PASSWORD: worm
+      MYSQL_ROOT_PASSWORD: worm-root
+    ports:
+      - "13306:3306"
+    volumes:
+      - ./docker/mysql-init.sql:/docker-entrypoint-initdb.d/worm-cli.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uworm -pworm"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

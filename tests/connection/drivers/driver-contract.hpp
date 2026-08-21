@@ -115,7 +115,7 @@ namespace worm::tests
 
     bool normalizedError = false;
     try {
-      static_cast<void>(repository.findAll({"SELECT * FROM worm_missing_contract_table"}));
+      static_cast<void>(repository.findAll("SELECT * FROM worm_missing_contract_table"));
     } catch (const QueryExecutionException&) {
       normalizedError = true;
     }

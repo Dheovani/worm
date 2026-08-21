@@ -4,3 +4,20 @@ target_compile_features(WormCliResolverTests PRIVATE cxx_std_20)
 
 add_test(NAME Worm.Cli.Resolver COMMAND WormCliResolverTests)
 set_tests_properties(Worm.Cli.Resolver PROPERTIES LABELS "unit;cli")
+
+function(add_worm_cli_test target source test_name)
+  add_executable(${target} ${source})
+  target_link_libraries(${target} PRIVATE WormCliCore)
+  target_compile_features(${target} PRIVATE cxx_std_20)
+  add_test(NAME ${test_name} COMMAND ${target})
+  set_tests_properties(${test_name} PROPERTIES LABELS "unit;cli")
+endfunction()
+
+add_worm_cli_test(WormCliManifestTests manifest-tests.cpp Worm.Cli.Manifest)
+add_worm_cli_test(WormCliCheckTests check-tests.cpp Worm.Cli.Check)
+add_worm_cli_test(WormCliRunnerTests runner-tests.cpp Worm.Cli.Runner)
+
+if(WORM_ENABLE_SQLITE)
+  add_worm_cli_test(WormCliSqliteCheckTests check-sqlite-tests.cpp Worm.Cli.Check.SQLite)
+  set_tests_properties(Worm.Cli.Check.SQLite PROPERTIES LABELS "integration;cli;sqlite")
+endif()

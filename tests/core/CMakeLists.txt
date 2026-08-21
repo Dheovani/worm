@@ -9,6 +9,7 @@ endfunction()
 
 add_worm_core_test(WormEntityTests model/entity-tests.cpp Worm.Core.Entity)
 add_worm_core_test(WormSchemaTests model/schema-tests.cpp Worm.Core.Schema)
+add_worm_core_test(WormSchemaSnapshotTests model/schema-snapshot-tests.cpp Worm.Core.SchemaSnapshot)
 add_worm_core_test(WormSchemaDiffTests model/schema-diff-tests.cpp Worm.Core.SchemaDiff)
 add_worm_core_test(WormMigrationTests model/migration-tests.cpp Worm.Core.Migration)
 add_worm_core_test(WormMigrationHistoryTests model/migration-history-tests.cpp Worm.Core.MigrationHistory)

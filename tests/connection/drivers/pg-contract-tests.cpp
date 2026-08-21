@@ -2,6 +2,7 @@
 
 #include <connection/configuration.hpp>
 #include <connection/drivers/pg-client.hpp>
+#include <connection/schema-inspector.hpp>
 #include <core/query/sql-builder.hpp>
 #include <pqxx/pqxx>
 
@@ -10,6 +11,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -35,8 +37,12 @@ namespace
     pqxx::connection connection{connectionString(config)};
     pqxx::work transaction{connection};
     transaction.exec("DROP TABLE IF EXISTS worm_driver_contract");
+    transaction.exec("DROP TABLE IF EXISTS worm_schema_contract");
     transaction.exec("CREATE TABLE worm_driver_contract ("
                      "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL)");
+    transaction.exec("CREATE TABLE worm_schema_contract ("
+                     "id TEXT PRIMARY KEY, email TEXT UNIQUE, tenant TEXT, external_id TEXT, "
+                     "UNIQUE (tenant, external_id))");
     transaction.commit();
   }
 } // namespace
@@ -62,6 +68,14 @@ try {
   const worm::core::PgBuilder sqlBuilder;
 
   worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::PostgreSQL);
+
+  const worm::connection::SchemaInspector inspector{*client};
+  const auto schema = inspector.inspect();
+  const auto* table = schema.findTable("public", "worm_schema_contract");
+  if (table == nullptr || table->columns.size() != 4 || table->primaryKey != std::vector<std::string>{"id"} ||
+      !table->columns[1].unique || table->columns[2].unique || table->columns[3].unique) {
+    throw std::runtime_error("PostgreSQL schema introspection did not return the contract table.");
+  }
 
   return 0;
 } catch (const std::exception& error) {

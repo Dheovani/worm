@@ -1,0 +1,12 @@
+CREATE TABLE users (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE schema_contract (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) UNIQUE,
+  tenant VARCHAR(64),
+  external_id VARCHAR(64),
+  UNIQUE (tenant, external_id)
+);
