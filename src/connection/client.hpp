@@ -19,6 +19,7 @@ namespace worm::core
 
 namespace worm::connection
 {
+  class SchemaInspector;
   class Transaction;
 
   enum class DatabaseType : std::uint8_t
@@ -42,6 +43,7 @@ namespace worm::connection
     friend class core::Repository;
 
     friend class Transaction;
+    friend class SchemaInspector;
 
   public:
     virtual ~Client() = default;

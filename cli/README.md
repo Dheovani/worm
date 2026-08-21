@@ -163,6 +163,40 @@ worm
 
 The exact serialization and generation mechanism of the manifest is an implementation detail and may evolve independently from the CLI interface.
 
+The current manifest contract is JSON with `version` set to `1`. Each entity declares its C++ name, database table, optional schema, persistent columns, and primary-key columns:
+
+```json
+{
+  "version": 1,
+  "entities": [
+    {
+      "name": "User",
+      "schema": "public",
+      "table": "users",
+      "columns": [
+        {
+          "name": "id",
+          "nullable": false,
+          "generated": true,
+          "unique": false
+        },
+        {
+          "name": "email",
+          "nullable": false,
+          "generated": false,
+          "unique": true
+        }
+      ],
+      "primaryKey": ["id"]
+    }
+  ]
+}
+```
+
+When `schema` is omitted, Worm uses the conventional default for the selected driver: `public` for PostgreSQL, `main` for SQLite, `dbo` for SQL Server, and the current database for MySQL.
+
+The first `check` implementation compares tables, columns, nullability, generated-column state, single-column uniqueness, and primary-key columns. C++/SQL type equivalence, foreign keys, indexes, views, defaults, and composite unique constraints are not compared yet because the normalized runtime snapshot does not represent those contracts completely.
+
 The manifest is supplied through:
 
 ```text
@@ -774,7 +808,7 @@ worm pull --apply
 
 # Machine-readable Output
 
-Commands support machine-readable output through the global `--format` option.
+The implemented `check` command supports machine-readable output through the global `--format` option.
 
 Example:
 
@@ -786,13 +820,25 @@ Possible output:
 
 ```json
 {
+  "command": "worm --format json check",
   "status": "drift",
-  "compatible": 12,
-  "missingInDatabase": 2,
-  "missingInCode": 1,
-  "incompatible": 3
+  "info": "Schema drift detected.",
+  "metrics": {
+    "entitiesDiscovered": 18,
+    "tablesDiscovered": 16,
+    "entitiesSelected": 18,
+    "tablesSelected": 16,
+    "matched": 15,
+    "compatible": 12,
+    "incompatible": 3,
+    "missingInCode": 1,
+    "missingInDatabase": 2,
+    "differences": ["public.users.email: nullability differs"]
+  }
 }
 ```
+
+The CLI does not accept a literal connection password option. The `command` field may contain the name passed to `--password-env`, but never the secret resolved from that environment variable.
 
 JSON output is useful for:
 
@@ -828,6 +874,22 @@ returns `0` when code and database are compatible.
 It returns `2` when differences are found.
 
 This makes the command suitable for direct CI integration.
+
+## Local database services
+
+Disposable PostgreSQL and MySQL services for CLI development are defined in `tests/cli/docker-compose.yml`. Their Compose project and container names contain `worm-cli` so they remain distinguishable from application databases:
+
+```bash
+docker compose -f tests/cli/docker-compose.yml up -d --wait
+```
+
+PostgreSQL is exposed on `15432` and MySQL on `13306`; both use database `worm_cli`, user `worm`, and password `worm`. The initialization scripts create identifiable `users` and `schema_contract` tables, including single-column and composite unique constraints. These credentials are only for disposable local test containers.
+
+Remove the containers and their data after the integration run:
+
+```bash
+docker compose -f tests/cli/docker-compose.yml down --volumes
+```
 
 ---
 

@@ -3,6 +3,7 @@ add_library(
   model/migration.cpp
   model/migration-history.cpp
   model/schema-metadata.cpp
+  model/schema-snapshot.cpp
   query/criteria.cpp
   query/dialect.cpp
   query/filter.cpp

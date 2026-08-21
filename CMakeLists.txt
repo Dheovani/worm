@@ -30,6 +30,9 @@ endif()
 if(WORM_ENABLE_MSSQL)
   list(APPEND WORM_VCPKG_FEATURES mssql)
 endif()
+if(WORM_BUILD_CLI)
+  list(APPEND WORM_VCPKG_FEATURES cli)
+endif()
 
 # Keep manifest dependencies aligned with the selected drivers. FORCE is
 # intentional so toggling an option in an existing build directory cannot

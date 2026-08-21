@@ -1,19 +1,16 @@
-set(WORM_CLI_ENTRYPOINT "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
-
-# The cli is configured before its implementation is introduced. Keep
-# configuration with WORM_BUILD_CLI=ON valid, then create the CLI target
-# automatically once its entry point exists.
-if(NOT EXISTS "${WORM_CLI_ENTRYPOINT}")
-  message(STATUS "Worm cli configured; CLI target awaits cli/src/main.cpp")
-  return()
-endif()
-
 add_library(
   WormCliCore
   STATIC
+    src/generator/check.cpp
+    src/generator/manifest.cpp
+    src/generator/pull.cpp
+    src/generator/push.cpp
     src/parser.cpp
+    src/runner.cpp
     src/validator.cpp
 )
+
+find_package(nlohmann_json CONFIG REQUIRED)
 
 target_compile_features(WormCliCore PUBLIC cxx_std_20)
 target_include_directories(
@@ -21,9 +18,17 @@ target_include_directories(
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-target_link_libraries(WormCliCore PUBLIC Worm::Errors)
+target_link_libraries(
+  WormCliCore
+  PUBLIC
+    Worm::Connection
+    Worm::Core
+    Worm::Errors
+  PRIVATE
+    nlohmann_json::nlohmann_json
+)
 
-add_executable(WormCli "${WORM_CLI_ENTRYPOINT}")
+add_executable(WormCli src/main.cpp)
 add_executable(Worm::Cli ALIAS WormCli)
 
 set_target_properties(WormCli PROPERTIES OUTPUT_NAME worm)

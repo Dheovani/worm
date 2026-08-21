@@ -35,6 +35,12 @@
     "mssql": {
       "description": "Build the Microsoft SQL Server driver",
       "dependencies": []
+    },
+    "cli": {
+      "description": "Build the Worm command-line interface",
+      "dependencies": [
+        "nlohmann-json"
+      ]
     }
   }
 }
