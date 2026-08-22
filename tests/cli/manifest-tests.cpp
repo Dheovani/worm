@@ -51,12 +51,13 @@ int main()
   const TemporaryManifest valid{
     "worm-cli-valid-manifest.json",
     R"({"version":1,"entities":[{"name":"User","table":"users","columns":[)"
-    R"({"name":"id","nullable":false,"generated":true},{"name":"email","nullable":false,"unique":true}],)"
+    R"({"name":"id","type":"int64","nullable":false,"generated":true},{"name":"email","nullable":false,"unique":true}],)"
     R"("primaryKey":["id"]}]})",
   };
   const auto manifest = worm::cli::generator::loadManifest(valid.path(), "public");
   if (manifest.entities.size() != 1 || manifest.entities[0].name != "User" ||
       manifest.entities[0].table.schema != "public" || manifest.entities[0].table.columns.size() != 2 ||
+      manifest.entities[0].table.columns[0].type.kind != worm::core::ColumnTypeKind::Int64 ||
       manifest.entities[0].table.primaryKey != std::vector<std::string>{"id"}) {
     std::cerr << "Manifest parsing failed.\n";
     return 1;
@@ -67,7 +68,9 @@ int main()
     !rejects("worm-cli-duplicate-column.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id"},{"name":"id"}],"primaryKey":["id"]}]})") ||
     !rejects("worm-cli-unknown-primary-key.json",
-      R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id"}],"primaryKey":["missing"]}]})")) {
+      R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id"}],"primaryKey":["missing"]}]})") ||
+    !rejects("worm-cli-unknown-type.json",
+      R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"integer"}],"primaryKey":["id"]}]})")) {
     std::cerr << "Invalid manifest was accepted.\n";
     return 1;
   }

@@ -44,6 +44,25 @@ namespace worm::cli::generator
 
       return value->get<bool>();
     }
+
+    [[nodiscard]]
+    core::ColumnType optionalColumnType(const Json& object, std::string_view context)
+    {
+      const auto value = object.find("type");
+      if (value == object.end()) {
+        return {};
+      }
+      if (!value->is_string()) {
+        throw InvalidArgumentException("Manifest " + std::string{context} + " requires 'type' to be a string.");
+      }
+
+      const std::string name = value->get<std::string>();
+      const auto kind = core::parseColumnTypeKind(name);
+      if (!kind.has_value()) {
+        throw InvalidArgumentException("Manifest " + std::string{context} + " has unknown column type '" + name + "'.");
+      }
+      return {.kind = *kind, .nativeName = name};
+    }
   } // namespace
 
   SchemaManifest loadManifest(const std::filesystem::path& path, std::string defaultSchema)
@@ -114,6 +133,7 @@ namespace worm::cli::generator
 
         entity.table.columns.push_back({
           .name = columnName,
+          .type = optionalColumnType(columnObject, context),
           .nullable = optionalBoolean(columnObject, "nullable", true, context),
           .generated = optionalBoolean(columnObject, "generated", false, context),
           .unique = optionalBoolean(columnObject, "unique", false, context),

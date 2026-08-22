@@ -1,8 +1,5 @@
 #include "check.hpp"
 
-#include <connection/configuration.hpp>
-#include <connection/schema-inspector.hpp>
-
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -10,6 +7,7 @@
 #include <string_view>
 
 #include "../errors/invalid-argument-exception.hpp"
+#include "connection-options.hpp"
 
 namespace worm::cli::generator
 {
@@ -110,6 +108,14 @@ namespace worm::cli::generator
           addDifference(metrics, label + "." + expectedColumn.name + ": nullability differs");
           compatible = false;
         }
+        if (expectedColumn.type.kind != core::ColumnTypeKind::Unknown &&
+            expectedColumn.type.kind != actualColumn->type.kind) {
+          addDifference(metrics,
+            label + "." + expectedColumn.name + ": type differs (expected " +
+              std::string{core::columnTypeKindName(expectedColumn.type.kind)} + ", found " +
+              std::string{core::columnTypeKindName(actualColumn->type.kind)} + ")");
+          compatible = false;
+        }
         if (expectedColumn.generated != actualColumn->generated) {
           addDifference(metrics, label + "." + expectedColumn.name + ": generated-column state differs");
           compatible = false;
@@ -133,68 +139,6 @@ namespace worm::cli::generator
       }
 
       return compatible;
-    }
-
-    [[nodiscard]]
-    connection::DatabaseType databaseType(const Invocation& invocation)
-    {
-      if (!invocation.global.driver.has_value()) {
-        throw InvalidArgumentException("The 'check' command requires a database driver.");
-      }
-
-      const auto type = connection::databaseTypes.find(*invocation.global.driver);
-      if (type == connection::databaseTypes.end()) {
-        throw InvalidArgumentException("Unsupported database driver '" + *invocation.global.driver + "'.");
-      }
-      return type->second;
-    }
-
-    [[nodiscard]]
-    std::string defaultSchema(connection::DatabaseType type)
-    {
-      switch (type) {
-      case connection::DatabaseType::PostgreSQL:
-        return "public";
-      case connection::DatabaseType::MySQL:
-        return {};
-      case connection::DatabaseType::SQLite:
-        return "main";
-      case connection::DatabaseType::MSSQL:
-        return "dbo";
-      }
-      return {};
-    }
-
-    [[nodiscard]]
-    std::string defaultPort(connection::DatabaseType type)
-    {
-      switch (type) {
-      case connection::DatabaseType::PostgreSQL:
-        return "5432";
-      case connection::DatabaseType::MySQL:
-        return "3306";
-      case connection::DatabaseType::MSSQL:
-        return "1433";
-      case connection::DatabaseType::SQLite:
-        return {};
-      }
-      return {};
-    }
-
-    [[nodiscard]]
-    connection::ConnectionConfig connectionConfig(const Invocation& invocation, connection::DatabaseType type)
-    {
-      if (!invocation.global.database.has_value()) {
-        throw InvalidArgumentException("The 'check' command requires a database name or SQLite path.");
-      }
-
-      return {
-        .host = invocation.global.host.value_or("localhost"),
-        .username = invocation.global.username.value_or(""),
-        .password = invocation.global.password.value_or(""),
-        .dbname = *invocation.global.database,
-        .port = invocation.global.port.value_or(defaultPort(type)),
-      };
     }
 
     [[nodiscard]]
@@ -326,8 +270,7 @@ namespace worm::cli::generator
     const std::string schema =
       type == connection::DatabaseType::MySQL ? invocation.global.database.value_or("") : defaultSchema(type);
     const SchemaManifest manifest = loadManifest(*invocation.global.manifest, schema);
-    auto client = connection::makeClient(connectionConfig(invocation, type), type);
-    const connection::SchemaInspector inspector{*client};
+    auto inspector = schemaInspector(invocation);
     const core::SchemaSnapshot databaseSchema = inspector.inspect();
     auto metrics = std::make_shared<CheckMetrics>();
     ExecutionReport report = compareSchemas(invocation, manifest, databaseSchema, metrics);

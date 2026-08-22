@@ -367,17 +367,6 @@ namespace worm::cli
     }
 
     [[nodiscard]]
-    constexpr bool isCppKeyword(std::string_view value) noexcept
-    {
-      for (const std::string_view keyword : cppKeywords) {
-        if (value == keyword)
-          return true;
-      }
-
-      return false;
-    }
-
-    [[nodiscard]]
     constexpr bool isValidIdentifier(std::string_view value) noexcept
     {
       if (value.empty())
@@ -578,6 +567,16 @@ namespace worm::cli
       }
     }
   } // namespace
+
+  bool isCppKeyword(std::string_view value) noexcept
+  {
+    for (const std::string_view keyword : cppKeywords) {
+      if (value == keyword)
+        return true;
+    }
+
+    return false;
+  }
 
   void validate(const Invocation& invocation)
   {

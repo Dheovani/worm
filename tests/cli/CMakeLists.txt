@@ -15,6 +15,7 @@ endfunction()
 
 add_worm_cli_test(WormCliManifestTests manifest-tests.cpp Worm.Cli.Manifest)
 add_worm_cli_test(WormCliCheckTests check-tests.cpp Worm.Cli.Check)
+add_worm_cli_test(WormCliPullTests pull-tests.cpp Worm.Cli.Pull)
 add_worm_cli_test(WormCliRunnerTests runner-tests.cpp Worm.Cli.Runner)
 
 if(WORM_ENABLE_SQLITE)

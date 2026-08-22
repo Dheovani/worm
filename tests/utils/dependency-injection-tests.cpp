@@ -125,6 +125,12 @@ int main()
       result = 1;
     }
 
+    auto inspector = worm::DependencyInjector<worm::connection::SchemaInspector>::get(config, type);
+    if (!inspector.inspect().tables.empty()) {
+      std::cerr << "SchemaInspector dependency injection returned an invalid in-memory schema.\n";
+      result = 1;
+    }
+
     setEnvironment("DATABASE_TYPE", "mssql");
     const worm::core::Dialect& sqlServerDialect = worm::DependencyInjector<worm::core::Dialect>::get();
     const worm::core::SqlBuilder& sqlServerBuilder = worm::DependencyInjector<worm::core::SqlBuilder>::get();

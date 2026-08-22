@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <ostream>
 
+#include <core/model/schema-snapshot.hpp>
+
 #include "../runner.hpp"
 
 namespace worm::cli::generator
@@ -33,4 +35,6 @@ namespace worm::cli::generator
   };
 
   ExecutionReport pull(const Invocation& invocation);
+
+  ExecutionReport pull(const Invocation& invocation, const core::SchemaSnapshot& databaseSchema);
 } // namespace worm::cli::generator

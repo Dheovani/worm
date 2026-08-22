@@ -2,6 +2,7 @@
 
 #include <connection/client.hpp>
 #include <connection/configuration.hpp>
+#include <connection/schema-inspector.hpp>
 #include <core/query/dialect.hpp>
 #include <core/query/sql-builder.hpp>
 #include <errors/invalid-arg-exception.hpp>
@@ -129,19 +130,6 @@ namespace worm
   };
 
   template <>
-  struct DependencyInjector<connection::Client>
-  {
-    [[nodiscard]]
-    static connection::Client& get()
-    {
-      static std::unique_ptr<connection::Client> client = connection::makeClient(
-        DependencyInjector<connection::ConnectionConfig>::get(), DependencyInjector<connection::DatabaseType>::get());
-
-      return *client;
-    }
-  };
-
-  template <>
   struct DependencyInjector<core::Dialect>
   {
     [[nodiscard]]
@@ -202,6 +190,23 @@ namespace worm
       }
 
       throw UnsupportedDatabaseException("Unsupported database type.");
+    }
+  };
+
+  template <>
+  struct DependencyInjector<connection::SchemaInspector>
+  {
+    [[nodiscard]]
+    static connection::SchemaInspector get(const connection::ConnectionConfig& config, connection::DatabaseType type)
+    {
+      return connection::SchemaInspector{connection::makeClient(config, type)};
+    }
+
+    [[nodiscard]]
+    static connection::SchemaInspector get()
+    {
+      return get(
+        DependencyInjector<connection::ConnectionConfig>::get(), DependencyInjector<connection::DatabaseType>::get());
     }
   };
 

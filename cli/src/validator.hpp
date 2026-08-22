@@ -1,10 +1,15 @@
 #pragma once
 
+#include <string_view>
+
 #include "parser.hpp"
 
 namespace worm::cli
 {
   void validate(const Invocation& invocation);
+
+  [[nodiscard]]
+  bool isCppKeyword(std::string_view value) noexcept;
 
   struct Configuration
   {

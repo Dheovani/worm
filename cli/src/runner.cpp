@@ -5,6 +5,7 @@
 
 #include "errors/invalid-argument-exception.hpp"
 #include "generator/check.hpp"
+#include "generator/pull.hpp"
 
 namespace worm::cli
 {
@@ -135,11 +136,17 @@ namespace worm::cli
 
   int execute(const Invocation& invocation, int argc, char* const argv[], std::ostream& out)
   {
-    if (invocation.command != Commands::Check) {
-      throw InvalidArgumentException("Only the 'check' command is implemented at this stage.");
+    ExecutionReport report;
+    switch (invocation.command) {
+    case Commands::Check:
+      report = generator::check(invocation);
+      break;
+    case Commands::Pull:
+      report = generator::pull(invocation);
+      break;
+    case Commands::Push:
+      throw InvalidArgumentException("The 'push' command is not implemented at this stage.");
     }
-
-    ExecutionReport report = generator::check(invocation);
     report.command = buildCommand(argc, argv);
     outputReport(report, invocation.global.format.value_or("text"), out);
     return exitCode(report.status);

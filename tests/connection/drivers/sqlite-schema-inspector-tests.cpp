@@ -66,7 +66,8 @@ try {
   if (users == nullptr || users->primaryKey != std::vector<std::string>{"id"} || users->columns.size() != 5 ||
       users->columns[0].nullable || !users->columns[0].generated || users->columns[1].nullable ||
       !users->columns[1].unique || !users->columns[2].nullable || users->columns[3].unique ||
-      users->columns[4].unique) {
+      users->columns[4].unique || users->columns[0].type.kind != worm::core::ColumnTypeKind::Int64 ||
+      users->columns[1].type.kind != worm::core::ColumnTypeKind::String) {
     std::cerr << "SQLite schema introspection returned unexpected metadata.\n";
     return 1;
   }

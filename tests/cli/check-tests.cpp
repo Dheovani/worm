@@ -18,8 +18,18 @@ namespace
             .name = "users",
             .columns =
               {
-                {.name = "id", .nullable = false, .generated = true},
-                {.name = "email", .nullable = false, .unique = true},
+                {
+                  .name = "id",
+                  .type = {.kind = worm::core::ColumnTypeKind::Int64},
+                  .nullable = false,
+                  .generated = true,
+                },
+                {
+                  .name = "email",
+                  .type = {.kind = worm::core::ColumnTypeKind::String},
+                  .nullable = false,
+                  .unique = true,
+                },
               },
             .primaryKey = {"id"},
           },
@@ -35,8 +45,18 @@ namespace
         .name = "users",
         .columns =
           {
-            {.name = "id", .nullable = false, .generated = true},
-            {.name = "email", .nullable = false, .unique = true},
+            {
+              .name = "id",
+              .type = {.kind = worm::core::ColumnTypeKind::Int64},
+              .nullable = false,
+              .generated = true,
+            },
+            {
+              .name = "email",
+              .type = {.kind = worm::core::ColumnTypeKind::String},
+              .nullable = false,
+              .unique = true,
+            },
           },
         .primaryKey = {"id"},
       },
@@ -58,12 +78,13 @@ int main()
 
   auto driftedDatabase = compatibleDatabase();
   driftedDatabase.tables[0].columns[1].nullable = true;
+  driftedDatabase.tables[0].columns[1].type.kind = worm::core::ColumnTypeKind::Binary;
   driftedDatabase.tables.push_back({.schema = "public", .name = "audit_log"});
   const auto drifted = worm::cli::generator::check(invocation, manifest(), driftedDatabase);
   const auto driftedMetrics = std::dynamic_pointer_cast<const worm::cli::generator::CheckMetrics>(drifted.metrics);
   if (drifted.status != worm::cli::ExecutionStatus::DriftDetected || driftedMetrics == nullptr ||
       driftedMetrics->incompatibleObjects != 1 || driftedMetrics->missingInCode != 1 ||
-      driftedMetrics->differences.size() != 2) {
+      driftedMetrics->differences.size() != 3) {
     std::cerr << "Schema drift was not reported correctly.\n";
     return 1;
   }
