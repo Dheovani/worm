@@ -106,13 +106,14 @@ This milestone should end with a complete example that creates, persists, querie
 ### Bidirectional generator
 
 - [x] Define the decision rule between entity-as-source-of-truth, database-as-source-of-truth, or explicit command mode.
-- [ ] Introspect the database schema and generate C++ entity classes with reflection metadata.
+- [x] Introspect the database schema and generate C++ entity classes with reflection metadata.
 - [ ] Read reflected entities and generate tables, columns, keys, indexes, and relationships in the database.
-- [ ] Compare entity and database state to produce a reviewable synchronization plan before any change.
+- [x] Generate missing tables from declarative schema metadata without modifying incompatible existing tables.
+- [x] Compare entity and database state to produce a reviewable synchronization plan before any change.
 - [ ] Generate code and SQL into separate files without applying destructive changes automatically.
 - [ ] Map C++ and SQL types per dialect, including nullability, default values, enums, and dates.
 - [ ] Define how to preserve manual customizations when generated entities are regenerated.
-- [ ] Add tests with small schemas to validate both directions: database to entity and entity to database.
+- [x] Add tests with small schemas to validate both directions: database to entity and entity to database.
 
 ## Milestone 5 — Developer experience
 
@@ -165,4 +166,4 @@ This milestone should end with a complete example that creates, persists, querie
 - [ ] Installable package and an example consumed by a clean external project.
 - [ ] Stable CI, sanitizers, static analysis, and integration tests.
 - [ ] Published getting started guide, reference, limitations, and contribution process.
-- [ ] Update README.md with the main project information.
+- [x] Update README.md with the main project information.

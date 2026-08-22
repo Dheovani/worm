@@ -1,14 +1,12 @@
 #include <core/query/sql-builder.hpp>
 
-#include <connection/client.hpp>
 #include <errors/sql-build-exception.hpp>
-#include <errors/unsupported-database-exception.hpp>
-#include <utils/dependency-injection.hpp>
 
 #include <cstddef>
-#include <memory>
 #include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -645,27 +643,371 @@ namespace worm::core
     return {std::move(sql), std::move(parameters)};
   }
 
+  std::vector<Statement> SqlBuilder::create(const TableMetadata& metadata) const
+  {
+    const Table& table = metadata.table();
+
+    if (table.empty()) {
+      throw worm::SqlBuildException("CREATE TABLE operation requires a table name.");
+    }
+
+    if (metadata.columns().empty()) {
+      throw worm::SqlBuildException("CREATE TABLE operation for '{}' requires at least one column.", table.name());
+    }
+
+    const auto qualifiedTable = [&] {
+      if (table.schema().empty()) {
+        return quoteIdentifier(table.name());
+      }
+      return quoteIdentifier(table.schema().name()) + "." + quoteIdentifier(table.name());
+    }();
+
+    const auto quotedColumns = [&](std::span<const Column> columns) {
+      std::string result;
+      for (std::size_t index = 0; index < columns.size(); ++index) {
+        if (metadata.findColumn(columns[index].columnName) == nullptr) {
+          throw worm::SqlBuildException(
+            "Constraint column '{}' does not exist in table '{}'.", columns[index].columnName, table.name());
+        }
+        if (index != 0) {
+          result += ",";
+        }
+        result += quoteIdentifier(columns[index].columnName);
+      }
+      return result;
+    };
+
+    const bool inlineGeneratedPrimaryKey =
+      usesInlineGeneratedPrimaryKey() && metadata.primaryKey().has_value() &&
+      metadata.primaryKey()->columns().size() == 1 &&
+      metadata.findColumn(metadata.primaryKey()->columns().front().columnName) != nullptr &&
+      metadata.findColumn(metadata.primaryKey()->columns().front().columnName)->generated;
+
+    std::string sql = "create table " + qualifiedTable + " (";
+    for (std::size_t index = 0; index < metadata.columns().size(); ++index) {
+      const ColumnMetadata& column = metadata.columns()[index];
+
+      if (column.columnName.empty()) {
+        throw worm::SqlBuildException("CREATE TABLE operation for '{}' contains an unnamed column.", table.name());
+      }
+
+      if (column.type().kind == ColumnTypeKind::Unknown) {
+        throw worm::SqlBuildException("Column '{}.{}' has no supported SQL type.", table.name(), column.columnName);
+      }
+
+      if (index != 0) {
+        sql += ",";
+      }
+
+      sql += quoteIdentifier(column.columnName) + " " + renderColumnType(column.type());
+      if (column.generated) {
+        sql += renderGeneratedColumn(column);
+      }
+
+      if (inlineGeneratedPrimaryKey && column.columnName == metadata.primaryKey()->columns().front().columnName) {
+        sql += " primary key autoincrement";
+      }
+
+      const bool isInlinePrimaryKey =
+        inlineGeneratedPrimaryKey && column.columnName == metadata.primaryKey()->columns().front().columnName;
+      if (!column.nullable && !isInlinePrimaryKey) {
+        sql += " not null";
+      }
+
+      if (column.unique) {
+        sql += " unique";
+      }
+    }
+
+    if (metadata.primaryKey().has_value() && !inlineGeneratedPrimaryKey) {
+      if (metadata.primaryKey()->empty()) {
+        throw worm::SqlBuildException("Primary key for table '{}' must contain at least one column.", table.name());
+      }
+
+      sql += ",";
+      if (!metadata.primaryKey()->name().empty()) {
+        sql += "constraint " + quoteIdentifier(metadata.primaryKey()->name()) + " ";
+      }
+
+      sql += "primary key (";
+      sql += quotedColumns(metadata.primaryKey()->columns()) + ")";
+    }
+
+    for (const ForeignKey& foreignKey : metadata.foreignKeys()) {
+      if (foreignKey.columns().empty() || foreignKey.columns().size() != foreignKey.referencedColumns().size()) {
+        throw worm::SqlBuildException(
+          "Foreign key '{}' on table '{}' has incompatible column lists.", foreignKey.name(), table.name());
+      }
+
+      const Table referencedTable = foreignKey.referencedTable();
+      std::string referencedName;
+      if (!referencedTable.schema().empty()) {
+        referencedName = quoteIdentifier(referencedTable.schema().name()) + ".";
+      }
+      referencedName += quoteIdentifier(referencedTable.name());
+
+      sql += ",constraint " + quoteIdentifier(foreignKey.name()) + " foreign key (";
+      sql += quotedColumns(foreignKey.columns()) + ") references " + referencedName + " (";
+      for (std::size_t index = 0; index < foreignKey.referencedColumns().size(); ++index) {
+        if (index != 0) {
+          sql += ",";
+        }
+        sql += quoteIdentifier(foreignKey.referencedColumns()[index].columnName);
+      }
+      sql += ")";
+
+      const auto appendAction = [&](Operation operation, std::string_view operationName) {
+        const ReferentialAction action = foreignKey.referentialActionFor(operation);
+        if (action == ReferentialAction::NoAction) {
+          return;
+        }
+        sql += " on ";
+        sql += operationName;
+        switch (action) {
+        case ReferentialAction::Restrict:
+          sql += " restrict";
+          break;
+        case ReferentialAction::Cascade:
+          sql += " cascade";
+          break;
+        case ReferentialAction::SetNull:
+          sql += " set null";
+          break;
+        case ReferentialAction::SetDefault:
+          sql += " set default";
+          break;
+        case ReferentialAction::NoAction:
+          break;
+        }
+      };
+      
+      appendAction(Operation::Update, "update");
+      appendAction(Operation::Delete, "delete");
+    }
+    sql += ")";
+
+    std::vector<Statement> statements{{std::move(sql), {}}};
+    statements.reserve(metadata.indexes().size() + 1);
+    for (const Index& index : metadata.indexes()) {
+      if (index.columns().empty()) {
+        throw worm::SqlBuildException("Index '{}' on table '{}' has no columns.", index.name(), table.name());
+      }
+
+      std::string indexSql = "create ";
+      if (index.unique()) {
+        indexSql += "unique ";
+      }
+      indexSql += "index " + quoteIdentifier(index.name()) + " on " + qualifiedTable + " (";
+      for (std::size_t columnIndex = 0; columnIndex < index.columns().size(); ++columnIndex) {
+        const IndexedColumn& indexedColumn = index.columns()[columnIndex];
+        if (metadata.findColumn(indexedColumn.column.columnName) == nullptr) {
+          throw worm::SqlBuildException(
+            "Index '{}' references missing column '{}'.", index.name(), indexedColumn.column.columnName);
+        }
+        if (columnIndex != 0) {
+          indexSql += ",";
+        }
+        indexSql += quoteIdentifier(indexedColumn.column.columnName);
+        indexSql += indexedColumn.order == IndexOrder::Descending ? " desc" : " asc";
+      }
+      indexSql += ")";
+      statements.push_back({std::move(indexSql), {}});
+    }
+
+    return statements;
+  }
+
+  std::string SqlBuilder::quoteIdentifier(std::string_view identifier) const
+  {
+    std::string result{"\""};
+    for (const char character : identifier) {
+      result += character;
+      if (character == '"') {
+        result += character;
+      }
+    }
+    result += '"';
+    return result;
+  }
+
+  std::string SqlBuilder::renderColumnType(const ColumnType& type) const
+  {
+    switch (type.kind) {
+    case ColumnTypeKind::Boolean:
+      return "boolean";
+    case ColumnTypeKind::Int16:
+      return "smallint";
+    case ColumnTypeKind::Int32:
+      return "integer";
+    case ColumnTypeKind::Int64:
+      return "bigint";
+    case ColumnTypeKind::Float32:
+      return "real";
+    case ColumnTypeKind::Float64:
+      return "double precision";
+    case ColumnTypeKind::Decimal:
+      if (type.precision.has_value()) {
+        if (type.precision.value() == 0 || type.scale.value_or(0) > type.precision.value()) {
+          throw worm::SqlBuildException("Invalid decimal precision or scale.");
+        }
+        return "decimal(" + std::to_string(type.precision.value()) +
+               (type.scale.has_value() ? "," + std::to_string(type.scale.value()) : "") + ")";
+      }
+      return "decimal";
+    case ColumnTypeKind::String:
+      return type.length.has_value() ? "varchar(" + std::to_string(type.length.value()) + ")" : "text";
+    case ColumnTypeKind::Binary:
+      return "bytea";
+    case ColumnTypeKind::Date:
+      return "date";
+    case ColumnTypeKind::Time:
+      return type.withTimeZone ? "time with time zone" : "time";
+    case ColumnTypeKind::DateTime:
+      return type.withTimeZone ? "timestamp with time zone" : "timestamp";
+    case ColumnTypeKind::Uuid:
+      return "uuid";
+    case ColumnTypeKind::Json:
+      return "jsonb";
+    case ColumnTypeKind::Unknown:
+      break;
+    }
+    throw worm::SqlBuildException("Unsupported SQL column type.");
+  }
+
+  std::string SqlBuilder::renderGeneratedColumn(const ColumnMetadata& column) const
+  {
+    if (column.type().kind != ColumnTypeKind::Int16 && column.type().kind != ColumnTypeKind::Int32 &&
+        column.type().kind != ColumnTypeKind::Int64) {
+      throw worm::SqlBuildException(
+        "Generated column '{}.{}' must use an integer type.", column.table().name(), column.columnName);
+    }
+    return " generated by default as identity";
+  }
+
+  bool SqlBuilder::usesInlineGeneratedPrimaryKey() const noexcept
+  {
+    return false;
+  }
+
   std::string PgBuilder::placeholder(std::size_t index) const
   {
     return "$" + std::to_string(index);
   }
 
-  std::unique_ptr<SqlBuilder> getSqlBuilder()
+  std::string MySqlBuilder::quoteIdentifier(std::string_view identifier) const
   {
-    const auto type = worm::DependencyInjector<connection::DatabaseType>::get();
-
-    switch (type) {
-    case worm::connection::DatabaseType::PostgreSQL:
-      return std::make_unique<PgBuilder>();
-    case worm::connection::DatabaseType::MySQL:
-      return std::make_unique<MySqlBuilder>();
-    case worm::connection::DatabaseType::SQLite:
-      return std::make_unique<SqliteBuilder>();
-    case worm::connection::DatabaseType::MSSQL:
-      return std::make_unique<SqlServerBuilder>();
-    default:
-      throw worm::UnsupportedDatabaseException("Unsupported database type.");
+    std::string result{"`"};
+    for (const char character : identifier) {
+      result += character;
+      if (character == '`') {
+        result += character;
+      }
     }
+    result += '`';
+    return result;
+  }
+
+  std::string MySqlBuilder::renderColumnType(const ColumnType& type) const
+  {
+    switch (type.kind) {
+    case ColumnTypeKind::Binary:
+      return "blob";
+    case ColumnTypeKind::Uuid:
+      return "char(36)";
+    case ColumnTypeKind::Json:
+      return "json";
+    case ColumnTypeKind::Float64:
+      return "double";
+    default:
+      return SqlBuilder::renderColumnType(type);
+    }
+  }
+
+  std::string MySqlBuilder::renderGeneratedColumn(const ColumnMetadata& column) const
+  {
+    static_cast<void>(SqlBuilder::renderGeneratedColumn(column));
+    return " auto_increment";
+  }
+
+  std::string SqliteBuilder::renderColumnType(const ColumnType& type) const
+  {
+    switch (type.kind) {
+    case ColumnTypeKind::Boolean:
+    case ColumnTypeKind::Int16:
+    case ColumnTypeKind::Int32:
+    case ColumnTypeKind::Int64:
+      return "integer";
+    case ColumnTypeKind::Float32:
+    case ColumnTypeKind::Float64:
+    case ColumnTypeKind::Decimal:
+      return "real";
+    case ColumnTypeKind::Binary:
+      return "blob";
+    case ColumnTypeKind::Date:
+    case ColumnTypeKind::Time:
+    case ColumnTypeKind::DateTime:
+    case ColumnTypeKind::Uuid:
+    case ColumnTypeKind::Json:
+    case ColumnTypeKind::String:
+      return "text";
+    case ColumnTypeKind::Unknown:
+      break;
+    }
+    throw worm::SqlBuildException("Unsupported SQLite column type.");
+  }
+
+  std::string SqliteBuilder::renderGeneratedColumn(const ColumnMetadata& column) const
+  {
+    static_cast<void>(SqlBuilder::renderGeneratedColumn(column));
+    return {};
+  }
+
+  bool SqliteBuilder::usesInlineGeneratedPrimaryKey() const noexcept
+  {
+    return true;
+  }
+
+  std::string SqlServerBuilder::quoteIdentifier(std::string_view identifier) const
+  {
+    std::string result{"["};
+    for (const char character : identifier) {
+      result += character;
+      if (character == ']') {
+        result += character;
+      }
+    }
+    result += ']';
+    return result;
+  }
+
+  std::string SqlServerBuilder::renderColumnType(const ColumnType& type) const
+  {
+    switch (type.kind) {
+    case ColumnTypeKind::Boolean:
+      return "bit";
+    case ColumnTypeKind::Int32:
+      return "int";
+    case ColumnTypeKind::Float64:
+      return "float";
+    case ColumnTypeKind::String:
+      return type.length.has_value() ? "nvarchar(" + std::to_string(type.length.value()) + ")" : "nvarchar(max)";
+    case ColumnTypeKind::Binary:
+      return type.length.has_value() ? "varbinary(" + std::to_string(type.length.value()) + ")" : "varbinary(max)";
+    case ColumnTypeKind::DateTime:
+      return type.withTimeZone ? "datetimeoffset" : "datetime2";
+    case ColumnTypeKind::Uuid:
+      return "uniqueidentifier";
+    case ColumnTypeKind::Json:
+      return "nvarchar(max)";
+    default:
+      return SqlBuilder::renderColumnType(type);
+    }
+  }
+
+  std::string SqlServerBuilder::renderGeneratedColumn(const ColumnMetadata& column) const
+  {
+    static_cast<void>(SqlBuilder::renderGeneratedColumn(column));
+    return " identity(1,1)";
   }
 
 } // namespace worm::core

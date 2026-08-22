@@ -94,6 +94,12 @@ namespace
       return {std::string{deleteQuery_}};
     }
 
+    std::vector<worm::core::Statement> create(const worm::core::TableMetadata& table) const override
+    {
+      sourceName_ = table.table().name();
+      return {{std::string{createQuery_}}};
+    }
+
     mutable std::size_t fieldsCount_{0};
     mutable std::string_view sourceName_;
     mutable std::string_view targetName_;
@@ -115,6 +121,7 @@ namespace
     static constexpr std::string_view structuredInsertFromSelectQuery_{"structured insert from select delegated"};
     static constexpr std::string_view updateQuery_{"update delegated"};
     static constexpr std::string_view deleteQuery_{"delete delegated"};
+    static constexpr std::string_view createQuery_{"create delegated"};
   };
 } // namespace
 
@@ -256,6 +263,14 @@ int main()
   const worm::core::Statement deleteQuery = queryBuilder.delete_(users, Filter{Predicate::equal("u.active", true)});
   if (deleteQuery.sql != "delete delegated" || sqlBuilder.sourceName_ != "users" || !sqlBuilder.hasFilter_) {
     std::cerr << "QueryBuilder did not delegate delete data to the concrete builder.\n";
+    return 1;
+  }
+
+  const worm::core::TableMetadata usersMetadata{worm::core::Table{"users"}};
+  const std::vector<worm::core::Statement> createStatements = queryBuilder.create(usersMetadata);
+  if (createStatements.size() != 1 || createStatements.front().sql != "create delegated" ||
+      sqlBuilder.sourceName_ != "users") {
+    std::cerr << "QueryBuilder did not delegate schema creation metadata.\n";
     return 1;
   }
 

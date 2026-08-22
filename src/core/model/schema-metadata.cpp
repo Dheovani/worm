@@ -2,9 +2,19 @@
 
 namespace worm::core
 {
+  ColumnMetadata::ColumnMetadata(Column column, ColumnType type)
+    : Column(std::move(column)),
+      type_(std::move(type))
+  {}
+
+  const ColumnType& ColumnMetadata::type() const noexcept
+  {
+    return type_;
+  }
+
   TableMetadata::TableMetadata(
     Table table,
-    std::vector<Column> columns,
+    std::vector<ColumnMetadata> columns,
     std::optional<PrimaryKey> primaryKey,
     std::vector<Index> indexes,
     std::vector<ForeignKey> foreignKeys)
@@ -20,7 +30,7 @@ namespace worm::core
     return table_;
   }
 
-  const std::vector<Column>& TableMetadata::columns() const noexcept
+  const std::vector<ColumnMetadata>& TableMetadata::columns() const noexcept
   {
     return columns_;
   }
@@ -40,9 +50,9 @@ namespace worm::core
     return foreignKeys_;
   }
 
-  const Column* TableMetadata::findColumn(std::string_view name) const noexcept
+  const ColumnMetadata* TableMetadata::findColumn(std::string_view name) const noexcept
   {
-    for (const Column& column : columns_) {
+    for (const ColumnMetadata& column : columns_) {
       if (column.columnName == name) {
         return &column;
       }

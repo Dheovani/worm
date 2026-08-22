@@ -3,6 +3,7 @@
 #include <utils/dependency-injection.hpp>
 
 #include "../errors/invalid-cli-argument-exception.hpp"
+#include <errors/unsupported-database-exception.hpp>
 
 namespace worm::cli::generator
 {
@@ -31,11 +32,11 @@ namespace worm::cli::generator
       throw InvalidCliArgumentException("The command requires a database driver.");
     }
 
-    const auto type = connection::databaseTypes.find(*invocation.global.driver);
-    if (type == connection::databaseTypes.end()) {
+    try {
+      return DependencyInjector<connection::DatabaseType>::get(*invocation.global.driver);
+    } catch (const UnsupportedDatabaseException&) {
       throw InvalidCliArgumentException("Unsupported database driver '{}'.", *invocation.global.driver);
     }
-    return type->second;
   }
 
   std::string defaultSchema(connection::DatabaseType type)

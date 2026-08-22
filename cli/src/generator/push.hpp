@@ -4,7 +4,10 @@
 #include <cstddef>
 #include <ostream>
 
+#include <core/model/schema-snapshot.hpp>
+
 #include "../runner.hpp"
+#include "manifest.hpp"
 
 namespace worm::cli::generator
 {
@@ -31,6 +34,14 @@ namespace worm::cli::generator
     void writeText(std::ostream& out) const override;
     void writeJson(std::ostream& out) const override;
   };
+
+  ExecutionReport push(const Invocation& invocation, const SchemaManifest& manifest);
+
+  [[nodiscard]]
+  ExecutionReport planPush(
+    const Invocation& invocation,
+    const SchemaManifest& manifest,
+    const core::SchemaSnapshot& databaseSchema);
 
   ExecutionReport push(const Invocation& invocation);
 } // namespace worm::cli::generator

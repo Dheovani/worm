@@ -4,6 +4,7 @@
 #include <connection/configuration.hpp>
 #include <connection/schema-inspector.hpp>
 #include <core/query/dialect.hpp>
+#include <core/query/query-builder.hpp>
 #include <core/query/sql-builder.hpp>
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/missing-configuration-exception.hpp>
@@ -18,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <typeinfo>
 
 namespace worm
@@ -120,7 +122,13 @@ namespace worm
         throw MissingConfigurationException("The DATABASE_TYPE environment variable is missing.");
       }
 
-      const auto type = connection::databaseTypes.find(database);
+      return get(database);
+    }
+
+    [[nodiscard]]
+    static connection::DatabaseType get(std::string_view database)
+    {
+      const auto type = connection::databaseTypes.find(std::string{database});
       if (type == connection::databaseTypes.end()) {
         throw UnsupportedDatabaseException("Unsupported database type: {}", database);
       }
@@ -130,13 +138,36 @@ namespace worm
   };
 
   template <>
+  struct DependencyInjector<connection::Client>
+  {
+    [[nodiscard]]
+    static std::unique_ptr<connection::Client> get(
+      const connection::ConnectionConfig& config,
+      connection::DatabaseType dbType)
+    {
+      return connection::makeClient(config, dbType);
+    }
+
+    [[nodiscard]]
+    static std::unique_ptr<connection::Client> get()
+    {
+      return get(
+        DependencyInjector<connection::ConnectionConfig>::get(), DependencyInjector<connection::DatabaseType>::get());
+    }
+  };
+
+  template <>
   struct DependencyInjector<core::Dialect>
   {
     [[nodiscard]]
     static const core::Dialect& get()
     {
-      const auto dbType = DependencyInjector<connection::DatabaseType>::get();
+      return get(DependencyInjector<connection::DatabaseType>::get());
+    }
 
+    [[nodiscard]]
+    static const core::Dialect& get(connection::DatabaseType dbType)
+    {
       if (dbType == connection::DatabaseType::PostgreSQL) {
         static const core::PostgresDialect dialect{};
         return dialect;
@@ -167,8 +198,12 @@ namespace worm
     [[nodiscard]]
     static const core::SqlBuilder& get()
     {
-      const auto dbType = DependencyInjector<connection::DatabaseType>::get();
+      return get(DependencyInjector<connection::DatabaseType>::get());
+    }
 
+    [[nodiscard]]
+    static const core::SqlBuilder& get(connection::DatabaseType dbType)
+    {
       if (dbType == connection::DatabaseType::PostgreSQL) {
         static const core::PgBuilder builder{};
         return builder;
@@ -194,12 +229,28 @@ namespace worm
   };
 
   template <>
+  struct DependencyInjector<core::QueryBuilder>
+  {
+    [[nodiscard]]
+    static core::QueryBuilder get()
+    {
+      return core::QueryBuilder{DependencyInjector<core::SqlBuilder>::get()};
+    }
+
+    [[nodiscard]]
+    static core::QueryBuilder get(connection::DatabaseType dbType)
+    {
+      return core::QueryBuilder{DependencyInjector<core::SqlBuilder>::get(dbType)};
+    }
+  };
+
+  template <>
   struct DependencyInjector<connection::SchemaInspector>
   {
     [[nodiscard]]
     static connection::SchemaInspector get(const connection::ConnectionConfig& config, connection::DatabaseType type)
     {
-      return connection::SchemaInspector{connection::makeClient(config, type)};
+      return connection::SchemaInspector{DependencyInjector<connection::Client>::get(config, type)};
     }
 
     [[nodiscard]]

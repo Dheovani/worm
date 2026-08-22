@@ -6,6 +6,7 @@
 #include "errors/invalid-cli-argument-exception.hpp"
 #include "generator/check.hpp"
 #include "generator/pull.hpp"
+#include "generator/push.hpp"
 
 namespace worm::cli
 {
@@ -145,7 +146,8 @@ namespace worm::cli
       report = generator::pull(invocation);
       break;
     case Commands::Push:
-      throw InvalidCliArgumentException("The 'push' command is not implemented at this stage.");
+      report = generator::push(invocation);
+      break;
     }
 
     report.command = buildCommand(argc, argv);

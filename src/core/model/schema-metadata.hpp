@@ -9,12 +9,23 @@
 
 namespace worm::core
 {
+  class ColumnMetadata : public Column
+  {
+  public:
+    ColumnMetadata(Column column, ColumnType type = {});
+
+    [[nodiscard]]
+    const ColumnType& type() const noexcept;
+
+  private:
+    ColumnType type_;
+  };
+
   class TableMetadata
   {
   public:
-    explicit TableMetadata(
-      Table table,
-      std::vector<Column> columns = {},
+    explicit TableMetadata(Table table,
+      std::vector<ColumnMetadata> columns = {},
       std::optional<PrimaryKey> primaryKey = std::nullopt,
       std::vector<Index> indexes = {},
       std::vector<ForeignKey> foreignKeys = {});
@@ -23,7 +34,7 @@ namespace worm::core
     const Table& table() const noexcept;
 
     [[nodiscard]]
-    const std::vector<Column>& columns() const noexcept;
+    const std::vector<ColumnMetadata>& columns() const noexcept;
 
     [[nodiscard]]
     const std::optional<PrimaryKey>& primaryKey() const noexcept;
@@ -35,11 +46,11 @@ namespace worm::core
     const std::vector<ForeignKey>& foreignKeys() const noexcept;
 
     [[nodiscard]]
-    const Column* findColumn(std::string_view name) const noexcept;
+    const ColumnMetadata* findColumn(std::string_view name) const noexcept;
 
   private:
     Table table_;
-    std::vector<Column> columns_;
+    std::vector<ColumnMetadata> columns_;
     std::optional<PrimaryKey> primaryKey_;
     std::vector<Index> indexes_;
     std::vector<ForeignKey> foreignKeys_;

@@ -2,7 +2,6 @@
 
 #include <concepts>
 #include <cstddef>
-#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -10,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <core/model/schema-metadata.hpp>
 #include <core/query/clauses.hpp>
 #include <core/query/criteria.hpp>
 #include <core/query/expression.hpp>
@@ -83,6 +83,9 @@ namespace worm::core
     [[nodiscard]]
     virtual Statement delete_(const Source& source, const std::optional<Filter>& filter = std::nullopt) const;
 
+    [[nodiscard]]
+    virtual std::vector<Statement> create(const TableMetadata& table) const;
+
     virtual ~SqlBuilder() = default;
 
   protected:
@@ -101,6 +104,18 @@ namespace worm::core
     [[nodiscard]]
     virtual Expression renderPagination(
       const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const;
+
+    [[nodiscard]]
+    virtual std::string quoteIdentifier(std::string_view identifier) const;
+
+    [[nodiscard]]
+    virtual std::string renderColumnType(const ColumnType& type) const;
+
+    [[nodiscard]]
+    virtual std::string renderGeneratedColumn(const ColumnMetadata& column) const;
+
+    [[nodiscard]]
+    virtual bool usesInlineGeneratedPrimaryKey() const noexcept;
 
   private:
     [[nodiscard]]
@@ -127,13 +142,32 @@ namespace worm::core
   };
 
   class MySqlBuilder : public SqlBuilder
-  {};
+  {
+  protected:
+    [[nodiscard]]
+    std::string quoteIdentifier(std::string_view identifier) const override;
+
+    [[nodiscard]]
+    std::string renderColumnType(const ColumnType& type) const override;
+
+    [[nodiscard]]
+    std::string renderGeneratedColumn(const ColumnMetadata& column) const override;
+  };
 
   class SqliteBuilder : public SqlBuilder
   {
   protected:
     [[nodiscard]]
     std::string renderMutationSource(const Source& source) const override;
+
+    [[nodiscard]]
+    std::string renderColumnType(const ColumnType& type) const override;
+
+    [[nodiscard]]
+    std::string renderGeneratedColumn(const ColumnMetadata& column) const override;
+
+    [[nodiscard]]
+    bool usesInlineGeneratedPrimaryKey() const noexcept override;
   };
 
   class SqlServerBuilder : public SqlBuilder
@@ -149,14 +183,20 @@ namespace worm::core
     std::string renderDeletePrefix(const Source& source) const override;
 
     [[nodiscard]]
+    std::string quoteIdentifier(std::string_view identifier) const override;
+
+    [[nodiscard]]
+    std::string renderColumnType(const ColumnType& type) const override;
+
+    [[nodiscard]]
+    std::string renderGeneratedColumn(const ColumnMetadata& column) const override;
+
+    [[nodiscard]]
     Expression renderPagination(
       const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const override;
   };
 
   template <typename T>
   concept SqlBuilderI = std::derived_from<std::remove_cvref_t<T>, SqlBuilder>;
-
-  [[nodiscard]]
-  std::unique_ptr<SqlBuilder> getSqlBuilder();
 
 } // namespace worm::core

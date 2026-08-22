@@ -2,7 +2,7 @@
 
 `worm` is the command-line interface for inspecting database schemas and generating Worm entity declarations.
 
-The implemented commands are `check` and `pull`. `check` compares a JSON entity manifest with the selected database. `pull` introspects database tables and plans or generates C++ entity headers. `push` is not implemented yet.
+The implemented commands are `check`, `pull`, and the safe initial form of `push`. `check` compares a JSON entity manifest with the selected database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged.
 
 ## Build
 
@@ -339,6 +339,21 @@ Remove the containers and their data after testing:
 docker compose -f tests/cli/docker-compose.yml down --volumes
 ```
 
-## Unsupported commands
+## The `push` command
 
-Invoking `push` currently returns an execution error. Schema creation and synchronization from C++ entities are not implemented yet.
+`push` compares the selected manifest entities with the database and produces a plan by default. It does not modify the database unless `--apply` is present.
+
+```bash
+worm --driver sqlite --database data/application.db --manifest worm-schema.json push
+worm --driver sqlite --database data/application.db --manifest worm-schema.json push --apply
+```
+
+Use repeatable `--entity` options to restrict the operation:
+
+```bash
+worm --driver postgresql --database application --manifest worm-schema.json push --entity User --apply
+```
+
+The current safe implementation creates missing tables, primary keys, supported generated columns, foreign keys, and indexes represented by schema metadata. Existing compatible tables are left untouched. Existing incompatible tables produce schema drift and are never altered automatically. Column values are not involved in DDL generation, identifiers are quoted by the selected dialect, and unknown column types are rejected before execution.
+
+The manifest currently supplies columns and primary keys. Manifest syntax for indexes, foreign keys, defaults, and relationships is still pending, so those objects can be rendered by the core schema builder but are not yet populated by the CLI parser. `push` does not currently emit SQL files or perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/model/schema-metadata.hpp>
 #include <core/model/schema-snapshot.hpp>
 
 #include <filesystem>
@@ -22,4 +23,7 @@ namespace worm::cli::generator
 
   [[nodiscard]]
   SchemaManifest loadManifest(const std::filesystem::path& path, std::string defaultSchema);
+
+  [[nodiscard]]
+  core::SchemaMetadata schemaMetadata(const SchemaManifest& manifest);
 } // namespace worm::cli::generator

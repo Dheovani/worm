@@ -13,7 +13,7 @@ namespace worm::core
     : connectionConfig_(connectionConfig),
       client_(connection::makeClient(connectionConfig_, DependencyInjector<connection::DatabaseType>::get())),
       registry_(std::make_shared<Registry>()),
-      queryBuilder_()
+      queryBuilder_(DependencyInjector<QueryBuilder>::get())
   {}
 
   Session::Session(const connection::ConnectionConfig& connectionConfig,

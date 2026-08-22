@@ -95,4 +95,9 @@ namespace worm::core
     return sqlBuilder_.delete_(source, filter);
   }
 
+  std::vector<Statement> QueryBuilder::create(const TableMetadata& table) const
+  {
+    return sqlBuilder_.create(table);
+  }
+
 } // namespace worm::core

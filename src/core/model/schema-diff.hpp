@@ -63,7 +63,7 @@ namespace worm::core
       const Field& field,
       std::vector<SchemaDifference>& differences)
     {
-      const Column* actualColumn = existing.findColumn(field.columnName());
+      const ColumnMetadata* actualColumn = existing.findColumn(field.columnName());
       if (actualColumn == nullptr) {
         differences.push_back({
           .kind = SchemaDifferenceKind::MissingColumn,
@@ -151,7 +151,7 @@ namespace worm::core
       },
       persistent_fields_of<T>());
 
-    for (const Column& column : existing.columns()) {
+    for (const ColumnMetadata& column : existing.columns()) {
       if (!detail::hasPersistentColumn<T>(column.columnName)) {
         differences.push_back({
           .kind = SchemaDifferenceKind::UnexpectedColumn,

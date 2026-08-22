@@ -63,6 +63,16 @@ int main()
     return 1;
   }
 
+  const worm::core::SchemaMetadata metadata = worm::cli::generator::schemaMetadata(manifest);
+  const auto* users = metadata.findTable(worm::core::Table{worm::core::Schema{"public"}, "users"});
+  const auto* id = users == nullptr ? nullptr : users->findColumn("id");
+  if (metadata.schema().name() != "public" || users == nullptr || id == nullptr ||
+      id->type().kind != worm::core::ColumnTypeKind::Int64 || !id->generated || id->nullable ||
+      !users->primaryKey().has_value() || users->primaryKey()->columns().front().columnName != "id") {
+    std::cerr << "Manifest did not convert to declarative schema metadata.\n";
+    return 1;
+  }
+
   if (
     !rejects("worm-cli-invalid-manifest.json", R"({"version":1,"entities":[{"name":"User"}]})") ||
     !rejects("worm-cli-duplicate-column.json",

@@ -2,6 +2,7 @@
 
 #include <connection/client.hpp>
 #include <core/model/entity-metadata.hpp>
+#include <core/model/schema-metadata.hpp>
 #include <core/output/hydration.hpp>
 #include <core/output/result-set.hpp>
 #include <core/persistence/registry.hpp>
@@ -21,6 +22,7 @@
 #include <utils/hash.hpp>
 
 #include <cstddef>
+#include <exception>
 #include <memory>
 #include <optional>
 #include <string>
@@ -29,9 +31,11 @@
 
 namespace worm::core
 {
+  template <typename T>
+  class Repository;
 
   template <Model T>
-  class Repository final
+  class Repository<T> final
   {
   public:
     explicit Repository(std::shared_ptr<connection::Client> dbClient, const QueryBuilder& queryBuilder)
@@ -93,9 +97,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::shared_ptr<T> findOne(
-      const std::string& sql,
-      std::vector<Parameter> parameters = {}) const
+    std::shared_ptr<T> findOne(const std::string& sql, std::vector<Parameter> parameters = {}) const
     {
       return findOne(Statement::prepare(sql, parameters));
     }
@@ -124,9 +126,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::vector<std::shared_ptr<T>> findAll(
-      const std::string& sql,
-      std::vector<Parameter> parameters = {}) const
+    std::vector<std::shared_ptr<T>> findAll(const std::string& sql, std::vector<Parameter> parameters = {}) const
     {
       return findAll(Statement::prepare(sql, parameters));
     }
@@ -190,8 +190,7 @@ namespace worm::core
 
     [[nodiscard]]
     std::uint64_t insertFromSelect(
-      const std::vector<std::string>& targetColumns,
-      const Statement& sourceStatement) const
+      const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
       requires PersistableEntity<T>
     {
       if (!isOperationValid(sourceStatement, core::Operation::Select)) {
@@ -204,8 +203,7 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::uint64_t insertFromSelect(
-      const std::vector<std::string>& targetColumns,
+    std::uint64_t insertFromSelect(const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
       const std::vector<Relation>& relations = {},
@@ -424,9 +422,7 @@ namespace worm::core
 
     [[nodiscard]]
     core::ResultSet executeFiltered(
-      const Statement& statement,
-      std::string_view filterQualifier,
-      std::string_view operation) const
+      const Statement& statement, std::string_view filterQualifier, std::string_view operation) const
     {
       if (!core::hasFilterWhere(statement.sql, filterQualifier)) {
         throw worm::SqlBuildException("{} operation's statement must have a `WHERE` filter clause.", operation);
@@ -460,6 +456,38 @@ namespace worm::core
     std::shared_ptr<connection::Client> dbClient;
     const QueryBuilder queryBuilder;
     std::shared_ptr<Registry> registry;
+  };
+
+  template <>
+  class Repository<SchemaMetadata> final
+  {
+  public:
+    explicit Repository(std::shared_ptr<connection::Client> dbClient, const QueryBuilder& queryBuilder)
+      : dbClient_(std::move(dbClient)),
+        queryBuilder_(queryBuilder)
+    {
+      if (!dbClient_) {
+        throw worm::InvalidArgException("Schema repository requires a valid client.");
+      }
+    }
+
+    void create(const TableMetadata& table) const
+    {
+      const std::vector<Statement> statements = queryBuilder_.create(table);
+      for (const Statement& statement : statements) {
+        try {
+          static_cast<void>(dbClient_->execute(statement));
+        } catch (const worm::WormException&) {
+          throw;
+        } catch (const std::exception& error) {
+          throw worm::QueryExecutionException(error.what());
+        }
+      }
+    }
+
+  private:
+    std::shared_ptr<connection::Client> dbClient_;
+    const QueryBuilder queryBuilder_;
   };
 
 } // namespace worm::core

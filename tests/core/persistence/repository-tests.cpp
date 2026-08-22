@@ -35,8 +35,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id), worm::reflection::field("name", &User::name)};
+      return std::tuple{worm::reflection::field("id", &User::id), worm::reflection::field("name", &User::name)};
     }
   };
 
@@ -74,8 +73,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &UserView::id), worm::reflection::field("name", &UserView::name)};
+      return std::tuple{worm::reflection::field("id", &UserView::id), worm::reflection::field("name", &UserView::name)};
     }
   };
 
@@ -583,6 +581,34 @@ int main()
 
   if (!ownedClientLifetime.expired()) {
     std::cerr << "Repository retained its client after leaving scope.\n";
+    return 1;
+  }
+
+  RecordingClient schemaClient{{worm::core::ResultSet{}, worm::core::ResultSet{}}};
+  const worm::core::SqliteBuilder schemaBuilder;
+  const worm::core::QueryBuilder schemaQueryBuilder{schemaBuilder};
+  const worm::core::Table schemaTable{"users"};
+  const worm::core::Column schemaId{
+    worm::reflection::FieldMetadata{.columnName = "id", .generated = true, .nullable = false}, schemaTable};
+  const worm::core::Column schemaName{
+    worm::reflection::FieldMetadata{.columnName = "name", .nullable = false}, schemaTable};
+  const worm::core::TableMetadata schemaTableMetadata{
+    schemaTable,
+    {
+      worm::core::ColumnMetadata{schemaId, {.kind = worm::core::ColumnTypeKind::Int64}},
+      worm::core::ColumnMetadata{schemaName, {.kind = worm::core::ColumnTypeKind::String}},
+    },
+    worm::core::PrimaryKey{"pk_users", {schemaId}},
+    {worm::core::Index{"idx_users_name", {{schemaName}}}},
+  };
+  const worm::core::Repository<worm::core::SchemaMetadata> schemaRepository{
+    nonOwning(schemaClient), schemaQueryBuilder};
+  schemaRepository.create(schemaTableMetadata);
+
+  if (schemaClient.statements.size() != 2 || !schemaClient.statements[0].parameters.empty() ||
+      schemaClient.statements[0].sql.find("create table") != 0 ||
+      schemaClient.statements[1].sql.find("create index") != 0) {
+    std::cerr << "Schema repository did not execute every generated DDL statement in order.\n";
     return 1;
   }
 

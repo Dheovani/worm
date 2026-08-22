@@ -2,6 +2,7 @@ add_library(
   WormCore
   model/migration.cpp
   model/migration-history.cpp
+  model/schema.cpp
   model/schema-metadata.cpp
   model/schema-snapshot.cpp
   query/criteria.cpp

@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 namespace
 {
@@ -118,9 +119,22 @@ int main()
 
     const worm::core::Dialect& dialect = worm::DependencyInjector<worm::core::Dialect>::get();
     const worm::core::SqlBuilder& sqlBuilder = worm::DependencyInjector<worm::core::SqlBuilder>::get();
+    const auto explicitType = worm::DependencyInjector<worm::connection::DatabaseType>::get(std::string_view{"sqlite"});
+    const worm::core::SqlBuilder& explicitSqlBuilder =
+      worm::DependencyInjector<worm::core::SqlBuilder>::get(explicitType);
+    const worm::core::QueryBuilder queryBuilder = worm::DependencyInjector<worm::core::QueryBuilder>::get(explicitType);
+    const auto client = worm::DependencyInjector<worm::connection::Client>::get(config, explicitType);
 
     if (dynamic_cast<const worm::core::SqliteDialect*>(&dialect) == nullptr ||
-        dynamic_cast<const worm::core::SqliteBuilder*>(&sqlBuilder) == nullptr) {
+        dynamic_cast<const worm::core::SqliteBuilder*>(&sqlBuilder) == nullptr ||
+        dynamic_cast<const worm::core::SqliteBuilder*>(&explicitSqlBuilder) == nullptr ||
+        client->type() != worm::connection::DatabaseType::SQLite ||
+        queryBuilder
+            .create(worm::core::TableMetadata{worm::core::Table{"users"},
+              {worm::core::ColumnMetadata{
+                worm::core::Column{"id", worm::core::Table{"users"}}, {.kind = worm::core::ColumnTypeKind::Int64}}}})
+            .front()
+            .sql != "create table \"users\" (\"id\" integer)") {
       std::cerr << "Dependency injection did not resolve database-specific abstractions.\n";
       result = 1;
     }

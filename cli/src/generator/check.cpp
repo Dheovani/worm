@@ -253,7 +253,9 @@ namespace worm::cli::generator
   }
 
   ExecutionReport check(
-    const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema)
+    const Invocation& invocation,
+    const SchemaManifest& manifest,
+    const core::SchemaSnapshot& databaseSchema)
   {
     auto metrics = std::make_shared<CheckMetrics>();
     return compareSchemas(invocation, manifest, databaseSchema, metrics);

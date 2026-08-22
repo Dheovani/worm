@@ -127,9 +127,7 @@ namespace worm::cli::generator
         const std::string columnName = requiredString(columnObject, "name", context);
         if (!columnNames.insert(columnName).second) {
           throw InvalidCliArgumentException(
-            "Manifest entity '{}' contains duplicate column '{}'.",
-            entity.name,
-            columnName);
+            "Manifest entity '{}' contains duplicate column '{}'.", entity.name, columnName);
         }
 
         entity.table.columns.push_back({
@@ -153,16 +151,12 @@ namespace worm::cli::generator
         const std::string columnName = column.get<std::string>();
         if (!columnNames.contains(columnName)) {
           throw InvalidCliArgumentException(
-            "Primary-key column '{}' does not exist in entity '{}'.",
-            columnName,
-            entity.name);
+            "Primary-key column '{}' does not exist in entity '{}'.", columnName, entity.name);
         }
         if (std::find(entity.table.primaryKey.begin(), entity.table.primaryKey.end(), columnName) !=
             entity.table.primaryKey.end()) {
           throw InvalidCliArgumentException(
-            "Manifest entity '{}' contains duplicate primary-key column '{}'.",
-            entity.name,
-            columnName);
+            "Manifest entity '{}' contains duplicate primary-key column '{}'.", entity.name, columnName);
         }
         entity.table.primaryKey.push_back(columnName);
       }
@@ -171,5 +165,43 @@ namespace worm::cli::generator
     }
 
     return manifest;
+  }
+
+  core::SchemaMetadata schemaMetadata(const SchemaManifest& manifest)
+  {
+    std::vector<core::TableMetadata> tables;
+    tables.reserve(manifest.entities.size());
+
+    for (const ManifestEntity& entity : manifest.entities) {
+      const core::Schema schema{entity.table.schema};
+      const core::Table table{schema, entity.table.name};
+      std::vector<core::ColumnMetadata> columns;
+      columns.reserve(entity.table.columns.size());
+      for (const core::SchemaColumnSnapshot& column : entity.table.columns) {
+        columns.emplace_back(
+          core::Column{
+            reflection::FieldMetadata{
+              .columnName = column.name,
+              .generated = column.generated,
+              .unique = column.unique,
+              .nullable = column.nullable,
+            },
+            table,
+          },
+          column.type);
+      }
+
+      std::vector<core::Column> primaryKeyColumns;
+      primaryKeyColumns.reserve(entity.table.primaryKey.size());
+      for (const std::string& columnName : entity.table.primaryKey) {
+        primaryKeyColumns.emplace_back(columnName, table);
+      }
+
+      tables.emplace_back(
+        table, std::move(columns), core::PrimaryKey{"", std::span<const core::Column>{primaryKeyColumns}});
+    }
+
+    const core::Schema schema = manifest.entities.empty() ? core::Schema{} : tables.front().table().schema();
+    return core::SchemaMetadata{schema, std::move(tables)};
   }
 } // namespace worm::cli::generator
