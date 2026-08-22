@@ -17,6 +17,12 @@ int main()
     return 1;
   }
 
+  const worm::WormException formatted("Missing value for option '{}'.", "--driver");
+  if (std::string(formatted.what()) != "Missing value for option '--driver'.") {
+    std::cerr << "WormException did not format its message.\n";
+    return 1;
+  }
+
   try {
     throw worm::WormException(expected);
   } catch (const std::exception& caught) {

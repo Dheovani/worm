@@ -32,7 +32,7 @@ namespace worm
       if constexpr (std::default_initializable<Type>) {
         return Type{};
       } else {
-        throw UnregisteredDependencyException("Dependency is not registered: " + std::string{typeid(Type).name()});
+        throw UnregisteredDependencyException("Dependency is not registered: {}", typeid(Type).name());
       }
     }
   };
@@ -79,14 +79,14 @@ namespace worm
       try {
         const long long value = std::stoll(utils::env::envValue(key));
         if (value < 0) {
-          throw InvalidArgException(std::string{key} + " cannot be negative.");
+          throw InvalidArgException("{} cannot be negative.", key);
         }
 
         return std::chrono::milliseconds{value};
       } catch (const InvalidArgException&) {
         throw;
       } catch (const std::exception&) {
-        throw InvalidArgException(std::string{key} + " must be a timeout in milliseconds.");
+        throw InvalidArgException("{} must be a timeout in milliseconds.", key);
       }
     }
   };
@@ -122,7 +122,7 @@ namespace worm
 
       const auto type = connection::databaseTypes.find(database);
       if (type == connection::databaseTypes.end()) {
-        throw UnsupportedDatabaseException("Unsupported database type: " + database);
+        throw UnsupportedDatabaseException("Unsupported database type: {}", database);
       }
 
       return type->second;

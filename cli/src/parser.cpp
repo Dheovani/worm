@@ -132,7 +132,7 @@ namespace worm::cli
     const std::string& consumeValue(const std::vector<std::string>& args, std::size_t& index, std::string_view option)
     {
       if (index + 1 >= args.size()) {
-        throw MissingOptionValueException("Missing value for option '" + std::string{option} + "'.");
+        throw MissingOptionValueException("Missing value for option '{}'.", option);
       }
 
       return args[++index];
@@ -141,7 +141,7 @@ namespace worm::cli
     void assignUnique(std::optional<std::string>& destination, std::string value, std::string_view option)
     {
       if (destination.has_value()) {
-        throw DuplicateCommandException("Option '" + std::string{option} + "' was specified more than once.");
+        throw DuplicateCommandException("Option '{}' was specified more than once.", option);
       }
 
       destination = std::move(value);
@@ -329,20 +329,19 @@ namespace worm::cli
         }
 
         if (parseCommandOption(token).has_value()) {
-          throw OptionPositionException("Command option '" + std::string{token} + "' appears before a command.");
+          throw OptionPositionException("Command option '{}' appears before a command.", token);
         }
 
-        throw UnknownArgumentException("Unknown argument '" + std::string{token} + "'.");
+        throw UnknownArgumentException("Unknown argument '{}'.", token);
       }
 
       if (const auto secondCommand = parseCommand(token)) {
         static_cast<void>(secondCommand);
-        throw CommandOverflowException(
-          "More than one command was specified. Unexpected command '" + std::string{token} + "'.");
+        throw CommandOverflowException("More than one command was specified. Unexpected command '{}'.", token);
       }
 
       if (parseGlobalOption(token).has_value()) {
-        throw OptionPositionException("Global option '" + std::string{token} + "' must appear before the command.");
+        throw OptionPositionException("Global option '{}' must appear before the command.", token);
       }
 
       if (const auto commandOption = parseCommandOption(token)) {
@@ -356,7 +355,7 @@ namespace worm::cli
         continue;
       }
 
-      throw UnknownArgumentException("Unknown argument '" + std::string{token} + "'.");
+      throw UnknownArgumentException("Unknown argument '{}'.", token);
     }
 
     if (!command.has_value()) {

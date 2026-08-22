@@ -3,6 +3,7 @@
 #include <charconv>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <optional>
 #include <string>
@@ -11,7 +12,7 @@
 #include <utility>
 
 #include "errors/empty-command-exception.hpp"
-#include "errors/invalid-argument-exception.hpp"
+#include "errors/invalid-cli-argument-exception.hpp"
 
 namespace worm::cli
 {
@@ -155,11 +156,19 @@ namespace worm::cli
       return line;
     }
 
+    template <typename... Args>
     [[noreturn]]
-    void throwConfigurationError(const std::filesystem::path& path, std::size_t line, std::string_view message)
+    void throwConfigurationError(
+      const std::filesystem::path& path,
+      std::size_t line,
+      std::format_string<Args...> message,
+      Args&&... args)
     {
-      throw InvalidArgumentException("Invalid configuration file '" + path.string() + "' at line " +
-                                     std::to_string(line) + ": " + std::string{message});
+      throw InvalidCliArgumentException(
+        "Invalid configuration file '{}' at line {}: {}",
+        path.string(),
+        line,
+        std::format(message, std::forward<Args>(args)...));
     }
 
     [[nodiscard]]
@@ -214,7 +223,7 @@ namespace worm::cli
       std::size_t line)
     {
       if (destination.has_value()) {
-        throwConfigurationError(path, line, "duplicate key '" + std::string{key} + "'");
+        throwConfigurationError(path, line, "duplicate key '{}'", key);
       }
 
       destination = std::move(value);
@@ -235,7 +244,7 @@ namespace worm::cli
       } else if (key == "namespace") {
         assignConfigurationValue(configuration.namespaceName, std::move(parsed), key, path, line);
       } else {
-        throwConfigurationError(path, line, "unknown generator key '" + std::string{key} + "'");
+        throwConfigurationError(path, line, "unknown generator key '{}'", key);
       }
     }
 
@@ -263,7 +272,7 @@ namespace worm::cli
       } else if (key == "password_env") {
         assignConfigurationValue(configuration.passwordEnv, std::move(parsed), key, path, line);
       } else {
-        throwConfigurationError(path, line, "unknown database key '" + std::string{key} + "'");
+        throwConfigurationError(path, line, "unknown database key '{}'", key);
       }
     }
 
@@ -272,7 +281,7 @@ namespace worm::cli
     {
       std::ifstream stream{path};
       if (!stream) {
-        throw InvalidArgumentException("Unable to open configuration file '" + path.string() + "'.");
+        throw InvalidCliArgumentException("Unable to open configuration file '{}'.", path.string());
       }
 
       Configuration configuration;
@@ -354,13 +363,14 @@ namespace worm::cli
       }
 
       if (arguments.passwordEnv->empty()) {
-        throw InvalidArgumentException("Option '--password-env' cannot be empty.");
+        throw InvalidCliArgumentException("Option '--password-env' cannot be empty.");
       }
 
       const char* password = std::getenv(arguments.passwordEnv->c_str());
       if (password == nullptr) {
-        throw InvalidArgumentException(
-          "Environment variable '" + *arguments.passwordEnv + "' referenced by '--password-env' is not defined.");
+        throw InvalidCliArgumentException(
+          "Environment variable '{}' referenced by '--password-env' is not defined.",
+          *arguments.passwordEnv);
       }
 
       arguments.password = password;
@@ -415,18 +425,18 @@ namespace worm::cli
     void isValidEntityName(std::string_view name)
     {
       if (!isValidIdentifier(name)) {
-        throw InvalidArgumentException("Invalid C++ entity name '" + std::string{name} + "'.");
+        throw InvalidCliArgumentException("Invalid C++ entity name '{}'.", name);
       }
 
       if (isCppKeyword(name)) {
-        throw InvalidArgumentException("Entity name '" + std::string{name} + "' is a reserved C++ keyword.");
+        throw InvalidCliArgumentException("Entity name '{}' is a reserved C++ keyword.", name);
       }
     }
 
     void isValidNamespace(std::string_view value)
     {
       if (value.empty()) {
-        throw InvalidArgumentException("Namespace cannot be empty.");
+        throw InvalidCliArgumentException("Namespace cannot be empty.");
       }
 
       std::size_t begin = 0;
@@ -437,7 +447,7 @@ namespace worm::cli
         const auto component = value.substr(begin, end == std::string_view::npos ? value.size() - begin : end - begin);
 
         if (component.empty() || !isValidIdentifier(component)) {
-          throw InvalidArgumentException("Invalid C++ namespace '" + std::string{value} + "'.");
+          throw InvalidCliArgumentException("Invalid C++ namespace '{}'.", value);
         }
 
         if (end == std::string_view::npos)
@@ -457,50 +467,50 @@ namespace worm::cli
     void validateGlobalArguments(const GlobalArguments& args)
     {
       if (args.config.has_value() && args.config->empty()) {
-        throw InvalidArgumentException("Option '--config' cannot be empty.");
+        throw InvalidCliArgumentException("Option '--config' cannot be empty.");
       }
 
       if (args.manifest.has_value() && args.manifest->empty()) {
-        throw InvalidArgumentException("Option '--manifest' cannot be empty.");
+        throw InvalidCliArgumentException("Option '--manifest' cannot be empty.");
       }
 
       if (args.driver.has_value()) {
         if (args.driver->empty()) {
-          throw InvalidArgumentException("Option '--driver' cannot be empty.");
+          throw InvalidCliArgumentException("Option '--driver' cannot be empty.");
         }
 
         if (!isSupportedDriver(*args.driver)) {
-          throw InvalidArgumentException("Unsupported database driver '" + *args.driver + "'.");
+          throw InvalidCliArgumentException("Unsupported database driver '{}'.", *args.driver);
         }
       }
 
       if (args.host.has_value() && args.host->empty()) {
-        throw InvalidArgumentException("Option '--host' cannot be empty.");
+        throw InvalidCliArgumentException("Option '--host' cannot be empty.");
       }
 
       if (args.port.has_value() && !isValidPort(*args.port)) {
-        throw InvalidArgumentException("Option '--port' must be an integer between 1 and 65535.");
+        throw InvalidCliArgumentException("Option '--port' must be an integer between 1 and 65535.");
       }
 
       if (args.database.has_value() && args.database->empty()) {
-        throw InvalidArgumentException("Option '--database' cannot be empty.");
+        throw InvalidCliArgumentException("Option '--database' cannot be empty.");
       }
 
       if (args.username.has_value() && args.username->empty()) {
-        throw InvalidArgumentException("Option '--username' cannot be empty.");
+        throw InvalidCliArgumentException("Option '--username' cannot be empty.");
       }
 
       if (args.passwordEnv.has_value() && args.passwordEnv->empty()) {
-        throw InvalidArgumentException("Option '--password-env' cannot be empty.");
+        throw InvalidCliArgumentException("Option '--password-env' cannot be empty.");
       }
 
       if (args.format.has_value()) {
         if (args.format->empty()) {
-          throw InvalidArgumentException("Option '--format' cannot be empty.");
+          throw InvalidCliArgumentException("Option '--format' cannot be empty.");
         }
 
         if (!isSupportedFormat(*args.format)) {
-          throw InvalidArgumentException("Unsupported output format '" + *args.format + "'.");
+          throw InvalidCliArgumentException("Unsupported output format '{}'.", *args.format);
         }
       }
     }
@@ -508,23 +518,23 @@ namespace worm::cli
     void validateCheckArguments(const CommandArguments& args)
     {
       if (args.output.has_value()) {
-        throw InvalidArgumentException("Option '--output' is not valid for the 'check' command.");
+        throw InvalidCliArgumentException("Option '--output' is not valid for the 'check' command.");
       }
 
       if (args.namespaceName.has_value()) {
-        throw InvalidArgumentException("Option '--namespace' is not valid for the 'check' command.");
+        throw InvalidCliArgumentException("Option '--namespace' is not valid for the 'check' command.");
       }
 
       if (args.name.has_value()) {
-        throw InvalidArgumentException("Option '--name' is not valid for the 'check' command.");
+        throw InvalidCliArgumentException("Option '--name' is not valid for the 'check' command.");
       }
 
       if (args.apply) {
-        throw InvalidArgumentException("Option '--apply' is not valid for the 'check' command.");
+        throw InvalidCliArgumentException("Option '--apply' is not valid for the 'check' command.");
       }
 
       if (!args.entities.empty() && !args.tables.empty()) {
-        throw InvalidArgumentException("Options '--entity' and '--table' cannot be used together "
+        throw InvalidCliArgumentException("Options '--entity' and '--table' cannot be used together "
                                        "for the 'check' command.");
       }
     }
@@ -532,31 +542,31 @@ namespace worm::cli
     void validatePushArguments(const CommandArguments& args)
     {
       if (!args.tables.empty()) {
-        throw InvalidArgumentException("Option '--table' is not valid for the 'push' command.");
+        throw InvalidCliArgumentException("Option '--table' is not valid for the 'push' command.");
       }
 
       if (args.output.has_value()) {
-        throw InvalidArgumentException("Option '--output' is not valid for the 'push' command.");
+        throw InvalidCliArgumentException("Option '--output' is not valid for the 'push' command.");
       }
 
       if (args.namespaceName.has_value()) {
-        throw InvalidArgumentException("Option '--namespace' is not valid for the 'push' command.");
+        throw InvalidCliArgumentException("Option '--namespace' is not valid for the 'push' command.");
       }
 
       if (args.name.has_value()) {
-        throw InvalidArgumentException("Option '--name' is not valid for the 'push' command.");
+        throw InvalidCliArgumentException("Option '--name' is not valid for the 'push' command.");
       }
     }
 
     void validatePullArguments(const CommandArguments& args)
     {
       if (!args.entities.empty()) {
-        throw InvalidArgumentException("Option '--entity' is not valid for the 'pull' command.");
+        throw InvalidCliArgumentException("Option '--entity' is not valid for the 'pull' command.");
       }
 
       if (args.name.has_value()) {
         if (args.tables.size() != 1) {
-          throw InvalidArgumentException("Option '--name' requires exactly one table selected with '--table'.");
+          throw InvalidCliArgumentException("Option '--name' requires exactly one table selected with '--table'.");
         }
 
         isValidEntityName(*args.name);
@@ -617,8 +627,10 @@ namespace worm::cli
     }
 
     if (error) {
-      throw InvalidArgumentException(
-        "Unable to inspect configuration file '" + configurationPath.string() + "': " + error.message() + ".");
+      throw InvalidCliArgumentException(
+        "Unable to inspect configuration file '{}': {}.",
+        configurationPath.string(),
+        error.message());
     }
 
     const bool configurationExists = std::filesystem::is_regular_file(configurationStatus);
@@ -632,7 +644,7 @@ namespace worm::cli
     } else if (explicitlyConfigured) {
       const std::string reason =
         std::filesystem::exists(configurationStatus) ? "is not a regular file" : "does not exist";
-      throw InvalidArgumentException("Configuration file '" + configurationPath.string() + "' " + reason + ".");
+      throw InvalidCliArgumentException("Configuration file '{}' {}.", configurationPath.string(), reason);
     }
 
     if (!invocation.global.format.has_value()) {

@@ -7,7 +7,7 @@
 #include <iostream>
 #include <string>
 
-#include <errors/invalid-argument-exception.hpp>
+#include <errors/invalid-cli-argument-exception.hpp>
 
 namespace
 {
@@ -196,7 +196,7 @@ namespace
 
     try {
       cli::resolve(resolved);
-    } catch (const cli::InvalidArgumentException&) {
+    } catch (const cli::InvalidCliArgumentException&) {
       return true;
     }
 
@@ -215,7 +215,7 @@ namespace
 
     try {
       cli::resolve(resolved);
-    } catch (const cli::InvalidArgumentException&) {
+    } catch (const cli::InvalidCliArgumentException&) {
       return true;
     }
 
@@ -230,7 +230,7 @@ namespace
 
     try {
       cli::resolve(resolved);
-    } catch (const cli::InvalidArgumentException&) {
+    } catch (const cli::InvalidCliArgumentException&) {
       return true;
     }
 

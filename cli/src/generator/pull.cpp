@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "../errors/entity-creation-exception.hpp"
-#include "../errors/invalid-argument-exception.hpp"
+#include "../errors/invalid-cli-argument-exception.hpp"
 #include "../validator.hpp"
 #include "connection-options.hpp"
 
@@ -123,7 +123,8 @@ namespace worm::cli::generator
       case core::ColumnTypeKind::Int64:
         if (column.type.unsignedValue) {
           throw EntityCreationException(
-            "unsigned 64-bit column '" + column.name + "' cannot be represented without possible data loss");
+            "unsigned 64-bit column '{}' cannot be represented without possible data loss",
+            column.name);
         }
         type = "std::int64_t";
         break;
@@ -141,9 +142,10 @@ namespace worm::cli::generator
         break;
       default:
         throw EntityCreationException(
-          "column '" + column.name + "' uses unsupported SQL type '" +
-          column.type.nativeName + "' (" +
-          std::string{core::columnTypeKindName(column.type.kind)} + ")");
+          "column '{}' uses unsupported SQL type '{}' ({})",
+          column.name,
+          column.type.nativeName,
+          core::columnTypeKindName(column.type.kind));
       }
       return column.nullable ? "std::optional<" + type + ">" : type;
     }
@@ -155,7 +157,8 @@ namespace worm::cli::generator
     {
       if (table.primaryKey.size() != 1) {
         throw EntityCreationException(
-          "table '" + table.name + "' must have exactly one primary-key column to generate a persistable entity");
+          "table '{}' must have exactly one primary-key column to generate a persistable entity",
+          table.name);
       }
 
       std::ostringstream out;
@@ -181,7 +184,9 @@ namespace worm::cli::generator
         const std::string memberName = camelCase(column.name);
         if (!uniqueMemberNames.insert(memberName).second) {
           throw EntityCreationException(
-            "columns of table '" + table.name + "' produce duplicate C++ member name '" + memberName + "'");
+            "columns of table '{}' produce duplicate C++ member name '{}'",
+            table.name,
+            memberName);
         }
         memberNames.push_back(memberName);
         out << indent << "  " << cppType(column) << ' ' << memberName << "{};\n";
@@ -233,20 +238,20 @@ namespace worm::cli::generator
       if (!stream || !(stream << contents)) {
         std::error_code ignored;
         std::filesystem::remove(temporary, ignored);
-        throw EntityCreationException("Failed to write entity file '" + path.string() + "'.");
+        throw EntityCreationException("Failed to write entity file '{}'.", path.string());
       }
       stream.close();
       if (!stream) {
         std::error_code ignored;
         std::filesystem::remove(temporary, ignored);
-        throw EntityCreationException("Failed to close entity file '" + path.string() + "'.");
+        throw EntityCreationException("Failed to close entity file '{}'.", path.string());
       }
 
       std::error_code error;
       std::filesystem::rename(temporary, path, error);
       if (error) {
         std::filesystem::remove(temporary, error);
-        throw EntityCreationException("Failed to publish entity file '" + path.string() + "'.");
+        throw EntityCreationException("Failed to publish entity file '{}'.", path.string());
       }
     }
 
@@ -290,7 +295,7 @@ namespace worm::cli::generator
       for (const auto& requested : invocation.arguments.tables) {
         const bool found = std::ranges::any_of(selected, [&](const auto* table) { return table->name == requested; });
         if (!found)
-          throw InvalidArgumentException("Unknown table '" + requested + "'.");
+          throw InvalidCliArgumentException("Unknown table '{}'.", requested);
       }
       return selected;
     }
@@ -315,14 +320,17 @@ namespace worm::cli::generator
           ? *invocation.arguments.name
           : pascalCase(table->name);
         const auto path = outputDirectory(invocation) / fileName(entityName);
+
         if (std::filesystem::exists(path)) {
           ++metrics->existingEntities;
           continue;
         }
+
         if (!plannedPaths.insert(path.lexically_normal().generic_string()).second) {
           failures.push_back({table->name, "generated file path collides with another selected table"});
           continue;
         }
+
         try {
           plans.push_back({
             table->name,
@@ -333,6 +341,7 @@ namespace worm::cli::generator
           failures.push_back({table->name, error.what()});
         }
       }
+
       metrics->missingEntities = plans.size();
       metrics->plannedEntities = plans.size();
       metrics->failedEntities = failures.size();
@@ -342,10 +351,13 @@ namespace worm::cli::generator
         const auto executionStarted = Clock::now();
         std::error_code directoryError;
         std::filesystem::create_directories(outputDirectory(invocation), directoryError);
+
         if (directoryError) {
           throw EntityCreationException(
-            "Failed to create output directory '" + outputDirectory(invocation).string() + "'.");
+            "Failed to create output directory '{}'.",
+            outputDirectory(invocation).string());
         }
+
         for (const auto& plan : plans) {
           try {
             writeFile(plan.path, plan.contents);
@@ -355,6 +367,7 @@ namespace worm::cli::generator
             ++metrics->failedEntities;
           }
         }
+
         metrics->executionDuration = Clock::now() - executionStarted;
       }
 

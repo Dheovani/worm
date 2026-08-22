@@ -1,6 +1,6 @@
 #include <generator/pull.hpp>
 
-#include <errors/invalid-argument-exception.hpp>
+#include <errors/invalid-cli-argument-exception.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -124,7 +124,7 @@ try {
   invocation.arguments.tables = {"missing"};
   try {
     static_cast<void>(worm::cli::generator::pull(invocation, schema()));
-  } catch (const worm::cli::InvalidArgumentException&) {
+  } catch (const worm::cli::InvalidCliArgumentException&) {
     return 0;
   }
 

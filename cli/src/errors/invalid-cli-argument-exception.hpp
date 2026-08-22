@@ -4,7 +4,7 @@
 
 namespace worm::cli
 {
-  class InvalidArgumentException : public WormCliException
+  class InvalidCliArgumentException : public WormCliException
   {
   public:
     using WormCliException::WormCliException;

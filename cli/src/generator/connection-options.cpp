@@ -2,7 +2,7 @@
 
 #include <utils/dependency-injection.hpp>
 
-#include "../errors/invalid-argument-exception.hpp"
+#include "../errors/invalid-cli-argument-exception.hpp"
 
 namespace worm::cli::generator
 {
@@ -28,12 +28,12 @@ namespace worm::cli::generator
   connection::DatabaseType databaseType(const Invocation& invocation)
   {
     if (!invocation.global.driver.has_value()) {
-      throw InvalidArgumentException("The command requires a database driver.");
+      throw InvalidCliArgumentException("The command requires a database driver.");
     }
 
     const auto type = connection::databaseTypes.find(*invocation.global.driver);
     if (type == connection::databaseTypes.end()) {
-      throw InvalidArgumentException("Unsupported database driver '" + *invocation.global.driver + "'.");
+      throw InvalidCliArgumentException("Unsupported database driver '{}'.", *invocation.global.driver);
     }
     return type->second;
   }
@@ -56,7 +56,7 @@ namespace worm::cli::generator
   connection::ConnectionConfig connectionConfig(const Invocation& invocation, connection::DatabaseType type)
   {
     if (!invocation.global.database.has_value()) {
-      throw InvalidArgumentException("The command requires a database name or SQLite path.");
+      throw InvalidCliArgumentException("The command requires a database name or SQLite path.");
     }
 
     return {

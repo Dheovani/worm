@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-#include "../errors/invalid-argument-exception.hpp"
+#include "../errors/invalid-cli-argument-exception.hpp"
 #include "connection-options.hpp"
 
 namespace worm::cli::generator
@@ -72,7 +72,7 @@ namespace worm::cli::generator
           return entity.name == requestedEntity;
         });
         if (!exists) {
-          throw InvalidArgumentException("Unknown manifest entity '" + requestedEntity + "'.");
+          throw InvalidCliArgumentException("Unknown manifest entity '{}'.", requestedEntity);
         }
       }
 
@@ -84,7 +84,7 @@ namespace worm::cli::generator
           databaseSchema.tables.end(),
           [&](const auto& table) { return table.name == requestedTable; });
         if (!existsInCode && !existsInDatabase) {
-          throw InvalidArgumentException("Unknown table '" + requestedTable + "'.");
+          throw InvalidCliArgumentException("Unknown table '{}'.", requestedTable);
         }
       }
     }
@@ -263,7 +263,7 @@ namespace worm::cli::generator
   {
     const auto started = Clock::now();
     if (!invocation.global.manifest.has_value()) {
-      throw InvalidArgumentException("The 'check' command requires a schema manifest.");
+      throw InvalidCliArgumentException("The 'check' command requires a schema manifest.");
     }
 
     const connection::DatabaseType type = databaseType(invocation);

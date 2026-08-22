@@ -429,8 +429,7 @@ namespace worm::core
       std::string_view operation) const
     {
       if (!core::hasFilterWhere(statement.sql, filterQualifier)) {
-        throw worm::SqlBuildException(
-          std::string{operation} + " operation's statement must have a `WHERE` filter clause.");
+        throw worm::SqlBuildException("{} operation's statement must have a `WHERE` filter clause.", operation);
       }
 
       return execute(statement);

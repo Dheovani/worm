@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "errors/invalid-argument-exception.hpp"
+#include "errors/invalid-cli-argument-exception.hpp"
 #include "generator/check.hpp"
 #include "generator/pull.hpp"
 
@@ -114,7 +114,7 @@ namespace worm::cli
   void outputReport(const ExecutionReport& report, std::string_view format, std::ostream& out)
   {
     if (report.metrics == nullptr) {
-      throw InvalidArgumentException("Execution report has no metrics.");
+      throw InvalidCliArgumentException("Execution report has no metrics.");
     }
 
     if (format == "json") {
@@ -145,8 +145,9 @@ namespace worm::cli
       report = generator::pull(invocation);
       break;
     case Commands::Push:
-      throw InvalidArgumentException("The 'push' command is not implemented at this stage.");
+      throw InvalidCliArgumentException("The 'push' command is not implemented at this stage.");
     }
+
     report.command = buildCommand(argc, argv);
     outputReport(report, invocation.global.format.value_or("text"), out);
     return exitCode(report.status);

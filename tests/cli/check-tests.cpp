@@ -1,6 +1,6 @@
 #include <generator/check.hpp>
 
-#include <errors/invalid-argument-exception.hpp>
+#include <errors/invalid-cli-argument-exception.hpp>
 
 #include <iostream>
 #include <memory>
@@ -102,7 +102,7 @@ int main()
   selected.arguments.entities = {"Missing"};
   try {
     static_cast<void>(worm::cli::generator::check(selected, manifest(), compatibleDatabase()));
-  } catch (const worm::cli::InvalidArgumentException&) {
+  } catch (const worm::cli::InvalidCliArgumentException&) {
     rejectedEntity = true;
   }
 
@@ -111,7 +111,7 @@ int main()
   selected.arguments.tables = {"missing"};
   try {
     static_cast<void>(worm::cli::generator::check(selected, manifest(), compatibleDatabase()));
-  } catch (const worm::cli::InvalidArgumentException&) {
+  } catch (const worm::cli::InvalidCliArgumentException&) {
     rejectedTable = true;
   }
 

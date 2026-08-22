@@ -1,6 +1,7 @@
 #include "manifest.hpp"
 
 #include <algorithm>
+#include <format>
 #include <fstream>
 #include <string>
 #include <string_view>
@@ -9,7 +10,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../errors/invalid-argument-exception.hpp"
+#include "../errors/invalid-cli-argument-exception.hpp"
 
 namespace worm::cli::generator
 {
@@ -22,8 +23,7 @@ namespace worm::cli::generator
     {
       const auto value = object.find(key);
       if (value == object.end() || !value->is_string() || value->get_ref<const std::string&>().empty()) {
-        throw InvalidArgumentException(
-          "Manifest " + std::string{context} + " requires a non-empty string '" + std::string{key} + "'.");
+        throw InvalidCliArgumentException("Manifest {} requires a non-empty string '{}'.", context, key);
       }
 
       return value->get<std::string>();
@@ -38,8 +38,7 @@ namespace worm::cli::generator
       }
 
       if (!value->is_boolean()) {
-        throw InvalidArgumentException(
-          "Manifest " + std::string{context} + " requires '" + std::string{key} + "' to be a boolean.");
+        throw InvalidCliArgumentException("Manifest {} requires '{}' to be a boolean.", context, key);
       }
 
       return value->get<bool>();
@@ -53,13 +52,13 @@ namespace worm::cli::generator
         return {};
       }
       if (!value->is_string()) {
-        throw InvalidArgumentException("Manifest " + std::string{context} + " requires 'type' to be a string.");
+        throw InvalidCliArgumentException("Manifest {} requires 'type' to be a string.", context);
       }
 
       const std::string name = value->get<std::string>();
       const auto kind = core::parseColumnTypeKind(name);
       if (!kind.has_value()) {
-        throw InvalidArgumentException("Manifest " + std::string{context} + " has unknown column type '" + name + "'.");
+        throw InvalidCliArgumentException("Manifest {} has unknown column type '{}'.", context, name);
       }
       return {.kind = *kind, .nativeName = name};
     }
@@ -69,23 +68,23 @@ namespace worm::cli::generator
   {
     std::ifstream stream{path};
     if (!stream) {
-      throw InvalidArgumentException("Unable to open schema manifest '" + path.string() + "'.");
+      throw InvalidCliArgumentException("Unable to open schema manifest '{}'.", path.string());
     }
 
     Json document;
     try {
       stream >> document;
     } catch (const Json::exception& error) {
-      throw InvalidArgumentException("Invalid schema manifest '" + path.string() + "': " + error.what());
+      throw InvalidCliArgumentException("Invalid schema manifest '{}': {}", path.string(), error.what());
     }
 
     if (!document.is_object() || document.value("version", 0) != 1) {
-      throw InvalidArgumentException("Schema manifest must be an object with version 1.");
+      throw InvalidCliArgumentException("Schema manifest must be an object with version 1.");
     }
 
     const auto entities = document.find("entities");
     if (entities == document.end() || !entities->is_array()) {
-      throw InvalidArgumentException("Schema manifest requires an 'entities' array.");
+      throw InvalidCliArgumentException("Schema manifest requires an 'entities' array.");
     }
 
     SchemaManifest manifest;
@@ -93,42 +92,44 @@ namespace worm::cli::generator
     std::unordered_set<std::string> tableNames;
     for (const Json& entityObject : *entities) {
       if (!entityObject.is_object()) {
-        throw InvalidArgumentException("Every manifest entity must be an object.");
+        throw InvalidCliArgumentException("Every manifest entity must be an object.");
       }
 
       ManifestEntity entity;
       entity.name = requiredString(entityObject, "name", "entity");
-      entity.table.name = requiredString(entityObject, "table", "entity '" + entity.name + "'");
+      entity.table.name = requiredString(entityObject, "table", std::format("entity '{}'", entity.name));
       const auto schema = entityObject.find("schema");
       entity.table.schema = schema == entityObject.end()
                               ? defaultSchema
-                              : requiredString(entityObject, "schema", "entity '" + entity.name + "'");
+                              : requiredString(entityObject, "schema", std::format("entity '{}'", entity.name));
 
       if (!entityNames.insert(entity.name).second) {
-        throw InvalidArgumentException("Manifest contains duplicate entity '" + entity.name + "'.");
+        throw InvalidCliArgumentException("Manifest contains duplicate entity '{}'.", entity.name);
       }
 
       const std::string tableIdentity = entity.table.schema + "." + entity.table.name;
       if (!tableNames.insert(tableIdentity).second) {
-        throw InvalidArgumentException("Manifest contains duplicate table '" + tableIdentity + "'.");
+        throw InvalidCliArgumentException("Manifest contains duplicate table '{}'.", tableIdentity);
       }
 
       const auto columns = entityObject.find("columns");
       if (columns == entityObject.end() || !columns->is_array() || columns->empty()) {
-        throw InvalidArgumentException("Manifest entity '" + entity.name + "' requires a non-empty 'columns' array.");
+        throw InvalidCliArgumentException("Manifest entity '{}' requires a non-empty 'columns' array.", entity.name);
       }
 
       std::unordered_set<std::string> columnNames;
       for (const Json& columnObject : *columns) {
         if (!columnObject.is_object()) {
-          throw InvalidArgumentException("Every column of manifest entity '" + entity.name + "' must be an object.");
+          throw InvalidCliArgumentException("Every column of manifest entity '{}' must be an object.", entity.name);
         }
 
-        const std::string context = "column of entity '" + entity.name + "'";
+        const std::string context = std::format("column of entity '{}'", entity.name);
         const std::string columnName = requiredString(columnObject, "name", context);
         if (!columnNames.insert(columnName).second) {
-          throw InvalidArgumentException(
-            "Manifest entity '" + entity.name + "' contains duplicate column '" + columnName + "'.");
+          throw InvalidCliArgumentException(
+            "Manifest entity '{}' contains duplicate column '{}'.",
+            entity.name,
+            columnName);
         }
 
         entity.table.columns.push_back({
@@ -142,22 +143,26 @@ namespace worm::cli::generator
 
       const auto primaryKey = entityObject.find("primaryKey");
       if (primaryKey == entityObject.end() || !primaryKey->is_array() || primaryKey->empty()) {
-        throw InvalidArgumentException("Manifest entity '" + entity.name + "' requires a primary key.");
+        throw InvalidCliArgumentException("Manifest entity '{}' requires a primary key.", entity.name);
       }
 
       for (const Json& column : *primaryKey) {
         if (!column.is_string() || column.get_ref<const std::string&>().empty()) {
-          throw InvalidArgumentException("Manifest primary-key columns must be non-empty strings.");
+          throw InvalidCliArgumentException("Manifest primary-key columns must be non-empty strings.");
         }
         const std::string columnName = column.get<std::string>();
         if (!columnNames.contains(columnName)) {
-          throw InvalidArgumentException(
-            "Primary-key column '" + columnName + "' does not exist in entity '" + entity.name + "'.");
+          throw InvalidCliArgumentException(
+            "Primary-key column '{}' does not exist in entity '{}'.",
+            columnName,
+            entity.name);
         }
         if (std::find(entity.table.primaryKey.begin(), entity.table.primaryKey.end(), columnName) !=
             entity.table.primaryKey.end()) {
-          throw InvalidArgumentException(
-            "Manifest entity '" + entity.name + "' contains duplicate primary-key column '" + columnName + "'.");
+          throw InvalidCliArgumentException(
+            "Manifest entity '{}' contains duplicate primary-key column '{}'.",
+            entity.name,
+            columnName);
         }
         entity.table.primaryKey.push_back(columnName);
       }

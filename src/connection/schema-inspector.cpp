@@ -30,11 +30,11 @@ namespace worm::connection
     {
       const core::Parameter* value = findValue(row, name);
       if (value == nullptr) {
-        throw QueryExecutionException("Schema introspection omitted the '" + std::string{name} + "' value.");
+        throw QueryExecutionException("Schema introspection omitted the '{}' value.", name);
       }
 
       if (!std::holds_alternative<std::string>(*value)) {
-        throw QueryExecutionException("Schema introspection returned an invalid '" + std::string{name} + "' value.");
+        throw QueryExecutionException("Schema introspection returned an invalid '{}' value.", name);
       }
 
       return std::get<std::string>(*value);
@@ -45,7 +45,7 @@ namespace worm::connection
     {
       const core::Parameter* value = findValue(row, name);
       if (value == nullptr) {
-        throw QueryExecutionException("Schema introspection omitted the '" + std::string{name} + "' value.");
+        throw QueryExecutionException("Schema introspection omitted the '{}' value.", name);
       }
 
       if (const auto integer = std::get_if<std::int64_t>(value)) {
@@ -60,7 +60,7 @@ namespace worm::connection
         return *text == "1" || *text == "YES" || *text == "true";
       }
 
-      throw QueryExecutionException("Schema introspection returned an invalid '" + std::string{name} + "' flag.");
+      throw QueryExecutionException("Schema introspection returned an invalid '{}' flag.", name);
     }
 
     [[nodiscard]]
@@ -81,15 +81,14 @@ namespace worm::connection
         try {
           parsed = std::stoull(*text);
         } catch (const std::exception&) {
-          throw QueryExecutionException("Schema introspection returned an invalid '" + std::string{name} + "' value.");
+          throw QueryExecutionException("Schema introspection returned an invalid '{}' value.", name);
         }
       } else {
-        throw QueryExecutionException("Schema introspection returned an invalid '" + std::string{name} + "' value.");
+        throw QueryExecutionException("Schema introspection returned an invalid '{}' value.", name);
       }
 
       if (parsed > (std::numeric_limits<std::size_t>::max)()) {
-        throw QueryExecutionException(
-          "Schema introspection returned an out-of-range '" + std::string{name} + "' value.");
+        throw QueryExecutionException("Schema introspection returned an out-of-range '{}' value.", name);
       }
       return static_cast<std::size_t>(parsed);
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exception>
+#include <format>
 #include <string>
 #include <utility>
 
@@ -11,6 +12,11 @@ namespace worm
   public:
     explicit WormException(std::string message)
       : message_(std::move(message))
+    {}
+
+    template <typename... Args>
+    explicit WormException(std::format_string<Args...> format, Args&&... args)
+      : message_(std::format(format, std::forward<Args>(args)...))
     {}
 
     [[nodiscard]]
