@@ -7,7 +7,7 @@
 #include <core/model/schema-snapshot.hpp>
 
 #include "../runner.hpp"
-#include "manifest.hpp"
+#include <helpers/manifest.hpp>
 
 namespace worm::cli::generator
 {

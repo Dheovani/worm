@@ -2,10 +2,10 @@ add_library(
   WormCliCore
   STATIC
     src/generator/check.cpp
-    src/generator/connection-options.cpp
-    src/generator/manifest.cpp
     src/generator/pull.cpp
     src/generator/push.cpp
+    src/helpers/connection.cpp
+    src/helpers/manifest.cpp
     src/parser.cpp
     src/runner.cpp
     src/validator.cpp

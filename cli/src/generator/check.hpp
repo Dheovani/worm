@@ -10,7 +10,7 @@
 
 #include "../parser.hpp"
 #include "../runner.hpp"
-#include "manifest.hpp"
+#include <helpers/manifest.hpp>
 
 namespace worm::cli::generator
 {

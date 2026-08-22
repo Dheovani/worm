@@ -1,4 +1,4 @@
-#include <generator/manifest.hpp>
+#include <helpers/manifest.hpp>
 
 #include <errors/invalid-cli-argument-exception.hpp>
 
