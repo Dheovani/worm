@@ -8,7 +8,6 @@ add_library(
   query/criteria.cpp
   query/dialect.cpp
   query/filter.cpp
-  query/n-plus-one-detector.cpp
   query/predicate.cpp
   query/query-builder.cpp
   query/sql-builder.cpp

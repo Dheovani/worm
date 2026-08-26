@@ -1,5 +1,7 @@
 #include <core/query/dialect.hpp>
 
+#include <errors/sql-build-exception.hpp>
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -55,6 +57,38 @@ int main()
   if (!hasDialectContract(sqlServerDialect, 3, "?", "weird]name", "[users]", "[weird]]name]")) {
     return 1;
   }
+
+  const worm::core::ColumnType sizedString{
+    .kind = worm::core::ColumnTypeKind::String,
+    .length = std::size_t{120},
+  };
+  const worm::core::ColumnType decimal{
+    .kind = worm::core::ColumnTypeKind::Decimal,
+    .precision = std::size_t{10},
+    .scale = std::size_t{2},
+  };
+  const worm::core::ColumnType zonedDateTime{
+    .kind = worm::core::ColumnTypeKind::DateTime,
+    .withTimeZone = true,
+  };
+
+  if (postgresDialect.renderColumnType(sizedString) != "varchar(120)" ||
+      postgresDialect.renderColumnType(decimal) != "decimal(10,2)" ||
+      postgresDialect.renderColumnType(zonedDateTime) != "timestamp with time zone" ||
+      mySqlDialect.renderColumnType(sizedString) != "varchar(120)" ||
+      mySqlDialect.renderColumnType({.kind = worm::core::ColumnTypeKind::Uuid}) != "char(36)" ||
+      sqliteDialect.renderColumnType(decimal) != "real" ||
+      sqlServerDialect.renderColumnType(sizedString) != "nvarchar(120)" ||
+      sqlServerDialect.renderColumnType(zonedDateTime) != "datetimeoffset") {
+    std::cerr << "Dialect rendered an unexpected column type.\n";
+    return 1;
+  }
+
+  try {
+    static_cast<void>(postgresDialect.renderColumnType({}));
+    std::cerr << "Dialect accepted an unknown column type.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
 
   const std::vector<std::unique_ptr<worm::core::Dialect>> dialects = [] {
     std::vector<std::unique_ptr<worm::core::Dialect>> values;

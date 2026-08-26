@@ -21,7 +21,6 @@ add_worm_core_test(WormStatementTests query/statement-tests.cpp Worm.Core.Statem
 add_worm_core_test(WormValidatorTests query/validator-tests.cpp Worm.Core.Validator)
 add_worm_core_test(WormExpressionTests query/expression-tests.cpp Worm.Core.Expression)
 add_worm_core_test(WormCriteriaTests query/criteria-tests.cpp Worm.Core.Criteria)
-add_worm_core_test(WormNPlusOneDetectorTests query/n-plus-one-detector-tests.cpp Worm.Core.NPlusOneDetector)
 add_worm_core_test(WormSqlBuilderTests query/sql-builder-tests.cpp Worm.Core.SqlBuilder)
 add_worm_core_test(WormSourceTests query/source-tests.cpp Worm.Core.Source)
 add_worm_core_test(WormQueryBuilderTests query/query-builder-tests.cpp Worm.Core.QueryBuilder)

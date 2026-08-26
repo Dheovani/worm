@@ -87,6 +87,41 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
+    std::vector<const core::TableMetadata*> creationOrder(std::vector<const core::TableMetadata*> tables)
+    {
+      std::vector<const core::TableMetadata*> ordered;
+      ordered.reserve(tables.size());
+
+      while (!tables.empty()) {
+        const auto ready = std::find_if(tables.begin(), tables.end(), [&](const core::TableMetadata* candidate) {
+          if (candidate == nullptr) {
+            return true;
+          }
+
+          return std::ranges::none_of(candidate->foreignKeys(), [&](const core::ForeignKey& foreignKey) {
+            if (foreignKey.referencedTable() == candidate->table()) {
+              return false;
+            }
+
+            return std::ranges::any_of(tables, [&](const core::TableMetadata* pending) {
+              return pending != nullptr && pending->table() == foreignKey.referencedTable();
+            });
+          });
+        });
+
+        if (ready == tables.end()) {
+          throw InvalidCliArgumentException(
+            "The selected schema contains a foreign-key cycle that cannot be created inline.");
+        }
+
+        ordered.push_back(*ready);
+        tables.erase(ready);
+      }
+
+      return ordered;
+    }
+
+    [[nodiscard]]
     bool tablesCompatible(const core::SchemaTableSnapshot& expected, const core::SchemaTableSnapshot& actual)
     {
       if (expected.primaryKey != actual.primaryKey || expected.columns.size() != actual.columns.size()) {
@@ -159,6 +194,8 @@ namespace worm::cli::generator
         }
       }
       metrics->comparisonDuration = Clock::now() - comparisonStarted;
+
+      missingTables = creationOrder(std::move(missingTables));
 
       std::vector<CreationFailure> failures;
       if (invocation.arguments.apply && repository != nullptr) {

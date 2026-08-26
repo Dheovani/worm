@@ -70,5 +70,60 @@ int main()
     return 1;
   } catch (const worm::cli::InvalidCliArgumentException&) {}
 
+  invocation.arguments.entities.clear();
+  const worm::cli::generator::SchemaManifest cyclicManifest{
+    .entities =
+      {
+        {
+          .name = "Parent",
+          .table =
+            {
+              .schema = "main",
+              .name = "parents",
+              .columns =
+                {
+                  {.name = "id", .type = {.kind = worm::core::ColumnTypeKind::Int64}, .nullable = false},
+                  {.name = "child_id", .type = {.kind = worm::core::ColumnTypeKind::Int64}, .nullable = false},
+                },
+              .primaryKey = {"id"},
+            },
+          .foreignKeys = {{
+            .name = "fk_parents_child",
+            .columns = {"child_id"},
+            .referencedSchema = "main",
+            .referencedTable = "children",
+            .referencedColumns = {"id"},
+          }},
+        },
+        {
+          .name = "Child",
+          .table =
+            {
+              .schema = "main",
+              .name = "children",
+              .columns =
+                {
+                  {.name = "id", .type = {.kind = worm::core::ColumnTypeKind::Int64}, .nullable = false},
+                  {.name = "parent_id", .type = {.kind = worm::core::ColumnTypeKind::Int64}, .nullable = false},
+                },
+              .primaryKey = {"id"},
+            },
+          .foreignKeys = {{
+            .name = "fk_children_parent",
+            .columns = {"parent_id"},
+            .referencedSchema = "main",
+            .referencedTable = "parents",
+            .referencedColumns = {"id"},
+          }},
+        },
+      },
+  };
+
+  try {
+    static_cast<void>(worm::cli::generator::planPush(invocation, cyclicManifest, {}));
+    std::cerr << "Push planning accepted an inline foreign-key cycle.\n";
+    return 1;
+  } catch (const worm::cli::InvalidCliArgumentException&) {}
+
   return 0;
 }

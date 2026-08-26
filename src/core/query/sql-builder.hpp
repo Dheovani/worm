@@ -115,6 +115,15 @@ namespace worm::core
     virtual std::string renderGeneratedColumn(const ColumnMetadata& column) const;
 
     [[nodiscard]]
+    virtual std::string renderReferencedTable(const Table& table) const;
+
+    [[nodiscard]]
+    virtual std::string renderIndexName(const Index& index, const Table& table) const;
+
+    [[nodiscard]]
+    virtual std::string renderIndexTarget(const Table& table) const;
+
+    [[nodiscard]]
     virtual bool usesInlineGeneratedPrimaryKey() const noexcept;
 
   private:
@@ -165,6 +174,15 @@ namespace worm::core
 
     [[nodiscard]]
     std::string renderGeneratedColumn(const ColumnMetadata& column) const override;
+
+    [[nodiscard]]
+    std::string renderReferencedTable(const Table& table) const override;
+
+    [[nodiscard]]
+    std::string renderIndexName(const Index& index, const Table& table) const override;
+
+    [[nodiscard]]
+    std::string renderIndexTarget(const Table& table) const override;
 
     [[nodiscard]]
     bool usesInlineGeneratedPrimaryKey() const noexcept override;

@@ -11,6 +11,11 @@ add_worm_utils_test(WormHelpersTests helpers-tests.cpp Worm.Utils.Helpers)
 add_worm_utils_test(WormHashTests hash-tests.cpp Worm.Utils.Hash)
 add_worm_utils_test(WormLoggerTests logger-tests.cpp Worm.Utils.Logger)
 add_worm_utils_test(
+  WormNPlusOneDetectorTests
+  n-plus-one-detector-tests.cpp
+  Worm.Utils.NPlusOneDetector
+)
+add_worm_utils_test(
   WormDependencyInjectionTests
   dependency-injection-tests.cpp
   Worm.Utils.DependencyInjection

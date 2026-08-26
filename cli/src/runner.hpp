@@ -43,6 +43,10 @@ namespace worm::cli
     std::shared_ptr<const ExecutionMetrics> metrics;
   };
 
+  void printUsage() noexcept;
+
+  void printSystemVersion() noexcept;
+
   [[nodiscard]]
   std::string buildCommand(int argc, char* const argv[]);
 

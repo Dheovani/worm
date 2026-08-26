@@ -376,6 +376,7 @@ int main()
   }
   if (mySqlCreate[0].sql.find("`id` bigint auto_increment not null") == std::string::npos ||
       sqliteCreate[0].sql.find("\"id\" integer primary key autoincrement") == std::string::npos ||
+      sqliteCreate[1].sql != "create unique index \"public\".\"idx_users_email\" on \"users\" (\"email\" asc)" ||
       sqlServerCreate[0].sql.find("[id] bigint identity(1,1) not null") == std::string::npos) {
     std::cerr << "Dialect-specific generated-column DDL was not rendered correctly.\n";
     return 1;

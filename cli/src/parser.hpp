@@ -80,12 +80,8 @@ namespace worm::cli
   [[nodiscard]]
   bool showHelp(const std::vector<std::string>& args) noexcept;
 
-  void printUsage() noexcept;
-
   [[nodiscard]]
   bool showVersion(const std::vector<std::string>& args) noexcept;
-
-  void printSystemVersion() noexcept;
 
   [[nodiscard]]
   Invocation parse(const std::vector<std::string>& args);

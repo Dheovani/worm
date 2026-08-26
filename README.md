@@ -1,4 +1,4 @@
-# Worm (C++ With ORM)
+# Worm 🐛 (C++ With ORM)
 
 Worm is a C++20 ORM inspired by Doctrine. The project is still in an early
 stage, but it already provides a typed persistence flow built on static

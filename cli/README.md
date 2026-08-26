@@ -93,14 +93,39 @@ The current manifest format is JSON version 1:
           "unique": false
         },
         {
+          "name": "role_id",
+          "type": "int64",
+          "nullable": false,
+          "generated": false,
+          "unique": false
+        },
+        {
           "name": "email",
           "type": "string",
+          "length": 255,
           "nullable": false,
           "generated": false,
           "unique": true
         }
       ],
-      "primaryKey": ["id"]
+      "primaryKey": ["id"],
+      "indexes": [
+        {
+          "name": "idx_users_email",
+          "columns": [{"name": "email", "order": "asc"}],
+          "unique": true
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "fk_users_role",
+          "columns": ["role_id"],
+          "referencedTable": "roles",
+          "referencedColumns": ["id"],
+          "onUpdate": "cascade",
+          "onDelete": "restrict"
+        }
+      ]
     }
   ]
 }
@@ -114,7 +139,9 @@ Each entity requires:
 - at least one primary-key column;
 - primary-key names that refer to declared columns.
 
-The optional `type` property uses Worm's canonical names: `boolean`, `int16`, `int32`, `int64`, `float32`, `float64`, `decimal`, `string`, `binary`, `date`, `time`, `datetime`, `uuid`, `json`, or `unknown`. When present, `check` compares it with the database type normalized by the selected driver. Omitting it preserves compatibility with manifests that only describe structural metadata.
+The optional `type` property uses Worm's canonical names: `boolean`, `int16`, `int32`, `int64`, `float32`, `float64`, `decimal`, `string`, `binary`, `date`, `time`, `datetime`, `uuid`, `json`, or `unknown`. Type modifiers are represented by `length`, `precision`, `scale`, `unsigned`, and `withTimeZone`. When a type is present, `check` compares its canonical kind with the database type normalized by the selected driver. Omitting it preserves compatibility with manifests that only describe structural metadata.
+
+Indexes accept string column names or objects containing `name` and an optional `order` of `asc` or `desc`. Foreign keys require equally sized `columns` and `referencedColumns` arrays, accept an optional `referencedSchema`, and support `no-action`, `restrict`, `cascade`, `set-null`, and `set-default` for `onUpdate` and `onDelete`. Referenced tables are created before their dependents; inline foreign-key cycles are rejected instead of being partially applied.
 
 The `schema` property is optional. Its default depends on the driver:
 
@@ -356,4 +383,4 @@ worm --driver postgresql --database application --manifest worm-schema.json push
 
 The current safe implementation creates missing tables, primary keys, supported generated columns, foreign keys, and indexes represented by schema metadata. Existing compatible tables are left untouched. Existing incompatible tables produce schema drift and are never altered automatically. Column values are not involved in DDL generation, identifiers are quoted by the selected dialect, and unknown column types are rejected before execution.
 
-The manifest currently supplies columns and primary keys. Manifest syntax for indexes, foreign keys, defaults, and relationships is still pending, so those objects can be rendered by the core schema builder but are not yet populated by the CLI parser. `push` does not currently emit SQL files or perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.
+The manifest currently supplies columns, primary keys, indexes, and foreign keys. Defaults and database-native enum definitions are not represented yet. `push` does not currently emit SQL files or perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.

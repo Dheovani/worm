@@ -239,63 +239,9 @@ namespace worm::cli
     return args.size() == 1 && (args.front() == helpCommand || args.front() == helpFullCommand);
   }
 
-  void printUsage() noexcept
-  {
-    std::cout << "Worm CLI\n"
-              << '\n'
-              << "Usage:\n"
-              << "  worm [global-options] <command> [command-options]\n"
-              << '\n'
-              << "Commands:\n"
-              << "  check                 Compare C++ entities with the database schema\n"
-              << "  push                  Generate missing database objects from C++ entities\n"
-              << "  pull                  Generate missing C++ entities from database tables\n"
-              << '\n'
-              << "Global options:\n"
-              << "  -c, --config <path>   Path to the Worm configuration file\n"
-              << "  --manifest <path>     Path to the Worm schema manifest\n"
-              << "  --driver <driver>     Database driver (postgresql, mysql, sqlite, mssql)\n"
-              << "  --host <host>         Database host\n"
-              << "  --port <port>         Database port\n"
-              << "  --database <name>     Database name or SQLite database path\n"
-              << "  --username <name>     Database username\n"
-              << "  --password-env <var>  Read the database password from an environment variable\n"
-              << "  --format <format>     Output format (text, json)\n"
-              << "  --verbose             Enable verbose output\n"
-              << "  --no-color            Disable ANSI colors\n"
-              << "  -h, --help            Show this help message\n"
-              << "  -V, --version         Show Worm version\n"
-              << '\n'
-              << "Command options:\n"
-              << "  --entity <name>       Select an entity (repeatable)\n"
-              << "  --table <name>        Select a table (repeatable)\n"
-              << "  --output <path>       Output directory for generated entities\n"
-              << "  --namespace <name>    Namespace for generated entities\n"
-              << "  --name <name>         Explicit generated entity name\n"
-              << "  --apply               Apply the generated plan\n"
-              << '\n'
-              << "Examples:\n"
-              << "  worm check\n"
-              << "  worm push\n"
-              << "  worm push --apply\n"
-              << "  worm pull\n"
-              << "  worm pull --apply\n"
-              << "  worm push --entity User\n"
-              << "  worm pull --table users\n";
-  }
-
   bool showVersion(const std::vector<std::string>& args) noexcept
   {
     return args.size() == 1 && (args.front() == versionCommand || args.front() == versionFullCommand);
-  }
-
-  void printSystemVersion() noexcept
-  {
-#ifdef WORM_VERSION
-    std::cout << "worm " << WORM_VERSION << '\n';
-#else
-    std::cout << "worm (unknown version)\n";
-#endif
   }
 
   Invocation parse(const std::vector<std::string>& args)

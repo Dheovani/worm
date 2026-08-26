@@ -1,4 +1,4 @@
-#include <core/query/n-plus-one-detector.hpp>
+#include <utils/n-plus-one-detector.hpp>
 
 #include <errors/invalid-arg-exception.hpp>
 
@@ -8,7 +8,7 @@
 
 int main()
 {
-  worm::core::NPlusOneDetector detector;
+  worm::utils::NPlusOneDetector detector;
   detector.record({"select * from posts where user_id = ?", {std::int64_t{1}}});
   detector.record({"select * from posts where user_id = ?", {std::int64_t{2}}});
 
@@ -27,7 +27,7 @@ int main()
     return 1;
   }
 
-  worm::core::NPlusOneDetector strictDetector{3};
+  worm::utils::NPlusOneDetector strictDetector{3};
   strictDetector.record({"select * from posts where user_id = ?", {std::int64_t{1}}});
   strictDetector.record({"select * from posts where user_id = ?", {std::int64_t{2}}});
   if (!strictDetector.warnings().empty()) {
@@ -41,7 +41,7 @@ int main()
     return 1;
   }
 
-  worm::core::NPlusOneDetector ignoredStatements;
+  worm::utils::NPlusOneDetector ignoredStatements;
   ignoredStatements.record({"update posts set title = ? where id = ?", {std::string{"Ada"}, std::int64_t{1}}});
   ignoredStatements.record({"select * from posts"});
   ignoredStatements.record({"select * from posts where user_id = ?", {std::int64_t{1}}});
@@ -58,7 +58,7 @@ int main()
   }
 
   try {
-    static_cast<void>(worm::core::NPlusOneDetector{1});
+    static_cast<void>(worm::utils::NPlusOneDetector{1});
     std::cerr << "N+1 detector accepted an invalid threshold.\n";
     return 1;
   } catch (const worm::InvalidArgException&) {}

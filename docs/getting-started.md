@@ -238,11 +238,11 @@ The descriptors only produce relationship-aware join metadata today. Hydrating o
 `NPlusOneDetector` can be used in tests, development tooling, or repository wrappers to inspect executed statements and detect repeated parameterized `SELECT` shapes with different parameter sets:
 
 ```cpp
-worm::core::NPlusOneDetector detector;
+worm::utils::NPlusOneDetector detector;
 detector.record({"select * from posts where user_id = ?", {std::int64_t{1}}});
 detector.record({"select * from posts where user_id = ?", {std::int64_t{2}}});
 
-for (const worm::core::NPlusOneWarning& warning : detector.warnings()) {
+for (const worm::utils::NPlusOneWarning& warning : detector.warnings()) {
   // warning.sql contains the parameterized SQL, never the concrete parameter values.
 }
 ```
