@@ -1,10 +1,13 @@
 #include <generator/push.hpp>
 
+#include <errors/worm-cli-exception.hpp>
+
 #include <sqlite3.h>
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 namespace
@@ -14,9 +17,11 @@ namespace
   public:
     Fixture()
       : database_(std::filesystem::temp_directory_path() / "worm-cli-push.db"),
-        manifest_(std::filesystem::temp_directory_path() / "worm-cli-push-manifest.json")
+        manifest_(std::filesystem::temp_directory_path() / "worm-cli-push-manifest.json"),
+        sqlOutput_(std::filesystem::temp_directory_path() / "worm-cli-push.sql")
     {
       std::filesystem::remove(database_);
+      std::filesystem::remove(sqlOutput_);
       std::ofstream{manifest_}
         << R"({"version":1,"entities":[{"name":"User","table":"users","columns":[)"
         << R"({"name":"id","type":"int64","nullable":false,"generated":true},)"
@@ -32,6 +37,7 @@ namespace
       std::error_code error;
       std::filesystem::remove(database_, error);
       std::filesystem::remove(manifest_, error);
+      std::filesystem::remove(sqlOutput_, error);
     }
 
     [[nodiscard]]
@@ -43,6 +49,21 @@ namespace
       value.global.database = database_.string();
       value.arguments.apply = true;
       return value;
+    }
+
+    [[nodiscard]]
+    worm::cli::Invocation sqlInvocation() const
+    {
+      worm::cli::Invocation value = invocation();
+      value.arguments.apply = false;
+      value.arguments.output = sqlOutput_.string();
+      return value;
+    }
+
+    [[nodiscard]]
+    const std::filesystem::path& sqlOutput() const noexcept
+    {
+      return sqlOutput_;
     }
 
     [[nodiscard]]
@@ -69,12 +90,36 @@ namespace
   private:
     std::filesystem::path database_;
     std::filesystem::path manifest_;
+    std::filesystem::path sqlOutput_;
   };
 } // namespace
 
 int main()
 try {
   const Fixture fixture;
+  const auto sqlReport = worm::cli::generator::push(fixture.sqlInvocation());
+  const auto sqlMetrics = std::dynamic_pointer_cast<const worm::cli::generator::PushMetrics>(sqlReport.metrics);
+  std::ifstream sqlStream{fixture.sqlOutput()};
+  std::ostringstream sqlContents;
+  sqlContents << sqlStream.rdbuf();
+  const std::size_t rolesPosition = sqlContents.str().find("create table \"main\".\"roles\"");
+  const std::size_t usersPosition = sqlContents.str().find("create table \"main\".\"users\"");
+  if (sqlReport.status != worm::cli::ExecutionStatus::Success || sqlMetrics == nullptr ||
+      sqlMetrics->generatedStatements != 3 || sqlMetrics->generatedSqlFiles != 1 || sqlMetrics->createdTables != 0 ||
+      !sqlStream || rolesPosition == std::string::npos || usersPosition == std::string::npos ||
+      rolesPosition >= usersPosition ||
+      sqlContents.str().find("create index \"main\".\"idx_users_email\"") == std::string::npos ||
+      fixture.objectExists("table", "users")) {
+    std::cerr << "SQLite push did not generate a reviewable SQL file without applying it.\n";
+    return 1;
+  }
+
+  try {
+    static_cast<void>(worm::cli::generator::push(fixture.sqlInvocation()));
+    std::cerr << "SQLite push overwrote an existing SQL output file.\n";
+    return 1;
+  } catch (const worm::cli::WormCliException&) {}
+
   const auto report = worm::cli::generator::push(fixture.invocation());
   const auto metrics = std::dynamic_pointer_cast<const worm::cli::generator::PushMetrics>(report.metrics);
   if (report.status != worm::cli::ExecutionStatus::Success || metrics == nullptr || metrics->plannedTables != 2 ||

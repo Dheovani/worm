@@ -22,6 +22,8 @@ namespace worm::cli::generator
     std::size_t missingTables{0};
 
     std::size_t plannedTables{0};
+    std::size_t generatedStatements{0};
+    std::size_t generatedSqlFiles{0};
     std::size_t createdTables{0};
     std::size_t failedTables{0};
 

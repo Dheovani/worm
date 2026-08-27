@@ -37,7 +37,7 @@ Driver libraries remain optional. A disabled driver is not compiled or linked in
 The command syntax is:
 
 ```text
-worm [global-options] <check|pull> [command-options]
+worm [global-options] <check|pull|push> [command-options]
 ```
 
 Show the built-in reference or version:
@@ -326,6 +326,8 @@ worm --driver postgresql --database application pull --table users --name User -
 
 Generated filenames use kebab-case, existing files are never overwritten, and each completed file is first written to a temporary sibling and then renamed. The current persistence model requires exactly one primary-key column, so tables without a primary key or with a composite primary key are rejected.
 
+Generated entities follow a preserve-by-default policy: Worm never merges into or overwrites an existing source file. Regeneration must target a new path or happen only after the developer explicitly moves or removes the previous generated file. This keeps manual customizations under the developer's control instead of attempting an unsafe source-code merge.
+
 The safe initial C++ mapping supports booleans, signed integers, 16-bit and 32-bit unsigned integers, floating-point values, strings, and dates. Nullable columns use `std::optional`. Decimal, binary, time, datetime, UUID, JSON, unknown types, and unsigned 64-bit integers are discovered but rejected during generation until Worm has lossless public representations and hydration support for them.
 
 ## Current comparison limitations
@@ -381,6 +383,14 @@ Use repeatable `--entity` options to restrict the operation:
 worm --driver postgresql --database application --manifest worm-schema.json push --entity User --apply
 ```
 
+To review or apply the DDL through another deployment system, use `--output` instead of `--apply`:
+
+```bash
+worm --driver postgresql --database application --manifest worm-schema.json push --output build/worm-schema.sql
+```
+
+The generated SQL file contains only additive statements for objects missing from the inspected database. It is written atomically, an existing output file is never overwritten, and no database change is executed. `--output` and `--apply` are mutually exclusive so the command cannot ambiguously write and execute the same plan.
+
 The current safe implementation creates missing tables, primary keys, supported generated columns, foreign keys, and indexes represented by schema metadata. Existing compatible tables are left untouched. Existing incompatible tables produce schema drift and are never altered automatically. Column values are not involved in DDL generation, identifiers are quoted by the selected dialect, and unknown column types are rejected before execution.
 
-The manifest currently supplies columns, primary keys, indexes, and foreign keys. Defaults and database-native enum definitions are not represented yet. `push` does not currently emit SQL files or perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.
+The manifest currently supplies columns, primary keys, indexes, and foreign keys. Defaults and database-native enum definitions are not represented yet. `push` does not currently perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.

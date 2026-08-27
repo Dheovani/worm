@@ -164,8 +164,7 @@ namespace worm::cli
       std::format_string<Args...> message,
       Args&&... args)
     {
-      throw InvalidCliArgumentException(
-        "Invalid configuration file '{}' at line {}: {}",
+      throw InvalidCliArgumentException("Invalid configuration file '{}' at line {}: {}",
         path.string(),
         line,
         std::format(message, std::forward<Args>(args)...));
@@ -369,8 +368,7 @@ namespace worm::cli
       const char* password = std::getenv(arguments.passwordEnv->c_str());
       if (password == nullptr) {
         throw InvalidCliArgumentException(
-          "Environment variable '{}' referenced by '--password-env' is not defined.",
-          *arguments.passwordEnv);
+          "Environment variable '{}' referenced by '--password-env' is not defined.", *arguments.passwordEnv);
       }
 
       arguments.password = password;
@@ -535,7 +533,7 @@ namespace worm::cli
 
       if (!args.entities.empty() && !args.tables.empty()) {
         throw InvalidCliArgumentException("Options '--entity' and '--table' cannot be used together "
-                                       "for the 'check' command.");
+                                          "for the 'check' command.");
       }
     }
 
@@ -545,8 +543,12 @@ namespace worm::cli
         throw InvalidCliArgumentException("Option '--table' is not valid for the 'push' command.");
       }
 
-      if (args.output.has_value()) {
-        throw InvalidCliArgumentException("Option '--output' is not valid for the 'push' command.");
+      if (args.output.has_value() && args.output->empty()) {
+        throw InvalidCliArgumentException("Option '--output' cannot be empty.");
+      }
+
+      if (args.output.has_value() && args.apply) {
+        throw InvalidCliArgumentException("Options '--output' and '--apply' cannot be used together for 'push'.");
       }
 
       if (args.namespaceName.has_value()) {
@@ -562,6 +564,10 @@ namespace worm::cli
     {
       if (!args.entities.empty()) {
         throw InvalidCliArgumentException("Option '--entity' is not valid for the 'pull' command.");
+      }
+
+      if (args.output.has_value() && args.output->empty()) {
+        throw InvalidCliArgumentException("Option '--output' cannot be empty.");
       }
 
       if (args.name.has_value()) {
@@ -628,9 +634,7 @@ namespace worm::cli
 
     if (error) {
       throw InvalidCliArgumentException(
-        "Unable to inspect configuration file '{}': {}.",
-        configurationPath.string(),
-        error.message());
+        "Unable to inspect configuration file '{}': {}.", configurationPath.string(), error.message());
     }
 
     const bool configurationExists = std::filesystem::is_regular_file(configurationStatus);

@@ -6,7 +6,6 @@
 #include <cctype>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -19,6 +18,7 @@
 #include "../errors/invalid-cli-argument-exception.hpp"
 #include "../validator.hpp"
 #include <helpers/connection.hpp>
+#include <helpers/file.hpp>
 
 namespace worm::cli::generator
 {
@@ -123,8 +123,7 @@ namespace worm::cli::generator
       case core::ColumnTypeKind::Int64:
         if (column.type.unsignedValue) {
           throw EntityCreationException(
-            "unsigned 64-bit column '{}' cannot be represented without possible data loss",
-            column.name);
+            "unsigned 64-bit column '{}' cannot be represented without possible data loss", column.name);
         }
         type = "std::int64_t";
         break;
@@ -141,8 +140,7 @@ namespace worm::cli::generator
         type = "std::chrono::sys_days";
         break;
       default:
-        throw EntityCreationException(
-          "column '{}' uses unsupported SQL type '{}' ({})",
+        throw EntityCreationException("column '{}' uses unsupported SQL type '{}' ({})",
           column.name,
           column.type.nativeName,
           core::columnTypeKindName(column.type.kind));
@@ -157,8 +155,7 @@ namespace worm::cli::generator
     {
       if (table.primaryKey.size() != 1) {
         throw EntityCreationException(
-          "table '{}' must have exactly one primary-key column to generate a persistable entity",
-          table.name);
+          "table '{}' must have exactly one primary-key column to generate a persistable entity", table.name);
       }
 
       std::ostringstream out;
@@ -184,9 +181,7 @@ namespace worm::cli::generator
         const std::string memberName = camelCase(column.name);
         if (!uniqueMemberNames.insert(memberName).second) {
           throw EntityCreationException(
-            "columns of table '{}' produce duplicate C++ member name '{}'",
-            table.name,
-            memberName);
+            "columns of table '{}' produce duplicate C++ member name '{}'", table.name, memberName);
         }
         memberNames.push_back(memberName);
         out << indent << "  " << cppType(column) << ' ' << memberName << "{};\n";
@@ -229,30 +224,6 @@ namespace worm::cli::generator
     std::filesystem::path outputDirectory(const Invocation& invocation)
     {
       return invocation.arguments.output.value_or(std::filesystem::current_path().string());
-    }
-
-    void writeFile(const std::filesystem::path& path, std::string_view contents)
-    {
-      const auto temporary = path.string() + ".worm-tmp";
-      std::ofstream stream{temporary, std::ios::binary | std::ios::trunc};
-      if (!stream || !(stream << contents)) {
-        std::error_code ignored;
-        std::filesystem::remove(temporary, ignored);
-        throw EntityCreationException("Failed to write entity file '{}'.", path.string());
-      }
-      stream.close();
-      if (!stream) {
-        std::error_code ignored;
-        std::filesystem::remove(temporary, ignored);
-        throw EntityCreationException("Failed to close entity file '{}'.", path.string());
-      }
-
-      std::error_code error;
-      std::filesystem::rename(temporary, path, error);
-      if (error) {
-        std::filesystem::remove(temporary, error);
-        throw EntityCreationException("Failed to publish entity file '{}'.", path.string());
-      }
     }
 
     [[nodiscard]]
@@ -349,18 +320,9 @@ namespace worm::cli::generator
 
       if (invocation.arguments.apply && failures.empty() && !plans.empty()) {
         const auto executionStarted = Clock::now();
-        std::error_code directoryError;
-        std::filesystem::create_directories(outputDirectory(invocation), directoryError);
-
-        if (directoryError) {
-          throw EntityCreationException(
-            "Failed to create output directory '{}'.",
-            outputDirectory(invocation).string());
-        }
-
         for (const auto& plan : plans) {
           try {
-            writeFile(plan.path, plan.contents);
+            writeGeneratedFile(plan.path, plan.contents);
             ++metrics->generatedEntities;
           } catch (const std::exception& error) {
             failures.push_back({plan.path.filename().string(), error.what()});

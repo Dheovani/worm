@@ -5,6 +5,7 @@ add_library(
     src/generator/pull.cpp
     src/generator/push.cpp
     src/helpers/connection.cpp
+    src/helpers/file.cpp
     src/helpers/manifest.cpp
     src/parser.cpp
     src/runner.cpp

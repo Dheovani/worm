@@ -111,9 +111,9 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Parse columns, keys, indexes, and relationships from declarative manifests and generate them for missing tables.
 - [x] Generate missing tables from declarative schema metadata without modifying incompatible existing tables.
 - [x] Compare entity and database state to produce a reviewable synchronization plan before any change.
-- [ ] Generate code and SQL into separate files without applying destructive changes automatically.
+- [x] Generate code and SQL into separate files without applying destructive changes automatically.
 - [ ] Map C++ and SQL types per dialect, including nullability, default values, enums, and dates.
-- [ ] Define how to preserve manual customizations when generated entities are regenerated.
+- [x] Define how to preserve manual customizations when generated entities are regenerated.
 - [x] Add tests with small schemas to validate both directions: database to entity and entity to database.
 - [ ] Evaluate `sync` command as a way to compare C++ entities with the database schema and synchronize them.
 

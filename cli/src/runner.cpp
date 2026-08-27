@@ -104,7 +104,7 @@ namespace worm::cli
               << "Command options:\n"
               << "  --entity <name>       Select an entity (repeatable)\n"
               << "  --table <name>        Select a table (repeatable)\n"
-              << "  --output <path>       Output directory for generated entities\n"
+              << "  --output <path>       Output directory for pull or SQL file for push\n"
               << "  --namespace <name>    Namespace for generated entities\n"
               << "  --name <name>         Explicit generated entity name\n"
               << "  --apply               Apply the generated plan\n"

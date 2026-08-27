@@ -125,5 +125,20 @@ int main()
     return 1;
   } catch (const worm::cli::InvalidCliArgumentException&) {}
 
+  invocation.arguments.output = "schema.sql";
+  invocation.arguments.apply = true;
+  try {
+    static_cast<void>(worm::cli::generator::push(invocation, schemaManifest));
+    std::cerr << "Push accepted simultaneous SQL output and database application.\n";
+    return 1;
+  } catch (const worm::cli::InvalidCliArgumentException&) {}
+
+  invocation.arguments.apply = false;
+  try {
+    static_cast<void>(worm::cli::generator::planPush(invocation, schemaManifest, {}));
+    std::cerr << "Pure push planning wrote an output file.\n";
+    return 1;
+  } catch (const worm::cli::InvalidCliArgumentException&) {}
+
   return 0;
 }
