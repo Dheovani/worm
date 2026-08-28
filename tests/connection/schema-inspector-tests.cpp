@@ -3,6 +3,7 @@
 #include <core/output/result-set.hpp>
 
 #include <iostream>
+#include <optional>
 #include <utility>
 
 namespace
@@ -57,7 +58,8 @@ namespace
     worm::core::Parameter precision = nullptr,
     worm::core::Parameter scale = nullptr,
     std::int64_t unsignedValue = 0,
-    std::int64_t withTimeZone = 0)
+    std::int64_t withTimeZone = 0,
+    worm::core::Parameter defaultExpression = nullptr)
   {
     return {{
       {"schema_name", std::string{"public"}},
@@ -74,6 +76,7 @@ namespace
       {"type_scale", std::move(scale)},
       {"is_unsigned", unsignedValue},
       {"has_time_zone", withTimeZone},
+      {"default_expression", std::move(defaultExpression)},
     }};
   }
 } // namespace
@@ -83,7 +86,7 @@ int main()
   FakeClient client{
     worm::core::ResultSet{{
       columnRow("id", "bigint", "int8", 0, 1, 0, 1, nullptr, "64", "0"),
-      columnRow("email", "character varying", "varchar", 0, 0, 1, 0, "255"),
+      columnRow("email", "character varying", "varchar", 0, 0, 1, 0, "255", nullptr, nullptr, 0, 0, "'unknown'"),
       columnRow("created_at", "timestamp with time zone", "timestamptz", 0, 0, 0, 0, nullptr, nullptr, nullptr, 0, 1),
     }},
     worm::connection::DatabaseType::PostgreSQL};
@@ -96,6 +99,7 @@ int main()
       users->columns[0].nullable || !users->columns[0].generated || !users->columns[1].unique ||
       users->columns[0].type.kind != worm::core::ColumnTypeKind::Int64 || users->columns[0].type.precision != 64 ||
       users->columns[1].type.kind != worm::core::ColumnTypeKind::String || users->columns[1].type.length != 255 ||
+      users->columns[1].defaultExpression != std::optional<std::string>{"'unknown'"} ||
       users->columns[2].type.kind != worm::core::ColumnTypeKind::DateTime || !users->columns[2].type.withTimeZone ||
       client.statement().sql.find("information_schema.columns") == std::string::npos) {
     std::cerr << "SchemaInspector did not normalize driver metadata.\n";
@@ -106,15 +110,35 @@ int main()
     worm::connection::DatabaseType::MySQL};
   FakeClient sqlite{worm::core::ResultSet{{columnRow("amount", "DECIMAL(10,2)", "DECIMAL(10,2)", 0, 0, 0, 0)}},
     worm::connection::DatabaseType::SQLite};
-  FakeClient mssql{worm::core::ResultSet{{columnRow("token", "uniqueidentifier", "uniqueidentifier", 0, 0, 0, 0)}},
+  FakeClient mssql{worm::core::ResultSet{{columnRow(
+                     "token",
+                     "uniqueidentifier",
+                     "uniqueidentifier",
+                     0,
+                     0,
+                     0,
+                     0,
+                     nullptr,
+                     nullptr,
+                     nullptr,
+                     0,
+                     0,
+                     "(newid())")}},
     worm::connection::DatabaseType::MSSQL};
 
   const worm::connection::SchemaInspector mysqlInspector{mysql};
   const worm::connection::SchemaInspector sqliteInspector{sqlite};
   const worm::connection::SchemaInspector mssqlInspector{mssql};
+  FakeClient mysqlText{
+    worm::core::ResultSet{
+      {columnRow("status", "varchar", "varchar(20)", 0, 0, 0, 0, "20", nullptr, nullptr, 0, 0, "active")}},
+    worm::connection::DatabaseType::MySQL};
+  const worm::connection::SchemaInspector mysqlTextInspector{mysqlText};
   if (mysqlInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Boolean ||
       sqliteInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Decimal ||
-      mssqlInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Uuid) {
+      mssqlInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Uuid ||
+      mssqlInspector.inspect().tables[0].columns[0].defaultExpression != std::optional<std::string>{"(newid())"} ||
+      mysqlTextInspector.inspect().tables[0].columns[0].defaultExpression != std::optional<std::string>{"'active'"}) {
     std::cerr << "SchemaInspector did not normalize database-specific types.\n";
     return 1;
   }

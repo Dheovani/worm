@@ -26,7 +26,7 @@ namespace
         << R"({"version":1,"entities":[{"name":"User","table":"users","columns":[)"
         << R"({"name":"id","type":"int64","nullable":false,"generated":true},)"
         << R"({"name":"role_id","type":"int64","nullable":false},)"
-        << R"({"name":"email","type":"string","nullable":false,"unique":true}],)"
+        << R"({"name":"email","type":"string","default":"'unknown'","nullable":false,"unique":true}],)"
         << R"("primaryKey":["id"],"indexes":[{"name":"idx_users_email","columns":["email"]}],)"
         << R"("foreignKeys":[{"name":"fk_users_role","columns":["role_id"],"referencedTable":"roles","referencedColumns":["id"],"onDelete":"restrict"}]},)"
         << R"({"name":"Role","table":"roles","columns":[{"name":"id","type":"int64","nullable":false,"generated":true}],"primaryKey":["id"]}]})";
@@ -111,7 +111,7 @@ try {
   if (sqlReport.status != worm::cli::ExecutionStatus::Success || sqlMetrics == nullptr ||
       sqlMetrics->generatedStatements != 3 || sqlMetrics->generatedSqlFiles != 1 || sqlMetrics->createdTables != 0 ||
       !sqlStream || rolesPosition == std::string::npos || usersPosition == std::string::npos ||
-      rolesPosition >= usersPosition ||
+      rolesPosition >= usersPosition || sqlContents.str().find("default 'unknown'") == std::string::npos ||
       sqlContents.str().find("create index \"main\".\"idx_users_email\"") == std::string::npos ||
       fixture.objectExists("table", "users")) {
     std::cerr << "SQLite push did not generate a reviewable SQL file without applying it.\n";

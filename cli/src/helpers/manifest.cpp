@@ -11,6 +11,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <core/query/validator.hpp>
 #include <errors/invalid-cli-argument-exception.hpp>
 
 namespace worm::cli
@@ -43,6 +44,21 @@ namespace worm::cli
       }
 
       return value->get<bool>();
+    }
+
+    [[nodiscard]]
+    std::optional<std::string> optionalDefaultExpression(const Json& object, std::string_view context)
+    {
+      const auto value = object.find("default");
+      if (value == object.end()) {
+        return std::nullopt;
+      }
+      if (!value->is_string() || !core::isSafeDdlExpression(value->get_ref<const std::string&>())) {
+        throw InvalidCliArgumentException(
+          "Manifest {} requires 'default' to be a safe, non-empty DDL expression.",
+          context);
+      }
+      return value->get<std::string>();
     }
 
     [[nodiscard]]
@@ -249,10 +265,17 @@ namespace worm::cli
           {
             .name = columnName,
             .type = optionalColumnType(columnObject, context),
+            .defaultExpression = optionalDefaultExpression(columnObject, context),
             .nullable = optionalBoolean(columnObject, "nullable", true, context),
             .generated = optionalBoolean(columnObject, "generated", false, context),
             .unique = optionalBoolean(columnObject, "unique", false, context),
           });
+        if (entity.table.columns.back().generated && entity.table.columns.back().defaultExpression.has_value()) {
+          throw InvalidCliArgumentException(
+            "Manifest column '{}' of entity '{}' cannot be generated and declare a default.",
+            columnName,
+            entity.name);
+        }
       }
 
       const auto primaryKey = entityObject.find("primaryKey");
@@ -423,6 +446,8 @@ namespace worm::cli
           core::Column{
             reflection::FieldMetadata{
               .columnName = column.name,
+              .defaultExpression =
+                column.defaultExpression.has_value() ? std::string_view{*column.defaultExpression} : std::string_view{},
               .generated = column.generated,
               .unique = column.unique,
               .nullable = column.nullable,

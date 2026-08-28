@@ -27,6 +27,7 @@ namespace
                 {
                   .name = "email",
                   .type = {.kind = worm::core::ColumnTypeKind::String},
+                  .defaultExpression = "'unknown'",
                   .nullable = false,
                   .unique = true,
                 },
@@ -54,6 +55,7 @@ namespace
             {
               .name = "email",
               .type = {.kind = worm::core::ColumnTypeKind::String},
+              .defaultExpression = "'unknown'",
               .nullable = false,
               .unique = true,
             },
@@ -86,6 +88,17 @@ int main()
       driftedMetrics->incompatibleObjects != 1 || driftedMetrics->missingInCode != 1 ||
       driftedMetrics->differences.size() != 3) {
     std::cerr << "Schema drift was not reported correctly.\n";
+    return 1;
+  }
+
+  auto defaultDriftDatabase = compatibleDatabase();
+  defaultDriftDatabase.tables[0].columns[1].defaultExpression = "'missing'";
+  const auto defaultDrift = worm::cli::generator::check(invocation, manifest(), defaultDriftDatabase);
+  const auto defaultDriftMetrics =
+    std::dynamic_pointer_cast<const worm::cli::generator::CheckMetrics>(defaultDrift.metrics);
+  if (defaultDrift.status != worm::cli::ExecutionStatus::DriftDetected || defaultDriftMetrics == nullptr ||
+      defaultDriftMetrics->differences != std::vector<std::string>{"public.users.email: default expression differs"}) {
+    std::cerr << "Default-expression drift was not reported correctly.\n";
     return 1;
   }
 

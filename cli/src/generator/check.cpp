@@ -128,6 +128,11 @@ namespace worm::cli::generator
           addDifference(metrics, label + "." + expectedColumn.name + ": generated-column state differs");
           compatible = false;
         }
+        if (expectedColumn.defaultExpression.has_value() &&
+            expectedColumn.defaultExpression != actualColumn->defaultExpression) {
+          addDifference(metrics, label + "." + expectedColumn.name + ": default expression differs");
+          compatible = false;
+        }
         if (expectedColumn.unique != actualColumn->unique) {
           addDifference(metrics, label + "." + expectedColumn.name + ": uniqueness differs");
           compatible = false;

@@ -720,6 +720,24 @@ namespace worm::core
         sql += renderGeneratedColumn(column);
       }
 
+      if (!column.defaultExpression.empty()) {
+        if (column.generated) {
+          throw worm::SqlBuildException(
+            "Generated column '{}.{}' cannot also declare a default.",
+            table.name(),
+            column.columnName);
+        }
+
+        if (!isSafeDdlExpression(column.defaultExpression)) {
+          throw worm::SqlBuildException(
+            "Column '{}.{}' contains an unsafe default expression.",
+            table.name(),
+            column.columnName);
+        }
+
+        sql += " default " + std::string{column.defaultExpression};
+      }
+
       if (inlineGeneratedPrimaryKey && column.columnName == metadata.primaryKey()->columns().front().columnName) {
         sql += " primary key autoincrement";
       }

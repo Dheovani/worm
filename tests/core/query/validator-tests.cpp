@@ -25,6 +25,13 @@ namespace
 
 int main()
 {
+  static_assert(worm::core::isSafeDdlExpression("CURRENT_TIMESTAMP"));
+  static_assert(worm::core::isSafeDdlExpression("'pending'"));
+  static_assert(!worm::core::isSafeDdlExpression(""));
+  static_assert(!worm::core::isSafeDdlExpression(" \t"));
+  static_assert(!worm::core::isSafeDdlExpression("0; DROP TABLE users"));
+  static_assert(!worm::core::isSafeDdlExpression("0 -- comment"));
+  static_assert(!worm::core::isSafeDdlExpression("0 # comment"));
   const std::vector<ValidationCase> cases{
     {"INSERT INTO users VALUES (1)", true, false, false, false},
     {"  insert into users values (1)", true, false, false, false},

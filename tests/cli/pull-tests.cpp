@@ -54,6 +54,7 @@ namespace
               .name = "display_name",
               .type = {.kind = valueType,
                 .nativeName = valueType == worm::core::ColumnTypeKind::String ? "varchar" : "numeric"},
+              .defaultExpression = "'unknown'",
               .nullable = true,
               .unique = true,
             },
@@ -93,6 +94,7 @@ try {
       appliedMetrics->generatedEntities != 1 || !entityRead ||
       contents.str().find("struct UserRecords") == std::string::npos ||
       contents.str().find("std::optional<std::string> displayName") == std::string::npos ||
+      contents.str().find(".defaultExpression = \"'unknown'\"") == std::string::npos ||
       contents.str().find("namespace application::entities") == std::string::npos) {
     std::cerr << "Pull did not generate the expected entity.\n";
     return 1;
@@ -105,6 +107,53 @@ try {
     std::cerr << "Pull overwrote an existing entity.\n";
     return 1;
   }
+
+  using ColumnTypeKind = worm::core::ColumnTypeKind;
+  const auto verifyMappedType =
+    [&](ColumnTypeKind kind, std::string_view name, std::string_view file, std::string_view type) {
+      invocation.arguments.name = std::string{name};
+      const auto report = worm::cli::generator::pull(invocation, schema(kind));
+      const auto path = temporary.path() / file;
+      std::ifstream generated{path};
+      std::ostringstream generatedContents;
+      generatedContents << generated.rdbuf();
+      const bool valid = report.status == worm::cli::ExecutionStatus::Success &&
+                         generatedContents.str().find(std::string{type} + " displayName") != std::string::npos;
+      generated.close();
+      std::filesystem::remove(path);
+      return valid;
+    };
+
+  if (!verifyMappedType(
+        worm::core::ColumnTypeKind::Date,
+        "DateRecord",
+        "date-record.hpp",
+        "std::optional<std::chrono::sys_days>") ||
+      !verifyMappedType(
+        worm::core::ColumnTypeKind::Time,
+        "TimeRecord",
+        "time-record.hpp",
+        "std::optional<std::string>") ||
+      !verifyMappedType(
+        worm::core::ColumnTypeKind::DateTime,
+        "DateTimeRecord",
+        "date-time-record.hpp",
+        "std::optional<std::string>") ||
+      !verifyMappedType(
+        worm::core::ColumnTypeKind::Uuid,
+        "UuidRecord",
+        "uuid-record.hpp",
+        "std::optional<std::string>") ||
+      !verifyMappedType(
+        worm::core::ColumnTypeKind::Json,
+        "JsonRecord",
+        "json-record.hpp",
+        "std::optional<std::string>")) {
+    std::cerr << "Pull did not preserve the supported SQL type representations.\n";
+    return 1;
+  }
+
+  invocation.arguments.name.reset();
 
   const auto unsupported = worm::cli::generator::pull(invocation, schema(worm::core::ColumnTypeKind::Decimal));
   if (unsupported.status != worm::cli::ExecutionStatus::Success) {

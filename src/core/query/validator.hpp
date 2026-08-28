@@ -93,4 +93,28 @@ namespace worm::core
   {
     return detail::equalsKeyword(detail::extractFirstWord(query), selectKeyword);
   }
+
+  [[nodiscard]]
+  constexpr bool isSafeDdlExpression(std::string_view expression) noexcept
+  {
+    if (expression.empty() || expression.find(';') != std::string_view::npos ||
+        expression.find("--") != std::string_view::npos || expression.find("/*") != std::string_view::npos ||
+        expression.find("*/") != std::string_view::npos || expression.find('#') != std::string_view::npos ||
+        expression.find('\0') != std::string_view::npos) {
+      return false;
+    }
+
+    bool containsToken = false;
+    for (const char character : expression) {
+      if (character == '\n' || character == '\r') {
+        return false;
+      }
+
+      if (character != ' ' && character != '\t' && character != '\f' && character != '\v') {
+        containsToken = true;
+      }
+    }
+
+    return containsToken;
+  }
 } // namespace worm::core

@@ -103,6 +103,7 @@ The current manifest format is JSON version 1:
           "name": "email",
           "type": "string",
           "length": 255,
+          "default": "'unknown'",
           "nullable": false,
           "generated": false,
           "unique": true
@@ -141,6 +142,8 @@ Each entity requires:
 
 The optional `type` property uses Worm's canonical names: `boolean`, `int16`, `int32`, `int64`, `float32`, `float64`, `decimal`, `string`, `binary`, `date`, `time`, `datetime`, `uuid`, `json`, or `unknown`. Type modifiers are represented by `length`, `precision`, `scale`, `unsigned`, and `withTimeZone`. When a type is present, `check` compares its canonical kind with the database type normalized by the selected driver. Omitting it preserves compatibility with manifests that only describe structural metadata.
 
+The optional `default` property contains a database DDL expression, such as `0`, `'pending'`, or `CURRENT_TIMESTAMP`; it is not an application value and therefore is not represented as a bound `Statement` parameter. Manifest defaults are trusted schema input, but Worm still rejects empty expressions, SQL statement separators, comments, and line breaks. A generated column cannot also declare a default. Omitting `default` makes comparisons ignore that property for backward compatibility, while an explicitly supplied value participates in `check` and `push` compatibility checks.
+
 Indexes accept string column names or objects containing `name` and an optional `order` of `asc` or `desc`. Foreign keys require equally sized `columns` and `referencedColumns` arrays, accept an optional `referencedSchema`, and support `no-action`, `restrict`, `cascade`, `set-null`, and `set-default` for `onUpdate` and `onDelete`. Referenced tables are created before their dependents; inline foreign-key cycles are rejected instead of being partially applied.
 
 The `schema` property is optional. Its default depends on the driver:
@@ -153,6 +156,8 @@ The `schema` property is optional. Its default depends on the driver:
 | Microsoft SQL Server | `dbo` |
 
 The current CLI consumes this manifest but does not generate it from a compiled application yet.
+
+For generated entities, `date` columns use `std::chrono::sys_days`. SQL `time`, `datetime`, UUID, and JSON values currently use `std::string`, matching the portable parameter representation shared by the available drivers. Decimal and binary columns are rejected by `pull` because mapping them to `double` or textual data could silently lose precision or bytes; dedicated lossless value types and driver bindings are still required.
 
 ## Configuration file
 
@@ -215,7 +220,7 @@ worm --driver postgresql --database application --username worm inspect
 worm --driver sqlite --database data/application.db --format json inspect
 ```
 
-Text output groups tables by schema and displays columns, native data types, nullability, generated and unique flags, primary keys, foreign keys, and indexes when those values are supplied by the driver. JSON output emits a `schemas` array containing the same structure. Schemas and tables are sorted by name so repeated inspection produces stable output.
+Text output groups tables by schema and displays columns, native data types, nullability, generated and unique flags, default expressions, primary keys, foreign keys, and indexes when those values are supplied by the driver. JSON output emits a `schemas` array containing the same structure. Schemas and tables are sorted by name so repeated inspection produces stable output.
 
 ## The `check` command
 
@@ -232,6 +237,7 @@ The command reports:
 - missing and unexpected columns;
 - nullability differences;
 - generated-column differences;
+- default-expression differences when a default is declared in the manifest;
 - single-column uniqueness differences;
 - primary-key column differences.
 
@@ -365,14 +371,14 @@ Generated filenames use kebab-case, existing files are never overwritten, and ea
 
 Generated entities follow a preserve-by-default policy: Worm never merges into or overwrites an existing source file. Regeneration must target a new path or happen only after the developer explicitly moves or removes the previous generated file. This keeps manual customizations under the developer's control instead of attempting an unsafe source-code merge.
 
-The safe initial C++ mapping supports booleans, signed integers, 16-bit and 32-bit unsigned integers, floating-point values, strings, and dates. Nullable columns use `std::optional`. Decimal, binary, time, datetime, UUID, JSON, unknown types, and unsigned 64-bit integers are discovered but rejected during generation until Worm has lossless public representations and hydration support for them.
+The safe C++ mapping supports booleans, signed integers, 16-bit and 32-bit unsigned integers, floating-point values, strings, dates, times, datetimes, UUIDs, and JSON. Dates use `std::chrono::sys_days`; times, datetimes, UUIDs, and JSON currently use their portable `std::string` parameter representation. Nullable columns use `std::optional`. Decimal, binary, unknown types, and unsigned 64-bit integers are discovered but rejected during generation until Worm has lossless public representations and hydration support for them. Discovered default expressions are preserved in the generated reflection metadata.
 
 ## Current comparison limitations
 
 The normalized runtime snapshot does not yet represent every schema property. `check` currently does not compare:
 
 - column types when the manifest omits the optional canonical `type` property;
-- default values;
+- default expressions when the manifest omits the optional `default` property;
 - foreign keys and referential actions;
 - indexes as independent schema objects;
 - views;
@@ -428,6 +434,6 @@ worm --driver postgresql --database application --manifest worm-schema.json push
 
 The generated SQL file contains only additive statements for objects missing from the inspected database. It is written atomically, an existing output file is never overwritten, and no database change is executed. `--output` and `--apply` are mutually exclusive so the command cannot ambiguously write and execute the same plan.
 
-The current safe implementation creates missing tables, primary keys, supported generated columns, foreign keys, and indexes represented by schema metadata. Existing compatible tables are left untouched. Existing incompatible tables produce schema drift and are never altered automatically. Column values are not involved in DDL generation, identifiers are quoted by the selected dialect, and unknown column types are rejected before execution.
+The current safe implementation creates missing tables, primary keys, supported generated columns, column default expressions, foreign keys, and indexes represented by schema metadata. Existing compatible tables are left untouched. Existing incompatible tables produce schema drift and are never altered automatically. Application values are not involved in DDL generation, identifiers are quoted by the selected dialect, and unknown column types are rejected before execution.
 
-The manifest currently supplies columns, primary keys, indexes, and foreign keys. Defaults and database-native enum definitions are not represented yet. `push` does not currently perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.
+The manifest currently supplies columns, primary keys, default expressions, indexes, and foreign keys. Database-native enum definitions are not represented yet. Default expressions are compared textually after driver introspection, so equivalent expressions formatted differently by a database may still be reported as drift. `push` does not currently perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.

@@ -42,6 +42,26 @@ namespace worm::connection
     }
 
     [[nodiscard]]
+    std::optional<std::string> optionalStringValue(const core::ResultRow& row, std::string_view name)
+    {
+      const core::Parameter* value = findValue(row, name);
+
+      if (value == nullptr) {
+        throw QueryExecutionException("Schema introspection omitted the '{}' value.", name);
+      }
+
+      if (std::holds_alternative<std::nullptr_t>(*value)) {
+        return std::nullopt;
+      }
+
+      if (const auto text = std::get_if<std::string>(value)) {
+        return *text;
+      }
+
+      throw QueryExecutionException("Schema introspection returned an invalid '{}' value.", name);
+    }
+
+    [[nodiscard]]
     bool boolValue(const core::ResultRow& row, std::string_view name)
     {
       const core::Parameter* value = findValue(row, name);
@@ -187,6 +207,46 @@ namespace worm::connection
     }
 
     [[nodiscard]]
+    std::optional<std::string>
+    defaultExpression(const core::ResultRow& row, DatabaseType database, const core::ColumnType& type)
+    {
+      std::optional<std::string> expression = optionalStringValue(row, "default_expression");
+      if (!expression.has_value() || database != DatabaseType::MySQL) {
+        return expression;
+      }
+
+      const std::string normalized = lower(*expression);
+
+      const bool textual =
+        type.kind == core::ColumnTypeKind::String ||
+        type.kind == core::ColumnTypeKind::Date ||
+        type.kind == core::ColumnTypeKind::Time ||
+        type.kind == core::ColumnTypeKind::Uuid ||
+        type.kind == core::ColumnTypeKind::Json ||
+        type.kind == core::ColumnTypeKind::DateTime;
+
+      const bool expressionLike =
+        normalized == "current_timestamp" ||
+        normalized == "current_timestamp()" ||
+        normalized == "null" ||
+        expression->starts_with('(');
+
+      if (!textual || expressionLike) {
+        return expression;
+      }
+
+      std::string quoted{"'"};
+      for (const char character : *expression) {
+        quoted += character;
+        if (character == '\'') {
+          quoted += '\'';
+        }
+      }
+      quoted += '\'';
+      return quoted;
+    }
+
+    [[nodiscard]]
     core::Statement metadataStatement(DatabaseType type)
     {
       switch (type) {
@@ -210,7 +270,7 @@ namespace worm::connection
           "tc.table_name=c.table_name and ku.column_name=c.column_name and tc.constraint_type='PRIMARY KEY') "
           "then 1 else 0 end as is_primary_key,c.data_type as type_name,c.udt_name as native_type,"
           "c.character_maximum_length as type_length,c.numeric_precision as type_precision,"
-          "c.numeric_scale as type_scale,0 as is_unsigned,"
+          "c.numeric_scale as type_scale,0 as is_unsigned,c.column_default as default_expression,"
           "case when c.data_type like '%with time zone' then 1 else 0 end as has_time_zone "
           "from information_schema.columns c where c.table_schema not in ('pg_catalog','information_schema') "
           "order by c.table_schema,c.table_name,c.ordinal_position");
@@ -227,7 +287,8 @@ namespace worm::connection
           "case when c.column_key='PRI' then 1 else 0 end as is_primary_key,c.data_type as type_name,"
           "c.column_type as native_type,c.character_maximum_length as type_length,"
           "c.numeric_precision as type_precision,c.numeric_scale as type_scale,"
-          "case when c.column_type like '%unsigned%' then 1 else 0 end as is_unsigned,0 as has_time_zone "
+          "case when c.column_type like '%unsigned%' then 1 else 0 end as is_unsigned,0 as has_time_zone,"
+          "c.column_default as default_expression "
           "from information_schema.columns c where c.table_schema=database() "
           "order by c.table_name,c.ordinal_position");
       case DatabaseType::MSSQL:
@@ -251,7 +312,7 @@ namespace worm::connection
           "tc.table_name=c.table_name and ku.column_name=c.column_name and tc.constraint_type='PRIMARY KEY') "
           "then 1 else 0 end as is_primary_key,c.data_type as type_name,c.data_type as native_type,"
           "c.character_maximum_length as type_length,c.numeric_precision as type_precision,"
-          "c.numeric_scale as type_scale,0 as is_unsigned,"
+          "c.numeric_scale as type_scale,0 as is_unsigned,c.column_default as default_expression,"
           "case when c.data_type='datetimeoffset' then 1 else 0 end as has_time_zone "
           "from information_schema.columns c where c.table_schema not in ('sys','INFORMATION_SCHEMA') "
           "order by c.table_schema,c.table_name,c.ordinal_position");
@@ -264,7 +325,8 @@ namespace worm::connection
           "where il.[unique]=1 and ii.name=p.name and (select count(*) from pragma_index_info(il.name))=1) "
           "then 1 else 0 end as is_unique,"
           "case when p.pk>0 then 1 else 0 end as is_primary_key,p.type as type_name,p.type as native_type,"
-          "null as type_length,null as type_precision,null as type_scale,0 as is_unsigned,0 as has_time_zone "
+          "null as type_length,null as type_precision,null as type_scale,0 as is_unsigned,0 as has_time_zone,"
+          "p.dflt_value as default_expression "
           "from sqlite_master m join pragma_table_xinfo(m.name) p where m.type='table' and m.name not like 'sqlite_%' "
           "order by m.name,p.cid");
       }
@@ -305,14 +367,16 @@ namespace worm::connection
       }
 
       const std::string columnName = stringValue(row, "column_name");
-      table->columns.push_back(
-        {
-          .name = columnName,
-          .type = columnType(row, client_->type()),
-          .nullable = boolValue(row, "is_nullable"),
-          .generated = boolValue(row, "is_generated"),
-          .unique = boolValue(row, "is_unique"),
-        });
+      const core::ColumnType normalizedType = columnType(row, client_->type());
+      const bool generated = boolValue(row, "is_generated");
+      table->columns.push_back({
+        .name = columnName,
+        .type = normalizedType,
+        .defaultExpression = generated ? std::nullopt : defaultExpression(row, client_->type(), normalizedType),
+        .nullable = boolValue(row, "is_nullable"),
+        .generated = generated,
+        .unique = boolValue(row, "is_unique"),
+      });
 
       if (boolValue(row, "is_primary_key")) {
         table->primaryKey.push_back(columnName);

@@ -136,6 +136,9 @@ namespace worm::cli::database
             if (column.unique) {
               out << (column.nullable && !column.generated ? "UNIQUE" : " UNIQUE");
             }
+            if (column.defaultExpression.has_value()) {
+              out << " DEFAULT " << *column.defaultExpression;
+            }
 
             out << '\n';
           }
@@ -214,7 +217,13 @@ namespace worm::cli::database
             out << ",\"type\":";
             writeJsonString(out, columnTypeName(column.type));
             out << ",\"nullable\":" << std::boolalpha << column.nullable << ",\"generated\":" << column.generated
-                << ",\"unique\":" << column.unique << '}';
+                << ",\"unique\":" << column.unique << ",\"default\":";
+            if (column.defaultExpression.has_value()) {
+              writeJsonString(out, *column.defaultExpression);
+            } else {
+              out << "null";
+            }
+            out << '}';
           }
           out << "],\"primaryKey\":";
           writeJsonStringArray(out, table.primaryKey);

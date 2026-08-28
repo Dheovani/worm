@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 namespace
@@ -26,7 +27,7 @@ namespace
       const int result = sqlite3_exec(
         database,
         "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, note TEXT NULL, "
-        "tenant TEXT NOT NULL, external_id TEXT NOT NULL, UNIQUE (tenant, external_id))",
+        "tenant TEXT NOT NULL DEFAULT 'public', external_id TEXT NOT NULL, UNIQUE (tenant, external_id))",
         nullptr,
         nullptr,
         &message);
@@ -68,7 +69,8 @@ try {
       users->columns[0].nullable || !users->columns[0].generated || users->columns[1].nullable ||
       !users->columns[1].unique || !users->columns[2].nullable || users->columns[3].unique ||
       users->columns[4].unique || users->columns[0].type.kind != worm::core::ColumnTypeKind::Int64 ||
-      users->columns[1].type.kind != worm::core::ColumnTypeKind::String) {
+      users->columns[1].type.kind != worm::core::ColumnTypeKind::String ||
+      users->columns[3].defaultExpression != std::optional<std::string>{"'public'"}) {
     std::cerr << "SQLite schema introspection returned unexpected metadata.\n";
     return 1;
   }

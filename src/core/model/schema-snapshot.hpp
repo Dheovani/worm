@@ -2,6 +2,7 @@
 
 #include <core/model/schema.hpp>
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -12,6 +13,7 @@ namespace worm::core
   {
     std::string name;
     ColumnType type;
+    std::optional<std::string> defaultExpression;
     bool nullable{true};
     bool generated{false};
     bool unique{false};

@@ -55,6 +55,7 @@ int main()
           {
             .name = "email",
             .type = {.kind = worm::core::ColumnTypeKind::String, .nativeName = "varchar(255)", .length = 255},
+            .defaultExpression = "'unknown'",
             .nullable = false,
             .unique = true,
           },
@@ -83,7 +84,7 @@ int main()
   if (metrics == nullptr || metrics->schemasDiscovered != 2 || metrics->tablesDiscovered != 3 ||
       metrics->columnsDiscovered != 4 || metrics->primaryKeysDiscovered != 3 || metrics->foreignKeysDiscovered != 1 ||
       metrics->indexesDiscovered != 1 || textOutput.find("Schema: public") == std::string::npos ||
-      textOutput.find("varchar(255)  NOT NULL UNIQUE") == std::string::npos ||
+      textOutput.find("varchar(255)  NOT NULL UNIQUE DEFAULT 'unknown'") == std::string::npos ||
       textOutput.find("role_id -> roles.id") == std::string::npos || rolesPosition == std::string::npos ||
       usersPosition == std::string::npos || rolesPosition >= usersPosition) {
     std::cerr << "Inspect text translation failed.\n";
@@ -96,7 +97,7 @@ int main()
   worm::cli::outputReport(jsonReport, "json", json);
 
   const std::string expectedJson =
-    R"json({"schemas":[{"name":"public","tables":[{"name":"roles","columns":[{"name":"id","type":"int32","nullable":false,"generated":false,"unique":false}],"primaryKey":["id"],"foreignKeys":[],"indexes":[]},{"name":"users","columns":[{"name":"id","type":"bigint","nullable":false,"generated":true,"unique":false},{"name":"email","type":"varchar(255)","nullable":false,"generated":false,"unique":true}],"primaryKey":["id"],"foreignKeys":["role_id -> roles.id"],"indexes":["users_email_idx (email) UNIQUE"]}]},{"name":"sales","tables":[{"name":"orders","columns":[{"name":"id","type":"int64","nullable":false,"generated":false,"unique":false}],"primaryKey":["id"],"foreignKeys":[],"indexes":[]}]}]})json"
+    R"json({"schemas":[{"name":"public","tables":[{"name":"roles","columns":[{"name":"id","type":"int32","nullable":false,"generated":false,"unique":false,"default":null}],"primaryKey":["id"],"foreignKeys":[],"indexes":[]},{"name":"users","columns":[{"name":"id","type":"bigint","nullable":false,"generated":true,"unique":false,"default":null},{"name":"email","type":"varchar(255)","nullable":false,"generated":false,"unique":true,"default":"'unknown'"}],"primaryKey":["id"],"foreignKeys":["role_id -> roles.id"],"indexes":["users_email_idx (email) UNIQUE"]}]},{"name":"sales","tables":[{"name":"orders","columns":[{"name":"id","type":"int64","nullable":false,"generated":false,"unique":false,"default":null}],"primaryKey":["id"],"foreignKeys":[],"indexes":[]}]}]})json"
     "\n";
   if (json.str() != expectedJson) {
     std::cerr << "Inspect JSON translation failed.\nExpected: " << expectedJson << "Actual: " << json.str();

@@ -45,9 +45,26 @@ namespace worm::cli::generator
       std::string result;
       result.reserve(value.size());
       for (const char character : value) {
-        if (character == '\\' || character == '"')
-          result.push_back('\\');
-        result.push_back(character);
+        switch (character) {
+        case '\\':
+          result += "\\\\";
+          break;
+        case '"':
+          result += "\\\"";
+          break;
+        case '\n':
+          result += "\\n";
+          break;
+        case '\r':
+          result += "\\r";
+          break;
+        case '\t':
+          result += "\\t";
+          break;
+        default:
+          result.push_back(character);
+          break;
+        }
       }
       return result;
     }
@@ -140,6 +157,12 @@ namespace worm::cli::generator
       case core::ColumnTypeKind::Date:
         type = "std::chrono::sys_days";
         break;
+      case core::ColumnTypeKind::Time:
+      case core::ColumnTypeKind::DateTime:
+      case core::ColumnTypeKind::Uuid:
+      case core::ColumnTypeKind::Json:
+        type = "std::string";
+        break;
       default:
         throw EntityCreationException(
           "column '{}' uses unsupported SQL type '{}' ({})",
@@ -214,7 +237,11 @@ namespace worm::cli::generator
         const auto& column = table.columns[index];
         out << indent << "      worm::reflection::field(\"" << memberNames[index] << "\", &" << entityName
             << "::" << memberNames[index] << ", worm::reflection::FieldMetadata{.columnName = \""
-            << escaped(column.name) << "\", .generated = " << (column.generated ? "true" : "false")
+            << escaped(column.name) << "\"";
+        if (column.defaultExpression.has_value()) {
+          out << ", .defaultExpression = \"" << escaped(*column.defaultExpression) << "\"";
+        }
+        out << ", .generated = " << (column.generated ? "true" : "false")
             << ", .unique = " << (column.unique ? "true" : "false")
             << ", .nullable = " << (column.nullable ? "true" : "false") << "})"
             << (index + 1 == table.columns.size() ? "};\n" : ",\n");
