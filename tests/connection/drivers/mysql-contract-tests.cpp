@@ -58,11 +58,13 @@ namespace
     executeSql(
       connection.get(),
       "CREATE TABLE worm_driver_contract ("
-      "id VARCHAR(64) PRIMARY KEY, label VARCHAR(255) NOT NULL, note VARCHAR(255) NULL)");
+      "id VARCHAR(64) PRIMARY KEY, label VARCHAR(255) NOT NULL, note VARCHAR(255) NULL, "
+      "amount DECIMAL(30,6) NOT NULL, payload VARBINARY(6000) NOT NULL)");
     executeSql(
       connection.get(),
       "CREATE TABLE worm_schema_contract ("
       "id VARCHAR(64) PRIMARY KEY, email VARCHAR(255) UNIQUE, tenant VARCHAR(64), external_id VARCHAR(64), "
+      "status ENUM('active','on\\'hold') NOT NULL, "
       "UNIQUE (tenant, external_id))");
   }
 } // namespace
@@ -92,8 +94,10 @@ try {
   const worm::connection::SchemaInspector inspector{*client};
   const auto schema = inspector.inspect();
   const auto* table = schema.findTable(databaseName, "worm_schema_contract");
-  if (table == nullptr || table->columns.size() != 4 || table->primaryKey != std::vector<std::string>{"id"} ||
-      !table->columns[1].unique || table->columns[2].unique || table->columns[3].unique) {
+  if (table == nullptr || table->columns.size() != 5 || table->primaryKey != std::vector<std::string>{"id"} ||
+      !table->columns[1].unique || table->columns[2].unique || table->columns[3].unique ||
+      table->columns[4].type.kind != worm::core::ColumnTypeKind::Enum ||
+      table->columns[4].type.enumeration->values != std::vector<std::string>{"active", "on'hold"}) {
     throw std::runtime_error("MySQL schema introspection did not return the contract table.");
   }
 

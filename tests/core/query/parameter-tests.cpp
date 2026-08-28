@@ -1,6 +1,7 @@
 #include <core/query/expression.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -21,17 +22,21 @@ int main()
 {
   using worm::core::Parameter;
 
-  static_assert(std::variant_size_v<Parameter> == 5);
+  static_assert(std::variant_size_v<Parameter> == 7);
   static_assert(std::is_same_v<std::variant_alternative_t<0, Parameter>, std::nullptr_t>);
   static_assert(std::is_same_v<std::variant_alternative_t<1, Parameter>, std::int64_t>);
   static_assert(worm::core::EncodableParameter<int>);
   static_assert(worm::core::EncodableParameter<std::optional<std::string>>);
   static_assert(worm::core::EncodableParameter<Status>);
   static_assert(worm::core::EncodableParameter<std::chrono::sys_days>);
+  static_assert(worm::core::EncodableParameter<worm::core::Decimal>);
+  static_assert(worm::core::EncodableParameter<worm::core::Binary>);
   static_assert(worm::core::DecodableParameter<int>);
   static_assert(worm::core::DecodableParameter<std::optional<std::string>>);
   static_assert(worm::core::DecodableParameter<Status>);
   static_assert(worm::core::DecodableParameter<std::chrono::sys_days>);
+  static_assert(worm::core::DecodableParameter<worm::core::Decimal>);
+  static_assert(worm::core::DecodableParameter<worm::core::Binary>);
 
   const Parameter nullValue = nullptr;
   const Parameter integerValue = std::int64_t{42};
@@ -52,13 +57,24 @@ int main()
   const Parameter encodedEnum = worm::core::encode(Status::Active);
   const Parameter encodedDate =
     worm::core::encode(std::chrono::sys_days{std::chrono::year{2026} / std::chrono::July / std::chrono::day{28}});
+  const Parameter encodedDecimal = worm::core::encode(worm::core::Decimal{"12345678901234567890.123400"});
+  const Parameter encodedBinary =
+    worm::core::encode(worm::core::Binary{std::byte{0x00}, std::byte{0x7f}, std::byte{0xff}});
 
   if (!std::holds_alternative<std::nullptr_t>(encodedNull) || !std::holds_alternative<std::string>(encodedEmptyText) ||
       !std::get<std::string>(encodedEmptyText).empty() || std::get<std::int64_t>(encodedZero) != 0 ||
       std::get<bool>(encodedFalse) != false || !std::holds_alternative<std::nullptr_t>(encodedOptionalNull) ||
       std::get<std::string>(encodedOptionalText) != "Ada" || std::get<std::int64_t>(encodedEnum) != 1 ||
-      std::get<std::string>(encodedDate) != "2026-07-28") {
+      std::get<std::string>(encodedDate) != "2026-07-28" ||
+      std::get<worm::core::Decimal>(encodedDecimal).value() != "12345678901234567890.123400" ||
+      std::get<worm::core::Binary>(encodedBinary).size() != 3) {
     std::cerr << "Parameter encoding did not preserve distinct SQL values.\n";
+    return 1;
+  }
+
+  const worm::core::Decimal measuredDecimal{"-0012.3400"};
+  if (measuredDecimal.precision() != 8 || measuredDecimal.scale() != 4) {
+    std::cerr << "Decimal did not report its precision and scale correctly.\n";
     return 1;
   }
 
@@ -72,6 +88,8 @@ int main()
   const auto outOfRange = worm::core::decode<std::int8_t>(Parameter{std::int64_t{128}});
   const auto decodedDate = worm::core::decode<std::chrono::sys_days>(Parameter{std::string{"2026-07-28"}});
   const auto invalidDate = worm::core::decode<std::chrono::sys_days>(Parameter{std::string{"2026-02-31"}});
+  const auto decodedDecimal = worm::core::decode<worm::core::Decimal>(encodedDecimal);
+  const auto decodedBinary = worm::core::decode<worm::core::Binary>(encodedBinary);
 
   if (std::get<int>(decodedInteger) != 7 || !std::holds_alternative<std::nullptr_t>(decodedNull) ||
       std::get<std::optional<std::string>>(decodedOptionalNull).has_value() ||
@@ -82,10 +100,18 @@ int main()
       std::get<worm::core::DecodeError>(outOfRange) != worm::core::DecodeError::OutOfRange ||
       std::get<std::chrono::sys_days>(decodedDate) !=
         std::chrono::sys_days{std::chrono::year{2026} / std::chrono::July / std::chrono::day{28}} ||
-      std::get<worm::core::DecodeError>(invalidDate) != worm::core::DecodeError::IncompatibleType) {
+      std::get<worm::core::DecodeError>(invalidDate) != worm::core::DecodeError::IncompatibleType ||
+      std::get<worm::core::Decimal>(decodedDecimal).value() != "12345678901234567890.123400" ||
+      std::get<worm::core::Binary>(decodedBinary).value()[1] != std::byte{0x7f}) {
     std::cerr << "Parameter decoding did not preserve type conversion semantics.\n";
     return 1;
   }
+
+  try {
+    static_cast<void>(worm::core::Decimal{"12.3.4"});
+    std::cerr << "Decimal accepted an invalid representation.\n";
+    return 1;
+  } catch (const worm::InvalidArgTypeException&) {}
 
   return 0;
 }

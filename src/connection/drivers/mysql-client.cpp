@@ -22,7 +22,9 @@ namespace
     Null,
     Integer,
     Floating,
-    Text
+    Text,
+    Decimal,
+    Binary
   };
 
   struct MySqlBoundParameter
@@ -32,6 +34,7 @@ namespace
     std::int64_t integer{};
     double floating{};
     std::string text;
+    std::vector<std::byte> binary;
     unsigned long length{};
     bool isNull{};
   };
@@ -64,10 +67,27 @@ namespace
       boundParameter.bind.buffer_length = boundParameter.length;
       boundParameter.bind.length = &boundParameter.length;
       return;
+    case MySqlParameterKind::Decimal:
+      boundParameter.bind.buffer_type = MYSQL_TYPE_NEWDECIMAL;
+      boundParameter.bind.buffer = boundParameter.text.data();
+      boundParameter.bind.buffer_length = boundParameter.length;
+      boundParameter.bind.length = &boundParameter.length;
+      return;
+    case MySqlParameterKind::Binary:
+      boundParameter.bind.buffer_type = MYSQL_TYPE_BLOB;
+      boundParameter.bind.buffer = boundParameter.binary.data();
+      boundParameter.bind.buffer_length = boundParameter.length;
+      boundParameter.bind.length = &boundParameter.length;
+      return;
     }
   }
 
-  worm::core::Parameter mysqlValue(const MYSQL_FIELD& field, const char* value)
+  bool isBinaryField(const MYSQL_FIELD& field) noexcept
+  {
+    return field.charsetnr == 63;
+  }
+
+  worm::core::Parameter mysqlValue(const MYSQL_FIELD& field, const char* value, unsigned long length)
   {
     if (value == nullptr) {
       return nullptr;
@@ -82,11 +102,22 @@ namespace
       return static_cast<std::int64_t>(std::strtoll(value, nullptr, 10));
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE:
+      return std::strtod(value, nullptr);
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_NEWDECIMAL:
-      return std::strtod(value, nullptr);
+      return worm::core::Decimal{std::string{value, length}};
+    case MYSQL_TYPE_BIT:
+      if (field.length == 1) {
+        return length != 0 && value[0] != 0;
+      }
+      return worm::core::Binary{
+        std::span<const std::byte>{reinterpret_cast<const std::byte*>(value), static_cast<std::size_t>(length)}};
     default:
-      return std::string{value};
+      if (isBinaryField(field)) {
+        return worm::core::Binary{
+          std::span<const std::byte>{reinterpret_cast<const std::byte*>(value), static_cast<std::size_t>(length)}};
+      }
+      return std::string{value, length};
     }
   }
 
@@ -110,6 +141,14 @@ namespace
         } else if constexpr (std::is_same_v<Value, bool>) {
           boundParameter.kind = MySqlParameterKind::Integer;
           boundParameter.integer = value ? 1 : 0;
+        } else if constexpr (std::is_same_v<Value, worm::core::Decimal>) {
+          boundParameter.kind = MySqlParameterKind::Decimal;
+          boundParameter.text = value.value();
+          boundParameter.length = static_cast<unsigned long>(boundParameter.text.size());
+        } else if constexpr (std::is_same_v<Value, worm::core::Binary>) {
+          boundParameter.kind = MySqlParameterKind::Binary;
+          boundParameter.binary.assign(value.value().begin(), value.value().end());
+          boundParameter.length = static_cast<unsigned long>(boundParameter.binary.size());
         } else {
           boundParameter.kind = MySqlParameterKind::Text;
           boundParameter.text = value;
@@ -197,9 +236,10 @@ namespace worm::connection
 
         while ((row = mysql_fetch_row(res))) {
           std::vector<core::ResultColumn> columns;
+          const unsigned long* lengths = mysql_fetch_lengths(res);
 
           for (unsigned int i = 0; i < mysql_num_fields(res); ++i) {
-            columns.push_back({fields[i].name, mysqlValue(fields[i], row[i])});
+            columns.push_back({fields[i].name, mysqlValue(fields[i], row[i], lengths[i])});
           }
 
           rows.push_back({columns});
@@ -294,7 +334,8 @@ namespace worm::connection
       throw QueryExecutionException(error);
     }
 
-    while (mysql_stmt_fetch(preparedStatement) == 0) {
+    int fetchResult = 0;
+    while ((fetchResult = mysql_stmt_fetch(preparedStatement)) == 0 || fetchResult == MYSQL_DATA_TRUNCATED) {
       std::vector<core::ResultColumn> columns;
 
       for (unsigned int i = 0; i < columnCount; i++) {
@@ -303,11 +344,34 @@ namespace worm::connection
           continue;
         }
 
-        buffers[i][(std::min)(lengths[i], resultBufferSize - 1)] = '\0';
-        columns.push_back({fields[i].name, mysqlValue(fields[i], buffers[i].c_str())});
+        const char* value = buffers[i].data();
+        std::string expanded;
+        if (errors[i].value) {
+          expanded.resize(lengths[i]);
+          MYSQL_BIND expandedBind{};
+          expandedBind.buffer_type = MYSQL_TYPE_STRING;
+          expandedBind.buffer = expanded.data();
+          expandedBind.buffer_length = lengths[i];
+          expandedBind.length = &lengths[i];
+          if (mysql_stmt_fetch_column(preparedStatement, &expandedBind, i, 0)) {
+            const std::string error = mysql_stmt_error(preparedStatement);
+            mysql_free_result(res);
+            mysql_stmt_close(preparedStatement);
+            throw QueryExecutionException(error);
+          }
+          value = expanded.data();
+        }
+        columns.push_back({fields[i].name, mysqlValue(fields[i], value, lengths[i])});
       }
 
       rows.push_back({columns});
+    }
+
+    if (fetchResult != MYSQL_NO_DATA) {
+      const std::string error = mysql_stmt_error(preparedStatement);
+      mysql_free_result(res);
+      mysql_stmt_close(preparedStatement);
+      throw QueryExecutionException(error);
     }
 
     const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));

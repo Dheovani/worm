@@ -27,10 +27,12 @@ namespace
     double floating{};
     SQLCHAR boolean{};
     std::string text;
+    std::vector<std::byte> binary;
     SQLLEN indicator{};
     SQLSMALLINT valueType{SQL_C_CHAR};
     SQLSMALLINT parameterType{SQL_VARCHAR};
     SQLULEN columnSize{1};
+    SQLSMALLINT decimalDigits{};
     SQLPOINTER value{};
     SQLLEN bufferLength{};
   };
@@ -160,6 +162,27 @@ namespace
           bound.parameterType = SQL_BIT;
           bound.value = &bound.boolean;
           bound.bufferLength = sizeof(bound.boolean);
+        } else if constexpr (std::is_same_v<Value, worm::core::Decimal>) {
+          if (value.precision() > (std::numeric_limits<SQLULEN>::max)() ||
+              value.scale() > static_cast<std::size_t>((std::numeric_limits<SQLSMALLINT>::max)())) {
+            throw worm::InvalidArgException("Decimal parameter exceeds the ODBC precision or scale limit.");
+          }
+          bound.text = value.value();
+          bound.valueType = SQL_C_CHAR;
+          bound.parameterType = SQL_DECIMAL;
+          bound.columnSize = (std::max)(SQLULEN{1}, static_cast<SQLULEN>(value.precision()));
+          bound.decimalDigits = static_cast<SQLSMALLINT>(value.scale());
+          bound.indicator = static_cast<SQLLEN>(bound.text.size());
+          bound.value = bound.text.data();
+          bound.bufferLength = static_cast<SQLLEN>(bound.text.size());
+        } else if constexpr (std::is_same_v<Value, worm::core::Binary>) {
+          bound.binary.assign(value.value().begin(), value.value().end());
+          bound.valueType = SQL_C_BINARY;
+          bound.parameterType = SQL_VARBINARY;
+          bound.columnSize = (std::max)(SQLULEN{1}, static_cast<SQLULEN>(bound.binary.size()));
+          bound.indicator = static_cast<SQLLEN>(bound.binary.size());
+          bound.value = bound.binary.data();
+          bound.bufferLength = static_cast<SQLLEN>(bound.binary.size());
         } else {
           bound.text = value;
           bound.valueType = SQL_C_CHAR;
@@ -187,6 +210,9 @@ namespace
         break;
       case SQL_C_BIT:
         parameter.value = &parameter.boolean;
+        break;
+      case SQL_C_BINARY:
+        parameter.value = parameter.binary.data();
         break;
       default:
         parameter.value = parameter.indicator == SQL_NULL_DATA ? nullptr : parameter.text.data();
@@ -219,6 +245,33 @@ namespace
     }
   }
 
+  worm::core::Parameter binaryColumn(SQLHSTMT statement, SQLUSMALLINT index)
+  {
+    std::vector<std::byte> value;
+
+    for (;;) {
+      std::array<std::byte, valueBufferSize> buffer{};
+      SQLLEN indicator = 0;
+      const SQLRETURN result = SQLGetData(statement, index, SQL_C_BINARY, buffer.data(), buffer.size(), &indicator);
+
+      if (indicator == SQL_NULL_DATA) {
+        return nullptr;
+      }
+      if (!SQL_SUCCEEDED(result)) {
+        throw worm::QueryExecutionException(diagnostics(SQL_HANDLE_STMT, statement));
+      }
+
+      const std::size_t bytesRead =
+        result == SQL_SUCCESS_WITH_INFO || indicator == SQL_NO_TOTAL
+          ? buffer.size()
+          : (std::min)(static_cast<std::size_t>((std::max)(indicator, SQLLEN{0})), buffer.size());
+      value.insert(value.end(), buffer.begin(), buffer.begin() + static_cast<std::ptrdiff_t>(bytesRead));
+      if (result == SQL_SUCCESS) {
+        return worm::core::Binary{std::move(value)};
+      }
+    }
+  }
+
   worm::core::Parameter columnValue(SQLHSTMT statement, SQLUSMALLINT index, SQLSMALLINT dataType)
   {
     SQLLEN indicator = 0;
@@ -240,9 +293,7 @@ namespace
     }
     case SQL_REAL:
     case SQL_FLOAT:
-    case SQL_DOUBLE:
-    case SQL_DECIMAL:
-    case SQL_NUMERIC: {
+    case SQL_DOUBLE: {
       double value = 0;
       const SQLRETURN result = SQLGetData(statement, index, SQL_C_DOUBLE, &value, sizeof(value), &indicator);
       if (indicator == SQL_NULL_DATA) {
@@ -253,6 +304,18 @@ namespace
       }
       return value;
     }
+    case SQL_DECIMAL:
+    case SQL_NUMERIC: {
+      const worm::core::Parameter value = textColumn(statement, index);
+      if (const auto* text = std::get_if<std::string>(&value)) {
+        return worm::core::Decimal{*text};
+      }
+      return value;
+    }
+    case SQL_BINARY:
+    case SQL_VARBINARY:
+    case SQL_LONGVARBINARY:
+      return binaryColumn(statement, index);
     case SQL_BIT: {
       SQLCHAR value = 0;
       const SQLRETURN result = SQLGetData(statement, index, SQL_C_BIT, &value, sizeof(value), &indicator);
@@ -423,7 +486,7 @@ namespace worm::connection
         parameter.valueType,
         parameter.parameterType,
         parameter.columnSize,
-        0,
+        parameter.decimalDigits,
         parameter.value,
         parameter.bufferLength,
         &parameter.indicator);

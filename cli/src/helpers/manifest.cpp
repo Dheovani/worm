@@ -77,6 +77,32 @@ namespace worm::cli
     }
 
     [[nodiscard]]
+    std::vector<std::string> optionalStringList(const Json& object, std::string_view key, std::string_view context)
+    {
+      const auto values = object.find(key);
+      if (values == object.end()) {
+        return {};
+      }
+      if (!values->is_array()) {
+        throw InvalidCliArgumentException("Manifest {} requires '{}' to be an array of strings.", context, key);
+      }
+
+      std::vector<std::string> result;
+      std::unordered_set<std::string> uniqueValues;
+      for (const Json& value : *values) {
+        if (!value.is_string() || value.get_ref<const std::string&>().empty()) {
+          throw InvalidCliArgumentException("Manifest {} requires '{}' to contain non-empty strings.", context, key);
+        }
+        std::string item = value.get<std::string>();
+        if (!uniqueValues.insert(item).second) {
+          throw InvalidCliArgumentException("Manifest {} contains duplicate '{}' value '{}'.", context, key, item);
+        }
+        result.push_back(std::move(item));
+      }
+      return result;
+    }
+
+    [[nodiscard]]
     core::ColumnType optionalColumnType(const Json& object, std::string_view context)
     {
       const auto value = object.find("type");
@@ -101,6 +127,20 @@ namespace worm::cli
         .unsignedValue = optionalBoolean(object, "unsigned", false, context),
         .withTimeZone = optionalBoolean(object, "withTimeZone", false, context),
       };
+
+      if (type.kind == core::ColumnTypeKind::Enum) {
+        const auto enumName = object.find("enumName");
+        if (enumName != object.end() && (!enumName->is_string() || enumName->get_ref<const std::string&>().empty())) {
+          throw InvalidCliArgumentException("Manifest {} requires 'enumName' to be a non-empty string.", context);
+        }
+        type.enumeration = core::NativeEnum{
+          .name = enumName == object.end() ? std::string{} : enumName->get<std::string>(),
+          .values = optionalStringList(object, "values", context),
+        };
+        if (type.enumeration->values.empty()) {
+          throw InvalidCliArgumentException("Manifest {} requires enum type to define non-empty 'values'.", context);
+        }
+      }
 
       if (type.length == 0) {
         throw InvalidCliArgumentException("Manifest {} requires 'length' to be greater than zero.", context);
@@ -442,6 +482,10 @@ namespace worm::cli
       std::vector<core::ColumnMetadata> columns;
       columns.reserve(entity.table.columns.size());
       for (const core::SchemaColumnSnapshot& column : entity.table.columns) {
+        core::ColumnType type = column.type;
+        if (type.enumeration.has_value() && type.enumeration->schema.empty()) {
+          type.enumeration->schema = entity.table.schema;
+        }
         columns.emplace_back(
           core::Column{
             reflection::FieldMetadata{
@@ -454,7 +498,7 @@ namespace worm::cli
             },
             table,
           },
-          column.type);
+          std::move(type));
       }
 
       std::vector<core::Column> primaryKeyColumns;

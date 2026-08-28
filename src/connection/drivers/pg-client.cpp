@@ -15,6 +15,9 @@
 
 namespace
 {
+  constexpr pqxx::oid byteaTypeOid = 17;
+  constexpr pqxx::oid numericTypeOid = 1700;
+
   std::string quoteConnectionValue(std::string_view value)
   {
     std::string quoted{"'"};
@@ -64,6 +67,10 @@ namespace
 
           if constexpr (std::is_same_v<Value, std::nullptr_t>) {
             values.append();
+          } else if constexpr (std::is_same_v<Value, worm::core::Decimal>) {
+            values.append(value.value());
+          } else if constexpr (std::is_same_v<Value, worm::core::Binary>) {
+            values.append(pqxx::bytes_view{value.value()});
           } else {
             values.append(value);
           }
@@ -117,11 +124,18 @@ namespace worm::connection
       std::vector<core::ResultColumn> columns;
 
       for (pqxx::result::size_type j = 0; j < response[i].size(); j++) {
-        const std::string columnName = response[i][j].name();
+        const auto field = response[i][j];
+        const std::string columnName = field.name();
         core::Parameter columnValue = nullptr;
 
-        if (!response[i][j].is_null()) {
-          columnValue = response[i][j].c_str();
+        if (!field.is_null()) {
+          if (field.type() == numericTypeOid) {
+            columnValue = core::Decimal{field.view()};
+          } else if (field.type() == byteaTypeOid) {
+            columnValue = core::Binary{field.as<pqxx::bytes>()};
+          } else {
+            columnValue = std::string{field.view()};
+          }
         }
 
         columns.push_back({columnName, columnValue});

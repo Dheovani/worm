@@ -52,16 +52,18 @@ int main()
   const TemporaryManifest valid{
     "worm-cli-valid-manifest.json",
     R"({"version":1,"entities":[{"name":"Role","table":"roles","columns":[{"name":"id","type":"int64","nullable":false}],"primaryKey":["id"]},{"name":"User","table":"users","columns":[)"
-    R"({"name":"id","type":"int64","nullable":false,"generated":true},{"name":"role_id","type":"int64","nullable":false},{"name":"email","type":"string","length":120,"default":"'unknown'","nullable":false,"unique":true}],)"
+    R"({"name":"id","type":"int64","nullable":false,"generated":true},{"name":"role_id","type":"int64","nullable":false},{"name":"email","type":"string","length":120,"default":"'unknown'","nullable":false,"unique":true},{"name":"status","type":"enum","enumName":"account_status","values":["active","blocked"],"nullable":false}],)"
     R"("primaryKey":["id"],"indexes":[{"name":"idx_users_email","columns":[{"name":"email","order":"desc"}],"unique":true}],)"
     R"("foreignKeys":[{"name":"fk_users_role","columns":["role_id"],"referencedTable":"roles","referencedColumns":["id"],"onUpdate":"cascade","onDelete":"restrict"}]}]})",
   };
   const auto manifest = worm::cli::loadManifest(valid.path(), "public");
   const auto& userManifest = manifest.entities[1];
   if (manifest.entities.size() != 2 || userManifest.name != "User" || userManifest.table.schema != "public" ||
-      userManifest.table.columns.size() != 3 ||
+      userManifest.table.columns.size() != 4 ||
       userManifest.table.columns[2].type.length != std::optional<std::size_t>{120} ||
       userManifest.table.columns[2].defaultExpression != std::optional<std::string>{"'unknown'"} ||
+      userManifest.table.columns[3].type.kind != worm::core::ColumnTypeKind::Enum ||
+      userManifest.table.columns[3].type.enumeration->values != std::vector<std::string>{"active", "blocked"} ||
       userManifest.table.primaryKey != std::vector<std::string>{"id"} || userManifest.indexes.size() != 1 ||
       userManifest.foreignKeys.size() != 1) {
     std::cerr << "Manifest parsing failed.\n";
@@ -72,11 +74,13 @@ int main()
   const auto* users = metadata.findTable(worm::core::Table{worm::core::Schema{"public"}, "users"});
   const auto* id = users == nullptr ? nullptr : users->findColumn("id");
   const auto* email = users == nullptr ? nullptr : users->findColumn("email");
+  const auto* status = users == nullptr ? nullptr : users->findColumn("status");
   if (metadata.schema().name() != "public" || users == nullptr || id == nullptr || email == nullptr ||
-      id->type().kind != worm::core::ColumnTypeKind::Int64 || !id->generated || id->nullable ||
+      status == nullptr || id->type().kind != worm::core::ColumnTypeKind::Int64 || !id->generated || id->nullable ||
       email->defaultExpression != "'unknown'" || !users->primaryKey().has_value() ||
       users->primaryKey()->columns().front().columnName != "id" || users->indexes().size() != 1 ||
-      !users->indexes().front().unique() || users->foreignKeys().size() != 1 ||
+      status->type().enumeration->schema != "public" || !users->indexes().front().unique() ||
+      users->foreignKeys().size() != 1 ||
       users->foreignKeys().front().referentialActionFor(worm::core::Operation::Delete) !=
         worm::core::ReferentialAction::Restrict) {
     std::cerr << "Manifest did not convert to declarative schema metadata.\n";
@@ -97,6 +101,9 @@ int main()
     !rejects(
       "worm-cli-invalid-scale.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"decimal","scale":2}],"primaryKey":["id"]}]})") ||
+    !rejects(
+      "worm-cli-empty-enum.json",
+      R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"enum","values":[]}],"primaryKey":["id"]}]})") ||
     !rejects(
       "worm-cli-invalid-index.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"int64"}],"primaryKey":["id"],"indexes":[{"name":"idx_users_missing","columns":["missing"]}]}]})") ||

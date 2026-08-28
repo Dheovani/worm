@@ -401,6 +401,36 @@ int main()
     return 1;
   }
 
+  const worm::core::Column statusColumn{"status", schemaUsers};
+  const worm::core::ColumnType statusType{
+    .kind = worm::core::ColumnTypeKind::Enum,
+    .enumeration =
+      worm::core::NativeEnum{
+        .schema = "public",
+        .name = "account_status",
+        .values = {"active", "on'hold"},
+      },
+  };
+  const worm::core::TableMetadata enumMetadata{
+    schemaUsers,
+    {worm::core::ColumnMetadata{schemaId, {.kind = worm::core::ColumnTypeKind::Int64}},
+      worm::core::ColumnMetadata{statusColumn, statusType}},
+    worm::core::PrimaryKey{"pk_users", {schemaId}},
+  };
+  const auto pgEnumCreate = pgBuilder.create(enumMetadata);
+  const auto mySqlEnumCreate = mySqlBuilder.create(enumMetadata);
+  if (pgEnumCreate.size() != 2 ||
+      pgEnumCreate[0].sql.find("create type \"public\".\"account_status\" as enum ('active','on''hold')") ==
+        std::string::npos ||
+      pgEnumCreate[0].sql.find("raise exception 'Native enum account_status already has a different definition.'") ==
+        std::string::npos ||
+      pgEnumCreate[1].sql.find("\"status\" \"public\".\"account_status\"") == std::string::npos ||
+      mySqlEnumCreate.size() != 1 ||
+      mySqlEnumCreate[0].sql.find("`status` enum('active','on''hold')") == std::string::npos) {
+    std::cerr << "Native enum DDL was not rendered correctly.\n";
+    return 1;
+  }
+
   try {
     const worm::core::TableMetadata invalidMetadata{schemaUsers,
       {worm::core::ColumnMetadata{schemaId, {.kind = worm::core::ColumnTypeKind::Unknown}}}};

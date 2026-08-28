@@ -1,8 +1,10 @@
 #include <core/query/statement.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 int main()
@@ -28,6 +30,19 @@ int main()
   if (fromStatement.sql != "select * from users where email = ? and active = ?" ||
       fromStatement.parameters != std::vector<worm::core::Parameter>{std::string{"ada@example.com"}, true}) {
     std::cerr << "Statement factory did not preserve manual SQL and bound parameters.\n";
+    return 1;
+  }
+
+  const worm::core::Statement typedStatement{"select * from assets where amount = ? and payload = ?",
+    {worm::core::Decimal{"12.500"}, worm::core::Binary{std::byte{0x00}, std::byte{0xff}}}};
+  const worm::core::Statement sameTypedStatement = typedStatement;
+  const worm::core::Statement differentTypedStatement{typedStatement.sql,
+    {worm::core::Decimal{"12.501"}, worm::core::Binary{std::byte{0x00}, std::byte{0xff}}}};
+  const std::unordered_set<worm::core::Statement, worm::core::StatementHash> statements{typedStatement,
+    sameTypedStatement,
+    differentTypedStatement};
+  if (statements.size() != 2) {
+    std::cerr << "Statement hashing did not include decimal and binary parameter values.\n";
     return 1;
   }
 

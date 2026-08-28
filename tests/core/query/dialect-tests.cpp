@@ -72,12 +72,23 @@ int main()
     .kind = worm::core::ColumnTypeKind::DateTime,
     .withTimeZone = true,
   };
+  const worm::core::ColumnType postgresEnum{
+    .kind = worm::core::ColumnTypeKind::Enum,
+    .enumeration =
+      worm::core::NativeEnum{.schema = "public", .name = "account_status", .values = {"active", "on'hold"}},
+  };
+  const worm::core::ColumnType mySqlEnum{
+    .kind = worm::core::ColumnTypeKind::Enum,
+    .enumeration = worm::core::NativeEnum{.values = {"active", "on'hold"}},
+  };
 
   if (postgresDialect.renderColumnType(sizedString) != "varchar(120)" ||
       postgresDialect.renderColumnType(decimal) != "decimal(10,2)" ||
       postgresDialect.renderColumnType(zonedDateTime) != "timestamp with time zone" ||
+      postgresDialect.renderColumnType(postgresEnum) != "\"public\".\"account_status\"" ||
       mySqlDialect.renderColumnType(sizedString) != "varchar(120)" ||
       mySqlDialect.renderColumnType({.kind = worm::core::ColumnTypeKind::Uuid}) != "char(36)" ||
+      mySqlDialect.renderColumnType(mySqlEnum) != "enum('active','on''hold')" ||
       sqliteDialect.renderColumnType(decimal) != "real" ||
       sqlServerDialect.renderColumnType(sizedString) != "nvarchar(120)" ||
       sqlServerDialect.renderColumnType(zonedDateTime) != "datetimeoffset") {

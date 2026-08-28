@@ -1,5 +1,7 @@
 #pragma once
 
+#include <core/query/parameter-value.hpp>
+
 #include <errors/invalid-arg-type-exception.hpp>
 #include <utils/helpers.hpp>
 
@@ -20,7 +22,7 @@
 namespace worm::core
 {
 
-  using Parameter = std::variant<std::nullptr_t, std::int64_t, double, bool, std::string>;
+  using Parameter = std::variant<std::nullptr_t, std::int64_t, double, bool, std::string, Decimal, Binary>;
 
   namespace detail
   {
@@ -28,6 +30,7 @@ namespace worm::core
     inline constexpr bool is_valid_parameter_type =
       std::is_enum_v<std::remove_cvref_t<T>> || std::same_as<std::remove_cvref_t<T>, std::nullptr_t> ||
       std::same_as<std::remove_cvref_t<T>, bool> || utils::is_date_type<T> ||
+      std::same_as<std::remove_cvref_t<T>, Decimal> || std::same_as<std::remove_cvref_t<T>, Binary> ||
       std::floating_point<std::remove_cvref_t<T>> ||
       (std::integral<std::remove_cvref_t<T>> && !std::same_as<std::remove_cvref_t<T>, bool>);
 
@@ -141,6 +144,8 @@ namespace worm::core
       return static_cast<std::int64_t>(value);
     } else if constexpr (std::floating_point<Value>) {
       return static_cast<double>(value);
+    } else if constexpr (std::same_as<Value, Decimal> || std::same_as<Value, Binary>) {
+      return value;
     } else if constexpr (utils::is_date_type<Value>) {
       return detail::format_date(value);
     } else if constexpr (utils::is_string_like<T>) {
@@ -231,6 +236,12 @@ namespace worm::core
           } else if constexpr (std::same_as<Value, std::string_view>) {
             if constexpr (std::same_as<Source, std::string>) {
               return std::string_view{stored};
+            } else {
+              return DecodeError::IncompatibleType;
+            }
+          } else if constexpr (std::same_as<Value, Decimal> || std::same_as<Value, Binary>) {
+            if constexpr (std::same_as<Source, Value>) {
+              return stored;
             } else {
               return DecodeError::IncompatibleType;
             }

@@ -4,6 +4,7 @@
 
 #include <errors/sql-build-exception.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <optional>
 #include <span>
@@ -17,6 +18,18 @@ namespace worm::core
 
   namespace
   {
+    [[nodiscard]]
+    std::string sqlStringLiteral(std::string_view value)
+    {
+      std::string result{"'"};
+      for (const char character : value) {
+        result += character;
+        if (character == '\'') {
+          result += '\'';
+        }
+      }
+      return result + "'";
+    }
 
     std::string aggregateName(Aggregate aggregate)
     {
@@ -699,6 +712,8 @@ namespace worm::core
       metadata.findColumn(metadata.primaryKey()->columns().front().columnName) != nullptr &&
       metadata.findColumn(metadata.primaryKey()->columns().front().columnName)->generated;
 
+    std::vector<Statement> statements;
+    std::vector<std::string> definedEnums;
     std::string sql = "create table " + qualifiedTable + " (";
     for (std::size_t index = 0; index < metadata.columns().size(); ++index) {
       const ColumnMetadata& column = metadata.columns()[index];
@@ -709,6 +724,14 @@ namespace worm::core
 
       if (column.type().kind == ColumnTypeKind::Unknown) {
         throw worm::SqlBuildException("Column '{}.{}' has no supported SQL type.", table.name(), column.columnName);
+      }
+
+      if (column.type().kind == ColumnTypeKind::Enum) {
+        const auto definition = renderEnumDefinition(column.type());
+        if (definition.has_value() && std::ranges::find(definedEnums, *definition) == definedEnums.end()) {
+          definedEnums.push_back(*definition);
+          statements.push_back({*definition, {}});
+        }
       }
 
       if (index != 0) {
@@ -818,8 +841,8 @@ namespace worm::core
     }
     sql += ")";
 
-    std::vector<Statement> statements{{std::move(sql), {}}};
-    statements.reserve(metadata.indexes().size() + 1);
+    statements.push_back({std::move(sql), {}});
+    statements.reserve(statements.size() + metadata.indexes().size());
     for (const Index& index : metadata.indexes()) {
       if (index.columns().empty()) {
         throw worm::SqlBuildException("Index '{}' on table '{}' has no columns.", index.name(), table.name());
@@ -905,6 +928,41 @@ namespace worm::core
     return false;
   }
 
+  std::optional<std::string> SqlBuilder::renderEnumDefinition(const ColumnType& type) const
+  {
+    if (!type.enumeration.has_value() || type.enumeration->name.empty() || type.enumeration->values.empty()) {
+      throw worm::SqlBuildException("PostgreSQL native enum requires a name and at least one value.");
+    }
+
+    std::string typeName = quoteIdentifier(type.enumeration->name);
+    if (!type.enumeration->schema.empty()) {
+      typeName = quoteIdentifier(type.enumeration->schema) + "." + typeName;
+    }
+
+    std::string values;
+    for (const std::string& value : type.enumeration->values) {
+      if (!values.empty()) {
+        values += ",";
+      }
+      values += sqlStringLiteral(value);
+    }
+
+    const std::string schemaPredicate = type.enumeration->schema.empty()
+                                          ? "n.nspname=current_schema()"
+                                          : "n.nspname=" + sqlStringLiteral(type.enumeration->schema);
+    const std::string enumPredicate = schemaPredicate + " and t.typname=" + sqlStringLiteral(type.enumeration->name);
+    const std::string existingValues =
+      "array(select e.enumlabel from pg_type t join pg_namespace n on n.oid=t.typnamespace join pg_enum e on "
+      "e.enumtypid=t.oid where " +
+      enumPredicate + " order by e.enumsortorder)";
+
+    return "do $$ begin if not exists(select 1 from pg_type t join pg_namespace n on n.oid=t.typnamespace where " +
+           enumPredicate + ") then create type " + typeName + " as enum (" + values + "); elsif " + existingValues +
+           "<>array[" + values + "]::text[] then raise exception " +
+           sqlStringLiteral("Native enum " + type.enumeration->name + " already has a different definition.") +
+           "; end if; end $$";
+  }
+
   std::string PgBuilder::placeholder(std::size_t index) const
   {
     return "$" + std::to_string(index);
@@ -932,6 +990,11 @@ namespace worm::core
   {
     static_cast<void>(SqlBuilder::renderGeneratedColumn(column));
     return " auto_increment";
+  }
+
+  std::optional<std::string> MySqlBuilder::renderEnumDefinition(const ColumnType&) const
+  {
+    return std::nullopt;
   }
 
   std::string SqliteBuilder::renderColumnType(const ColumnType& type) const

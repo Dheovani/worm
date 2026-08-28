@@ -4,6 +4,7 @@
 #include <reflection/field.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -48,6 +49,30 @@ namespace
         worm::reflection::field("transientValue", &User::transientValue, {.ignored = true})};
     }
   };
+
+  struct Asset
+  {
+    std::int64_t id{};
+    worm::core::Decimal amount;
+    worm::core::Binary payload;
+
+    static constexpr worm::core::Table table() noexcept
+    {
+      return worm::core::Table{"assets"};
+    }
+
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_assets", {worm::core::Column{"id", table()}}};
+    }
+
+    static constexpr auto reflect() noexcept
+    {
+      return std::tuple{worm::reflection::field("id", &Asset::id),
+        worm::reflection::field("amount", &Asset::amount),
+        worm::reflection::field("payload", &Asset::payload)};
+    }
+  };
 } // namespace
 
 int main()
@@ -66,6 +91,15 @@ int main()
       user.nickname.has_value() ||
       user.bornAt != std::chrono::sys_days{std::chrono::year{1815} / std::chrono::December / std::chrono::day{10}}) {
     std::cerr << "Hydration did not populate a reflected entity with decoded column values.\n";
+    return 1;
+  }
+
+  const Asset asset = worm::core::hydrate<Asset>({{{"id", std::int64_t{9}},
+    {"amount", worm::core::Decimal{"999999999999999999.0001"}},
+    {"payload", worm::core::Binary{std::byte{0x00}, std::byte{0xff}}}}});
+  if (asset.amount.value() != "999999999999999999.0001" || asset.payload.size() != 2 ||
+      asset.payload.value()[0] != std::byte{0x00}) {
+    std::cerr << "Hydration did not preserve decimal and binary values.\n";
     return 1;
   }
 

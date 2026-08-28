@@ -157,7 +157,9 @@ The `schema` property is optional. Its default depends on the driver:
 
 The current CLI consumes this manifest but does not generate it from a compiled application yet.
 
-For generated entities, `date` columns use `std::chrono::sys_days`. SQL `time`, `datetime`, UUID, and JSON values currently use `std::string`, matching the portable parameter representation shared by the available drivers. Decimal and binary columns are rejected by `pull` because mapping them to `double` or textual data could silently lose precision or bytes; dedicated lossless value types and driver bindings are still required.
+For generated entities, `date` columns use `std::chrono::sys_days`. SQL `time`, `datetime`, UUID, and JSON values currently use `std::string`, matching the portable parameter representation shared by the available drivers. Decimal columns use `worm::core::Decimal`, which validates and preserves their textual decimal representation without converting through floating point. Binary columns use `worm::core::Binary`, which owns the exact byte sequence including null bytes.
+
+`Decimal` prevents Worm and its bindings from introducing floating-point conversion, but it cannot add exact decimal storage to a database engine that does not provide it. In particular, SQLite applies its NUMERIC affinity and may normalize or approximate values according to SQLite's own storage rules. PostgreSQL, MySQL, and SQL Server use their native decimal types when the schema declares one.
 
 ## Configuration file
 
@@ -371,7 +373,7 @@ Generated filenames use kebab-case, existing files are never overwritten, and ea
 
 Generated entities follow a preserve-by-default policy: Worm never merges into or overwrites an existing source file. Regeneration must target a new path or happen only after the developer explicitly moves or removes the previous generated file. This keeps manual customizations under the developer's control instead of attempting an unsafe source-code merge.
 
-The safe C++ mapping supports booleans, signed integers, 16-bit and 32-bit unsigned integers, floating-point values, strings, dates, times, datetimes, UUIDs, and JSON. Dates use `std::chrono::sys_days`; times, datetimes, UUIDs, and JSON currently use their portable `std::string` parameter representation. Nullable columns use `std::optional`. Decimal, binary, unknown types, and unsigned 64-bit integers are discovered but rejected during generation until Worm has lossless public representations and hydration support for them. Discovered default expressions are preserved in the generated reflection metadata.
+The safe C++ mapping supports booleans, signed integers, 16-bit and 32-bit unsigned integers, floating-point values, lossless decimals, strings, binary values, native enums, dates, times, datetimes, UUIDs, and JSON. Dates use `std::chrono::sys_days`; times, datetimes, UUIDs, JSON, and native enum values currently use their portable `std::string` parameter representation. Generated entities expose each native enum's allowed values as a `static constexpr std::array`. Decimal and binary values use `worm::core::Decimal` and `worm::core::Binary`. Nullable columns use `std::optional`. Unknown types and unsigned 64-bit integers are rejected during generation. Discovered default expressions are preserved in the generated reflection metadata.
 
 ## Current comparison limitations
 
@@ -436,4 +438,4 @@ The generated SQL file contains only additive statements for objects missing fro
 
 The current safe implementation creates missing tables, primary keys, supported generated columns, column default expressions, foreign keys, and indexes represented by schema metadata. Existing compatible tables are left untouched. Existing incompatible tables produce schema drift and are never altered automatically. Application values are not involved in DDL generation, identifiers are quoted by the selected dialect, and unknown column types are rejected before execution.
 
-The manifest currently supplies columns, primary keys, default expressions, indexes, and foreign keys. Database-native enum definitions are not represented yet. Default expressions are compared textually after driver introspection, so equivalent expressions formatted differently by a database may still be reported as drift. `push` does not currently perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.
+The manifest supplies columns, primary keys, default expressions, indexes, foreign keys, and native enum definitions. Declare an enum column with `"type": "enum"`, a non-empty `"values"` string array, and `"enumName"` when targeting PostgreSQL. PostgreSQL emits and reuses a schema-qualified named enum type, while MySQL emits its inline `ENUM(...)` definition. SQLite and SQL Server reject native enum DDL rather than silently weakening it to text. Default expressions are compared textually after driver introspection, so equivalent expressions formatted differently by a database may still be reported as drift. `push` does not currently perform `ALTER TABLE`, destructive synchronization, schema creation, view creation, or rollback generation.

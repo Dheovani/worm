@@ -133,6 +133,9 @@ namespace worm::core
     [[nodiscard]]
     virtual bool usesInlineGeneratedPrimaryKey() const noexcept;
 
+    [[nodiscard]]
+    virtual std::optional<std::string> renderEnumDefinition(const ColumnType& type) const;
+
   private:
     [[nodiscard]]
     std::string renderExpression(const Expression& expression, std::size_t firstParameterIndex = 1) const;
@@ -168,6 +171,9 @@ namespace worm::core
 
     [[nodiscard]]
     std::string renderGeneratedColumn(const ColumnMetadata& column) const override;
+
+    [[nodiscard]]
+    std::optional<std::string> renderEnumDefinition(const ColumnType& type) const override;
   };
 
   class SqliteBuilder : public SqlBuilder

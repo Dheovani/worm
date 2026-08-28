@@ -21,6 +21,14 @@ namespace worm::core
 
           if constexpr (std::is_same_v<Value, std::nullptr_t>) {
             parameterHash = 0;
+          } else if constexpr (std::is_same_v<Value, Decimal>) {
+            parameterHash ^= std::hash<std::string_view>{}(value.value()) + hashConstant + (parameterHash << 6U) +
+                             (parameterHash >> 2U);
+          } else if constexpr (std::is_same_v<Value, Binary>) {
+            for (const std::byte byte : value.value()) {
+              parameterHash ^= std::hash<unsigned int>{}(std::to_integer<unsigned int>(byte)) + hashConstant +
+                               (parameterHash << 6U) + (parameterHash >> 2U);
+            }
           } else {
             parameterHash ^= std::hash<Value>{}(value) + hashConstant + (parameterHash << 6U) + (parameterHash >> 2U);
           }

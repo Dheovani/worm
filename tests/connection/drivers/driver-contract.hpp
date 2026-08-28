@@ -7,12 +7,16 @@
 #include <errors/query-execution-exception.hpp>
 #include <reflection/field.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <tuple>
+#include <utility>
+#include <vector>
 
 namespace worm::tests
 {
@@ -21,6 +25,8 @@ namespace worm::tests
     std::string id;
     std::string label;
     std::optional<std::string> note;
+    core::Decimal amount;
+    core::Binary payload;
 
     static constexpr core::Table table() noexcept
     {
@@ -36,7 +42,9 @@ namespace worm::tests
     {
       return std::tuple{reflection::field("id", &DriverContractEntity::id),
         reflection::field("label", &DriverContractEntity::label),
-        reflection::field("note", &DriverContractEntity::note)};
+        reflection::field("note", &DriverContractEntity::note),
+        reflection::field("amount", &DriverContractEntity::amount),
+        reflection::field("payload", &DriverContractEntity::payload)};
     }
   };
 
@@ -45,6 +53,15 @@ namespace worm::tests
     if (!condition) {
       throw std::runtime_error(message);
     }
+  }
+
+  inline core::Binary contractPayload()
+  {
+    std::vector<std::byte> bytes(5000);
+    for (std::size_t index = 0; index < bytes.size(); ++index) {
+      bytes[index] = static_cast<std::byte>(index % 251);
+    }
+    return core::Binary{std::move(bytes)};
   }
 
   template <typename Client, core::SqlBuilderI Builder>
@@ -57,18 +74,23 @@ namespace worm::tests
 
     const core::QueryBuilder queryBuilder{sqlBuilder};
     const core::Repository<DriverContractEntity> repository{client, queryBuilder};
+    const core::Binary payload = contractPayload();
 
     const std::shared_ptr<DriverContractEntity> first = repository.insert(
       {
         .id = "first",
         .label = "Ada's record",
         .note = "bound text",
+        .amount = core::Decimal{"123456789.125"},
+        .payload = payload,
       });
     const std::shared_ptr<DriverContractEntity> second = repository.insert(
       {
         .id = "second",
         .label = "Grace",
         .note = std::nullopt,
+        .amount = core::Decimal{"7.5"},
+        .payload = core::Binary{},
       });
 
     requireContract(first != nullptr, "Driver did not return the first inserted entity.");
@@ -79,10 +101,20 @@ namespace worm::tests
     requireContract(
       second->label == "Grace" && !second->note.has_value(),
       "Driver did not preserve SQL NULL separately from text.");
+    const std::string_view expectedAmount =
+      expectedDatabaseType == connection::DatabaseType::SQLite ? "123456789.125" : "123456789.125000";
+    requireContract(first->amount.value() == expectedAmount, "Driver did not preserve the decimal value.");
+    requireContract(
+      first->payload == payload && second->payload.empty(),
+      "Driver did not preserve binary values and null bytes.");
 
     const std::uint64_t updatedRows = repository.update(
       std::string{"first"},
-      DriverContractEntity{.id = "first", .label = "Ada Lovelace", .note = std::nullopt});
+      DriverContractEntity{.id = "first",
+        .label = "Ada Lovelace",
+        .note = std::nullopt,
+        .amount = first->amount,
+        .payload = first->payload});
 
     requireContract(updatedRows == 1, "Driver did not report one affected row for UPDATE.");
     requireContract(

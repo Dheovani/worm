@@ -3,6 +3,7 @@
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -13,6 +14,19 @@
 
 namespace
 {
+  bool isDecimalDeclaration(const char* declaration)
+  {
+    if (declaration == nullptr) {
+      return false;
+    }
+
+    std::string normalized{declaration};
+    for (char& character : normalized) {
+      character = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+    }
+    return normalized.find("decimal") != std::string::npos || normalized.find("numeric") != std::string::npos;
+  }
+
   int bindParameter(sqlite3_stmt* statement, int index, const worm::core::Parameter& parameter)
   {
     return std::visit(
@@ -27,6 +41,23 @@ namespace
           return sqlite3_bind_double(statement, index, value);
         } else if constexpr (std::is_same_v<Value, bool>) {
           return sqlite3_bind_int64(statement, index, value ? 1 : 0);
+        } else if constexpr (std::is_same_v<Value, worm::core::Decimal>) {
+          return sqlite3_bind_text(
+            statement,
+            index,
+            value.value().data(),
+            static_cast<int>(value.value().size()),
+            SQLITE_TRANSIENT);
+        } else if constexpr (std::is_same_v<Value, worm::core::Binary>) {
+          if (value.empty()) {
+            return sqlite3_bind_zeroblob(statement, index, 0);
+          }
+          return sqlite3_bind_blob(
+            statement,
+            index,
+            value.value().data(),
+            static_cast<int>(value.size()),
+            SQLITE_TRANSIENT);
         } else {
           return sqlite3_bind_text(statement, index, value.c_str(), static_cast<int>(value.size()), SQLITE_TRANSIENT);
         }
@@ -140,23 +171,39 @@ namespace worm::connection
       for (int i = 0; i < columnCount; i++) {
         const std::string columnName = sqlite3_column_name(statement, i);
         core::Parameter columnValue = nullptr;
+        const bool decimal = isDecimalDeclaration(sqlite3_column_decltype(statement, i));
 
         switch (sqlite3_column_type(statement, i)) {
         case SQLITE_INTEGER:
-          columnValue = static_cast<std::int64_t>(sqlite3_column_int64(statement, i));
+          if (decimal) {
+            columnValue = core::Decimal{reinterpret_cast<const char*>(sqlite3_column_text(statement, i))};
+          } else {
+            columnValue = static_cast<std::int64_t>(sqlite3_column_int64(statement, i));
+          }
           break;
         case SQLITE_FLOAT:
-          columnValue = sqlite3_column_double(statement, i);
+          if (decimal) {
+            columnValue = core::Decimal{reinterpret_cast<const char*>(sqlite3_column_text(statement, i))};
+          } else {
+            columnValue = sqlite3_column_double(statement, i);
+          }
           break;
         case SQLITE_TEXT:
-          columnValue = reinterpret_cast<const char*>(sqlite3_column_text(statement, i));
+          if (decimal) {
+            columnValue = core::Decimal{std::string{reinterpret_cast<const char*>(sqlite3_column_text(statement, i)),
+              static_cast<std::size_t>(sqlite3_column_bytes(statement, i))}};
+          } else {
+            columnValue = std::string{reinterpret_cast<const char*>(sqlite3_column_text(statement, i)),
+              static_cast<std::size_t>(sqlite3_column_bytes(statement, i))};
+          }
           break;
         case SQLITE_NULL:
           columnValue = nullptr;
           break;
         default:
-          columnValue = std::string{static_cast<const char*>(sqlite3_column_blob(statement, i)),
-            static_cast<std::size_t>(sqlite3_column_bytes(statement, i))};
+          columnValue =
+            core::Binary{std::span<const std::byte>{static_cast<const std::byte*>(sqlite3_column_blob(statement, i)),
+              static_cast<std::size_t>(sqlite3_column_bytes(statement, i))}};
           break;
         }
 

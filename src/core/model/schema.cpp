@@ -21,6 +21,8 @@ namespace worm::core
       return "decimal";
     case ColumnTypeKind::String:
       return "string";
+    case ColumnTypeKind::Enum:
+      return "enum";
     case ColumnTypeKind::Binary:
       return "binary";
     case ColumnTypeKind::Date:
@@ -51,6 +53,7 @@ namespace worm::core
       ColumnTypeKind::Float64,
       ColumnTypeKind::Decimal,
       ColumnTypeKind::String,
+      ColumnTypeKind::Enum,
       ColumnTypeKind::Binary,
       ColumnTypeKind::Date,
       ColumnTypeKind::Time,

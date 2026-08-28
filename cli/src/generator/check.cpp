@@ -124,6 +124,11 @@ namespace worm::cli::generator
               std::string{core::columnTypeKindName(actualColumn->type.kind)} + ")");
           compatible = false;
         }
+        if (expectedColumn.type.kind == core::ColumnTypeKind::Enum &&
+            expectedColumn.type.enumeration != actualColumn->type.enumeration) {
+          addDifference(metrics, label + "." + expectedColumn.name + ": native enum definition differs");
+          compatible = false;
+        }
         if (expectedColumn.generated != actualColumn->generated) {
           addDifference(metrics, label + "." + expectedColumn.name + ": generated-column state differs");
           compatible = false;

@@ -59,7 +59,8 @@ namespace
     worm::core::Parameter scale = nullptr,
     std::int64_t unsignedValue = 0,
     std::int64_t withTimeZone = 0,
-    worm::core::Parameter defaultExpression = nullptr)
+    worm::core::Parameter defaultExpression = nullptr,
+    worm::core::Parameter enumValues = nullptr)
   {
     return {{
       {"schema_name", std::string{"public"}},
@@ -77,6 +78,7 @@ namespace
       {"is_unsigned", unsignedValue},
       {"has_time_zone", withTimeZone},
       {"default_expression", std::move(defaultExpression)},
+      {"enum_values", std::move(enumValues)},
     }};
   }
 } // namespace
@@ -108,6 +110,21 @@ int main()
 
   FakeClient mysql{worm::core::ResultSet{{columnRow("active", "tinyint", "tinyint(1)", 0, 0, 0, 0)}},
     worm::connection::DatabaseType::MySQL};
+  FakeClient mysqlEnum{worm::core::ResultSet{{columnRow(
+                         "status",
+                         "enum",
+                         "enum('active','on\\'hold')",
+                         0,
+                         0,
+                         0,
+                         0,
+                         nullptr,
+                         nullptr,
+                         nullptr,
+                         0,
+                         0,
+                         "active")}},
+    worm::connection::DatabaseType::MySQL};
   FakeClient sqlite{worm::core::ResultSet{{columnRow("amount", "DECIMAL(10,2)", "DECIMAL(10,2)", 0, 0, 0, 0)}},
     worm::connection::DatabaseType::SQLite};
   FakeClient mssql{worm::core::ResultSet{{columnRow(
@@ -127,6 +144,7 @@ int main()
     worm::connection::DatabaseType::MSSQL};
 
   const worm::connection::SchemaInspector mysqlInspector{mysql};
+  const worm::connection::SchemaInspector mysqlEnumInspector{mysqlEnum};
   const worm::connection::SchemaInspector sqliteInspector{sqlite};
   const worm::connection::SchemaInspector mssqlInspector{mssql};
   FakeClient mysqlText{
@@ -134,7 +152,12 @@ int main()
       {columnRow("status", "varchar", "varchar(20)", 0, 0, 0, 0, "20", nullptr, nullptr, 0, 0, "active")}},
     worm::connection::DatabaseType::MySQL};
   const worm::connection::SchemaInspector mysqlTextInspector{mysqlText};
+  const auto mysqlEnumColumn = mysqlEnumInspector.inspect().tables[0].columns[0];
+  const auto& mysqlEnumType = mysqlEnumColumn.type;
   if (mysqlInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Boolean ||
+      mysqlEnumType.kind != worm::core::ColumnTypeKind::Enum || !mysqlEnumType.enumeration.has_value() ||
+      mysqlEnumType.enumeration->values != std::vector<std::string>{"active", "on'hold"} ||
+      mysqlEnumColumn.defaultExpression != std::optional<std::string>{"'active'"} ||
       sqliteInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Decimal ||
       mssqlInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Uuid ||
       mssqlInspector.inspect().tables[0].columns[0].defaultExpression != std::optional<std::string>{"(newid())"} ||

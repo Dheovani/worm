@@ -174,15 +174,15 @@ namespace worm::cli::generator
           return false;
         }
 
-        const bool typeMatches =
-          expectedColumn.type.kind == core::ColumnTypeKind::Unknown ||
-          expectedColumn.type.kind == actualColumn->type.kind;
-        const bool constraintsMatch =
-          expectedColumn.nullable == actualColumn->nullable &&
-          expectedColumn.generated == actualColumn->generated &&
-          expectedColumn.unique == actualColumn->unique &&
-          (!expectedColumn.defaultExpression.has_value() ||
-            expectedColumn.defaultExpression == actualColumn->defaultExpression);
+        const bool typeMatches = expectedColumn.type.kind == core::ColumnTypeKind::Unknown ||
+                                 (expectedColumn.type.kind == actualColumn->type.kind &&
+                                   (expectedColumn.type.kind != core::ColumnTypeKind::Enum ||
+                                     expectedColumn.type.enumeration == actualColumn->type.enumeration));
+        const bool constraintsMatch = expectedColumn.nullable == actualColumn->nullable &&
+                                      expectedColumn.generated == actualColumn->generated &&
+                                      expectedColumn.unique == actualColumn->unique &&
+                                      (!expectedColumn.defaultExpression.has_value() ||
+                                        expectedColumn.defaultExpression == actualColumn->defaultExpression);
 
         if (!typeMatches || !constraintsMatch) {
           return false;

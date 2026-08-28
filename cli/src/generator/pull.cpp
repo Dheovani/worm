@@ -151,8 +151,17 @@ namespace worm::cli::generator
       case core::ColumnTypeKind::Float64:
         type = "double";
         break;
+      case core::ColumnTypeKind::Decimal:
+        type = "worm::core::Decimal";
+        break;
       case core::ColumnTypeKind::String:
         type = "std::string";
+        break;
+      case core::ColumnTypeKind::Enum:
+        type = "std::string";
+        break;
+      case core::ColumnTypeKind::Binary:
+        type = "worm::core::Binary";
         break;
       case core::ColumnTypeKind::Date:
         type = "std::chrono::sys_days";
@@ -189,11 +198,14 @@ namespace worm::cli::generator
       out << "#pragma once\n\n"
              "#include <core/model/constraint.hpp>\n"
              "#include <core/model/schema.hpp>\n"
+             "#include <core/query/parameter-value.hpp>\n"
              "#include <reflection/field.hpp>\n\n"
+             "#include <array>\n"
              "#include <chrono>\n"
              "#include <cstdint>\n"
              "#include <optional>\n"
              "#include <string>\n"
+             "#include <string_view>\n"
              "#include <tuple>\n";
       if (namespaceName.has_value())
         out << "\nnamespace " << *namespaceName << "\n{\n";
@@ -214,6 +226,25 @@ namespace worm::cli::generator
         }
         memberNames.push_back(memberName);
         out << indent << "  " << cppType(column) << ' ' << memberName << "{};\n";
+      }
+
+      for (std::size_t index = 0; index < table.columns.size(); ++index) {
+        const auto& column = table.columns[index];
+        if (column.type.kind != core::ColumnTypeKind::Enum || !column.type.enumeration.has_value()) {
+          continue;
+        }
+        out << "\n"
+            << indent << "  static constexpr std::string_view " << memberNames[index] << "EnumSchema{\""
+            << escaped(column.type.enumeration->schema) << "\"};\n"
+            << indent << "  static constexpr std::string_view " << memberNames[index] << "EnumName{\""
+            << escaped(column.type.enumeration->name) << "\"};\n"
+            << indent << "  static constexpr std::array<std::string_view, " << column.type.enumeration->values.size()
+            << "> " << memberNames[index] << "Values{\n";
+        for (std::size_t valueIndex = 0; valueIndex < column.type.enumeration->values.size(); ++valueIndex) {
+          out << indent << "    \"" << escaped(column.type.enumeration->values[valueIndex]) << "\""
+              << (valueIndex + 1 == column.type.enumeration->values.size() ? "\n" : ",\n");
+        }
+        out << indent << "  };\n";
       }
 
       out << "\n"

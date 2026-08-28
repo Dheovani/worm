@@ -159,6 +159,10 @@ const std::vector<std::shared_ptr<User>> result = users.findAll(statement);
 
 `Criteria` is only an explicit query envelope for relations, filters, grouping, ordering, having, and pagination. The generated `Statement` remains inspectable and keeps parameters separate from SQL text. The overloads that receive `Statement` are the controlled escape hatch for manual SQL, but they still accept only the operation that matches the repository method and keep parameters separate from the SQL text.
 
+Use `worm::core::Decimal` for fixed-precision decimal fields and parameters so Worm never converts them through `double`. Use `worm::core::Binary` for owned byte sequences, including embedded null bytes. Both types participate in parameter encoding, result hydration, statement hashing, and native driver bindings. SQLite may still normalize decimal values according to its NUMERIC affinity because the database engine itself does not provide an exact fixed-decimal storage class.
+
+Native enum definitions can be declared in generator manifests with `"type": "enum"`, `"values": [...]`, and a PostgreSQL `"enumName"`. PostgreSQL and MySQL preserve their native enum facilities; SQLite and SQL Server reject this schema request because they do not provide an equivalent native enum type.
+
 Use `Field` entries to select specific columns, assign result aliases, or request the supported `COUNT`, `SUM`, `AVG`, `MIN`, and `MAX` aggregates. When a query mixes aggregate and non-aggregate projections, pass explicit `Grouping` entries and, when needed, a `HAVING` filter:
 
 ```cpp

@@ -29,7 +29,7 @@ namespace
       const int result = sqlite3_exec(
         connection,
         "CREATE TABLE worm_driver_contract ("
-        "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL)",
+        "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL, amount DECIMAL NOT NULL, payload BLOB NOT NULL)",
         nullptr,
         nullptr,
         &errorMessage);

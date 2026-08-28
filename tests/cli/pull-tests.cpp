@@ -94,6 +94,7 @@ try {
       appliedMetrics->generatedEntities != 1 || !entityRead ||
       contents.str().find("struct UserRecords") == std::string::npos ||
       contents.str().find("std::optional<std::string> displayName") == std::string::npos ||
+      contents.str().find("#include <core/query/parameter-value.hpp>") == std::string::npos ||
       contents.str().find(".defaultExpression = \"'unknown'\"") == std::string::npos ||
       contents.str().find("namespace application::entities") == std::string::npos) {
     std::cerr << "Pull did not generate the expected entity.\n";
@@ -148,14 +149,53 @@ try {
         worm::core::ColumnTypeKind::Json,
         "JsonRecord",
         "json-record.hpp",
-        "std::optional<std::string>")) {
+        "std::optional<std::string>") ||
+      !verifyMappedType(
+        worm::core::ColumnTypeKind::Decimal,
+        "DecimalRecord",
+        "decimal-record.hpp",
+        "std::optional<worm::core::Decimal>") ||
+      !verifyMappedType(
+        worm::core::ColumnTypeKind::Binary,
+        "BinaryRecord",
+        "binary-record.hpp",
+        "std::optional<worm::core::Binary>")) {
     std::cerr << "Pull did not preserve the supported SQL type representations.\n";
     return 1;
   }
 
+  auto enumSchema = schema(worm::core::ColumnTypeKind::Enum);
+  enumSchema.tables[0].columns[1].type = {
+    .kind = worm::core::ColumnTypeKind::Enum,
+    .nativeName = "account_status",
+    .enumeration =
+      worm::core::NativeEnum{
+        .schema = "public",
+        .name = "account_status",
+        .values = {"active", "on-hold"},
+      },
+  };
+  invocation.arguments.name = "EnumRecord";
+  const auto enumReport = worm::cli::generator::pull(invocation, enumSchema);
+  std::ifstream enumFile{temporary.path() / "enum-record.hpp"};
+  std::ostringstream enumContents;
+  enumContents << enumFile.rdbuf();
+  if (enumReport.status != worm::cli::ExecutionStatus::Success ||
+      enumContents.str().find("std::optional<std::string> displayName") == std::string::npos ||
+      enumContents.str().find("displayNameEnumSchema{\"public\"}") == std::string::npos ||
+      enumContents.str().find("displayNameEnumName{\"account_status\"}") == std::string::npos ||
+      enumContents.str().find("displayNameValues") == std::string::npos ||
+      enumContents.str().find("\"active\"") == std::string::npos ||
+      enumContents.str().find("\"on-hold\"") == std::string::npos) {
+    std::cerr << "Pull did not preserve the native enum definition.\n";
+    return 1;
+  }
+  enumFile.close();
+  std::filesystem::remove(temporary.path() / "enum-record.hpp");
+
   invocation.arguments.name.reset();
 
-  const auto unsupported = worm::cli::generator::pull(invocation, schema(worm::core::ColumnTypeKind::Decimal));
+  const auto unsupported = worm::cli::generator::pull(invocation, schema(worm::core::ColumnTypeKind::Unknown));
   if (unsupported.status != worm::cli::ExecutionStatus::Success) {
     // The existing file is intentionally skipped. Use a different explicit entity name to exercise type rejection.
     std::cerr << "Existing entity handling changed unexpectedly.\n";
@@ -163,7 +203,7 @@ try {
   }
 
   std::filesystem::remove(entityPath);
-  const auto rejectedType = worm::cli::generator::pull(invocation, schema(worm::core::ColumnTypeKind::Decimal));
+  const auto rejectedType = worm::cli::generator::pull(invocation, schema(worm::core::ColumnTypeKind::Unknown));
   if (rejectedType.status != worm::cli::ExecutionStatus::Failed ||
       rejectedType.info.find("unsupported SQL type 'numeric'") == std::string::npos) {
     std::cerr << "Unsupported lossy type was accepted.\n";

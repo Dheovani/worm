@@ -5,6 +5,7 @@
 #include <sqlite3.h>
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
@@ -21,6 +22,8 @@ namespace
     std::int64_t id{};
     std::string name;
     std::int64_t active{};
+    worm::core::Decimal balance;
+    worm::core::Binary payload;
 
     static constexpr worm::core::Table table() noexcept
     {
@@ -36,7 +39,9 @@ namespace
     {
       return std::tuple{worm::reflection::field("id", &Person::id),
         worm::reflection::field("name", &Person::name),
-        worm::reflection::field("active", &Person::active)};
+        worm::reflection::field("active", &Person::active),
+        worm::reflection::field("balance", &Person::balance),
+        worm::reflection::field("payload", &Person::payload)};
     }
   };
 
@@ -51,7 +56,8 @@ namespace
     char* errorMessage = nullptr;
     const int result = sqlite3_exec(
       connection,
-      "CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)",
+      "CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL, "
+      "balance DECIMAL NOT NULL, payload BLOB NOT NULL)",
       nullptr,
       nullptr,
       &errorMessage);
@@ -105,11 +111,23 @@ try {
     const worm::core::QueryBuilder queryBuilder{sqlBuilder};
     const worm::core::Repository<Person> repository{client, queryBuilder};
 
-    const std::shared_ptr<Person> ada = repository.insert(Person{.id = 1, .name = "Ada", .active = 1});
-    const std::shared_ptr<Person> grace = repository.insert(Person{.id = 2, .name = "Grace", .active = 0});
+    const std::shared_ptr<Person> ada = repository.insert(
+      Person{.id = 1,
+        .name = "Ada",
+        .active = 1,
+        .balance = worm::core::Decimal{"123456789.125"},
+        .payload = worm::core::Binary{std::byte{0x00}, std::byte{0x7f}, std::byte{0xff}}});
+    const std::shared_ptr<Person> grace = repository.insert(
+      Person{.id = 2,
+        .name = "Grace",
+        .active = 0,
+        .balance = worm::core::Decimal{"7.50"},
+        .payload = worm::core::Binary{}});
 
     if (!ada || ada->id != 1 || ada->name != "Ada" || !ada->active || !grace || grace->id != 2 ||
-        grace->name != "Grace" || grace->active) {
+        grace->name != "Grace" || grace->active || ada->balance.value() != "123456789.125" ||
+        ada->payload.size() != 3 || ada->payload.value()[0] != std::byte{0x00} ||
+        ada->payload.value()[2] != std::byte{0xff} || grace->balance.value() != "7.5" || !grace->payload.empty()) {
       std::cerr << "Repository did not insert and hydrate entities through SqliteClient.\n";
       return 1;
     }

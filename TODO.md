@@ -112,11 +112,11 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Generate missing tables from declarative schema metadata without modifying incompatible existing tables.
 - [x] Compare entity and database state to produce a reviewable synchronization plan before any change.
 - [x] Generate code and SQL into separate files without applying destructive changes automatically.
-- [ ] Map C++ and SQL types per dialect, including nullability, default values, enums, and dates.
+- [x] Map C++ and SQL types per dialect, including nullability, default values, enums, and dates.
   - [x] Generate portable C++ representations for nullability, dates, times, datetimes, UUIDs, and JSON values discovered by `pull`.
-  - [ ] Introduce lossless decimal and binary value types with bindings for every enabled driver.
+  - [x] Introduce lossless decimal and binary value types with bindings for every enabled driver.
   - [x] Preserve column default expressions through introspection, manifests, generated entities, drift detection, inspection output, and DDL.
-  - [ ] Preserve native enum definitions through introspection, manifests, generated entities, and DDL.
+  - [x] Preserve native enum definitions through introspection, manifests, generated entities, and DDL.
 - [x] Define how to preserve manual customizations when generated entities are regenerated.
 - [x] Add tests with small schemas to validate both directions: database to entity and entity to database.
 - [ ] Evaluate `sync` command as a way to compare C++ entities with the database schema and synchronize them.

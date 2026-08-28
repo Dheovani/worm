@@ -2,6 +2,8 @@
 
 #include <errors/sql-build-exception.hpp>
 
+#include <unordered_set>
+
 namespace worm::core
 {
   namespace
@@ -43,6 +45,46 @@ namespace worm::core
       return result + ")";
     }
 
+    [[nodiscard]]
+    std::string enumValues(const ColumnType& type)
+    {
+      if (!type.enumeration.has_value() || type.enumeration->values.empty()) {
+        throw worm::SqlBuildException("Native enum type requires at least one value.");
+      }
+
+      std::unordered_set<std::string> uniqueValues;
+      std::string result;
+      for (const std::string& value : type.enumeration->values) {
+        if (!uniqueValues.insert(value).second) {
+          throw worm::SqlBuildException("Native enum type contains duplicate value '{}'.", value);
+        }
+        if (!result.empty()) {
+          result += ",";
+        }
+        result += "'";
+        for (const char character : value) {
+          result += character;
+          if (character == '\'') {
+            result += '\'';
+          }
+        }
+        result += "'";
+      }
+      return result;
+    }
+
+    [[nodiscard]]
+    std::string postgresEnumName(const ColumnType& type)
+    {
+      if (!type.enumeration.has_value() || type.enumeration->name.empty()) {
+        throw worm::SqlBuildException("PostgreSQL native enum type requires a name.");
+      }
+      if (type.enumeration->schema.empty()) {
+        return quote(type.enumeration->name, '"');
+      }
+      return quote(type.enumeration->schema, '"') + "." + quote(type.enumeration->name, '"');
+    }
+
     [[noreturn]]
     void throwUnsupportedType(std::string_view dialect)
     {
@@ -79,6 +121,8 @@ namespace worm::core
       return decimalType(type);
     case ColumnTypeKind::String:
       return type.length.has_value() ? "varchar(" + std::to_string(type.length.value()) + ")" : "text";
+    case ColumnTypeKind::Enum:
+      return postgresEnumName(type);
     case ColumnTypeKind::Binary:
       return "bytea";
     case ColumnTypeKind::Date:
@@ -127,6 +171,8 @@ namespace worm::core
       return decimalType(type);
     case ColumnTypeKind::String:
       return type.length.has_value() ? "varchar(" + std::to_string(type.length.value()) + ")" : "text";
+    case ColumnTypeKind::Enum:
+      return "enum(" + enumValues(type) + ")";
     case ColumnTypeKind::Binary:
       return "blob";
     case ColumnTypeKind::Date:
@@ -177,6 +223,8 @@ namespace worm::core
     case ColumnTypeKind::Uuid:
     case ColumnTypeKind::Json:
       return "text";
+    case ColumnTypeKind::Enum:
+      break;
     case ColumnTypeKind::Unknown:
       break;
     }
@@ -236,6 +284,8 @@ namespace worm::core
       return "uniqueidentifier";
     case ColumnTypeKind::Json:
       return "nvarchar(max)";
+    case ColumnTypeKind::Enum:
+      break;
     case ColumnTypeKind::Unknown:
       break;
     }

@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <reflection/metadata.hpp>
 
@@ -19,6 +20,7 @@ namespace worm::core
     Float64,
     Decimal,
     String,
+    Enum,
     Binary,
     Date,
     Time,
@@ -28,6 +30,15 @@ namespace worm::core
     Unknown
   };
 
+  struct NativeEnum
+  {
+    std::string schema;
+    std::string name;
+    std::vector<std::string> values;
+
+    friend bool operator==(const NativeEnum&, const NativeEnum&) = default;
+  };
+
   struct ColumnType
   {
     ColumnTypeKind kind{ColumnTypeKind::Unknown};
@@ -35,6 +46,7 @@ namespace worm::core
     std::optional<std::size_t> length;
     std::optional<std::size_t> precision;
     std::optional<std::size_t> scale;
+    std::optional<NativeEnum> enumeration;
     bool unsignedValue{false};
     bool withTimeZone{false};
 

@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace worm::connection
 {
@@ -130,6 +131,70 @@ namespace worm::connection
     }
 
     [[nodiscard]]
+    std::vector<std::string> splitEnumValues(std::string_view values)
+    {
+      std::vector<std::string> result;
+      std::string value;
+      for (const char character : values) {
+        if (character == '\x1f') {
+          result.push_back(std::move(value));
+          value.clear();
+        } else {
+          value += character;
+        }
+      }
+      if (!values.empty()) {
+        result.push_back(std::move(value));
+      }
+      return result;
+    }
+
+    [[nodiscard]]
+    std::vector<std::string> parseMySqlEnumValues(std::string_view declaration)
+    {
+      std::vector<std::string> result;
+      const std::size_t opening = declaration.find('(');
+      if (opening == std::string_view::npos) {
+        return result;
+      }
+
+      std::size_t index = opening + 1;
+      while (index < declaration.size()) {
+        while (index < declaration.size() && (declaration[index] == ' ' || declaration[index] == ',')) {
+          ++index;
+        }
+        if (index >= declaration.size() || declaration[index] == ')') {
+          break;
+        }
+        if (declaration[index++] != '\'') {
+          return {};
+        }
+
+        std::string value;
+        bool closed = false;
+        while (index < declaration.size()) {
+          const char character = declaration[index++];
+          if (character == '\\' && index < declaration.size()) {
+            value += declaration[index++];
+          } else if (character == '\'' && index < declaration.size() && declaration[index] == '\'') {
+            value += '\'';
+            ++index;
+          } else if (character == '\'') {
+            closed = true;
+            break;
+          } else {
+            value += character;
+          }
+        }
+        if (!closed) {
+          return {};
+        }
+        result.push_back(std::move(value));
+      }
+      return result;
+    }
+
+    [[nodiscard]]
     core::ColumnTypeKind columnTypeKind(DatabaseType database, std::string_view typeName, std::string_view nativeName)
     {
       const std::string type = lower(std::string{typeName});
@@ -172,8 +237,9 @@ namespace worm::connection
         return core::ColumnTypeKind::Float64;
       if (type == "decimal" || type == "numeric" || type == "money" || type == "smallmoney")
         return core::ColumnTypeKind::Decimal;
-      if (contains(type, "char") || contains(type, "text") || type == "citext" || type == "enum" || type == "set" ||
-          type == "xml")
+      if (type == "enum" || type == "user-defined")
+        return core::ColumnTypeKind::Enum;
+      if (contains(type, "char") || contains(type, "text") || type == "citext" || type == "set" || type == "xml")
         return core::ColumnTypeKind::String;
       if (contains(type, "binary") || contains(type, "blob") || type == "bytea" || type == "image")
         return core::ColumnTypeKind::Binary;
@@ -195,7 +261,7 @@ namespace worm::connection
     {
       const std::string typeName = stringValue(row, "type_name");
       const std::string nativeName = stringValue(row, "native_type");
-      return {
+      core::ColumnType type{
         .kind = columnTypeKind(database, typeName, nativeName),
         .nativeName = nativeName,
         .length = sizeValue(row, "type_length"),
@@ -204,6 +270,31 @@ namespace worm::connection
         .unsignedValue = boolValue(row, "is_unsigned"),
         .withTimeZone = boolValue(row, "has_time_zone"),
       };
+
+      const std::optional<std::string> serializedEnumValues =
+        database == DatabaseType::PostgreSQL && lower(typeName) == "user-defined"
+          ? optionalStringValue(row, "enum_values")
+          : std::nullopt;
+      if (database == DatabaseType::PostgreSQL && type.kind == core::ColumnTypeKind::Enum &&
+          !serializedEnumValues.has_value()) {
+        type.kind = core::ColumnTypeKind::Unknown;
+      }
+
+      if (type.kind == core::ColumnTypeKind::Enum) {
+        core::NativeEnum enumeration;
+        if (database == DatabaseType::PostgreSQL) {
+          enumeration.schema = stringValue(row, "schema_name");
+          enumeration.name = nativeName;
+          enumeration.values = splitEnumValues(serializedEnumValues.value_or(""));
+        } else if (database == DatabaseType::MySQL) {
+          enumeration.values = parseMySqlEnumValues(nativeName);
+        }
+        if (enumeration.values.empty()) {
+          throw QueryExecutionException("Schema introspection returned an invalid native enum definition.");
+        }
+        type.enumeration = std::move(enumeration);
+      }
+      return type;
     }
 
     [[nodiscard]]
@@ -217,19 +308,13 @@ namespace worm::connection
 
       const std::string normalized = lower(*expression);
 
-      const bool textual =
-        type.kind == core::ColumnTypeKind::String ||
-        type.kind == core::ColumnTypeKind::Date ||
-        type.kind == core::ColumnTypeKind::Time ||
-        type.kind == core::ColumnTypeKind::Uuid ||
-        type.kind == core::ColumnTypeKind::Json ||
-        type.kind == core::ColumnTypeKind::DateTime;
+      const bool textual = type.kind == core::ColumnTypeKind::String || type.kind == core::ColumnTypeKind::Enum ||
+                           type.kind == core::ColumnTypeKind::Date || type.kind == core::ColumnTypeKind::Time ||
+                           type.kind == core::ColumnTypeKind::Uuid || type.kind == core::ColumnTypeKind::Json ||
+                           type.kind == core::ColumnTypeKind::DateTime;
 
-      const bool expressionLike =
-        normalized == "current_timestamp" ||
-        normalized == "current_timestamp()" ||
-        normalized == "null" ||
-        expression->starts_with('(');
+      const bool expressionLike = normalized == "current_timestamp" || normalized == "current_timestamp()" ||
+                                  normalized == "null" || expression->starts_with('(');
 
       if (!textual || expressionLike) {
         return expression;
@@ -271,7 +356,10 @@ namespace worm::connection
           "then 1 else 0 end as is_primary_key,c.data_type as type_name,c.udt_name as native_type,"
           "c.character_maximum_length as type_length,c.numeric_precision as type_precision,"
           "c.numeric_scale as type_scale,0 as is_unsigned,c.column_default as default_expression,"
-          "case when c.data_type like '%with time zone' then 1 else 0 end as has_time_zone "
+          "case when c.data_type like '%with time zone' then 1 else 0 end as has_time_zone,"
+          "case when c.data_type='USER-DEFINED' then (select string_agg(e.enumlabel,chr(31) order by "
+          "e.enumsortorder) from pg_type t join pg_namespace n on n.oid=t.typnamespace join pg_enum e on "
+          "e.enumtypid=t.oid where t.typname=c.udt_name and n.nspname=c.udt_schema) else null end as enum_values "
           "from information_schema.columns c where c.table_schema not in ('pg_catalog','information_schema') "
           "order by c.table_schema,c.table_name,c.ordinal_position");
       case DatabaseType::MySQL:
@@ -288,7 +376,7 @@ namespace worm::connection
           "c.column_type as native_type,c.character_maximum_length as type_length,"
           "c.numeric_precision as type_precision,c.numeric_scale as type_scale,"
           "case when c.column_type like '%unsigned%' then 1 else 0 end as is_unsigned,0 as has_time_zone,"
-          "c.column_default as default_expression "
+          "c.column_default as default_expression,null as enum_values "
           "from information_schema.columns c where c.table_schema=database() "
           "order by c.table_name,c.ordinal_position");
       case DatabaseType::MSSQL:
@@ -313,7 +401,7 @@ namespace worm::connection
           "then 1 else 0 end as is_primary_key,c.data_type as type_name,c.data_type as native_type,"
           "c.character_maximum_length as type_length,c.numeric_precision as type_precision,"
           "c.numeric_scale as type_scale,0 as is_unsigned,c.column_default as default_expression,"
-          "case when c.data_type='datetimeoffset' then 1 else 0 end as has_time_zone "
+          "case when c.data_type='datetimeoffset' then 1 else 0 end as has_time_zone,null as enum_values "
           "from information_schema.columns c where c.table_schema not in ('sys','INFORMATION_SCHEMA') "
           "order by c.table_schema,c.table_name,c.ordinal_position");
       case DatabaseType::SQLite:
@@ -326,7 +414,7 @@ namespace worm::connection
           "then 1 else 0 end as is_unique,"
           "case when p.pk>0 then 1 else 0 end as is_primary_key,p.type as type_name,p.type as native_type,"
           "null as type_length,null as type_precision,null as type_scale,0 as is_unsigned,0 as has_time_zone,"
-          "p.dflt_value as default_expression "
+          "p.dflt_value as default_expression,null as enum_values "
           "from sqlite_master m join pragma_table_xinfo(m.name) p where m.type='table' and m.name not like 'sqlite_%' "
           "order by m.name,p.cid");
       }
@@ -369,14 +457,15 @@ namespace worm::connection
       const std::string columnName = stringValue(row, "column_name");
       const core::ColumnType normalizedType = columnType(row, client_->type());
       const bool generated = boolValue(row, "is_generated");
-      table->columns.push_back({
-        .name = columnName,
-        .type = normalizedType,
-        .defaultExpression = generated ? std::nullopt : defaultExpression(row, client_->type(), normalizedType),
-        .nullable = boolValue(row, "is_nullable"),
-        .generated = generated,
-        .unique = boolValue(row, "is_unique"),
-      });
+      table->columns.push_back(
+        {
+          .name = columnName,
+          .type = normalizedType,
+          .defaultExpression = generated ? std::nullopt : defaultExpression(row, client_->type(), normalizedType),
+          .nullable = boolValue(row, "is_nullable"),
+          .generated = generated,
+          .unique = boolValue(row, "is_unique"),
+        });
 
       if (boolValue(row, "is_primary_key")) {
         table->primaryKey.push_back(columnName);
