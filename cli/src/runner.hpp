@@ -14,6 +14,7 @@ namespace worm::cli
   enum class ExecutionStatus
   {
     Success,
+    IssuesDetected,
     DriftDetected,
     Blocked,
     Failed

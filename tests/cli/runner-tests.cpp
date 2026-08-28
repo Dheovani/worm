@@ -30,13 +30,18 @@ int main()
   char passwordOption[] = "--password";
   char password[] = "secret";
   char inlinePassword[] = "--password=other-secret";
+  char queryOption[] = "--query";
+  char query[] = "SELECT * FROM users WHERE token = 'secret-token'";
   char* passwordArguments[]{executable, passwordOption, password, command};
   char* inlinePasswordArguments[]{executable, inlinePassword, command};
+  char* queryArguments[]{executable, command, queryOption, query};
   if (worm::cli::buildCommand(2, arguments) != "worm check" ||
       worm::cli::buildCommand(4, passwordArguments) != "worm --password <redacted> check" ||
       worm::cli::buildCommand(3, inlinePasswordArguments) != "worm --password=<redacted> check" ||
+      worm::cli::buildCommand(4, queryArguments) != "worm check --query <redacted>" ||
       worm::cli::exitCode(worm::cli::ExecutionStatus::Success) != 0 ||
       worm::cli::exitCode(worm::cli::ExecutionStatus::Failed) != 1 ||
+      worm::cli::exitCode(worm::cli::ExecutionStatus::IssuesDetected) != 2 ||
       worm::cli::exitCode(worm::cli::ExecutionStatus::DriftDetected) != 2 ||
       worm::cli::exitCode(worm::cli::ExecutionStatus::Blocked) != 3) {
     std::cerr << "Runner command or exit-code contract failed.\n";

@@ -249,6 +249,15 @@ for (const worm::utils::NPlusOneWarning& warning : detector.warnings()) {
 
 The detector is intentionally opt-in. It does not collect statements globally, does not block execution, and does not inspect parameter values in diagnostics. Repeated parameterized `SELECT` statements are a strong signal that a relationship query may be running once per parent row; use `Criteria::include()` and explicit joins when the relationship should be loaded in one query.
 
+The optional CLI exposes the same opt-in analysis for captured SQL without connecting to a database or executing the statements. Pass one observed query through `--query`, or place multiple semicolon-separated `SELECT` statements in a file and use `--file`:
+
+```bash
+worm n-plus-one --query "SELECT * FROM posts WHERE user_id = 42"
+worm n-plus-one --file query-log.sql --max-executions 2
+```
+
+Exactly one input source is required. The default maximum is one execution of each normalized query pattern; `--max-executions` changes that allowed count. Reports contain normalized SQL and aggregate counts but never concrete literal values. A detected pattern exits with code `2`, while invalid or non-read-only input exits with code `1`.
+
 ## Transactions
 
 A transaction must be finalized explicitly. If it leaves scope while still

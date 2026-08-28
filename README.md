@@ -17,6 +17,7 @@ drivers for SQLite, PostgreSQL, MySQL, and SQL Server.
 - Typed C++20 reflection with `constexpr` descriptors, the `Reflectable`
   concept, and field visitation.
 - Parameterized expressions with `WHERE` and `ORDER BY` composition.
+- An optional CLI with schema commands and offline N+1 query-pattern diagnostics.
 
 Worm should not be considered production-ready yet. See [TODO.md](TODO.md) for
 the roadmap.
@@ -28,6 +29,8 @@ flow: CMake integration, reflected entity, CRUD, parameterized queries,
 transactions, errors, ownership, and current limitations. The same flow is also
 available as a buildable example in
 [`examples/sqlite-quick-start.cpp`](examples/sqlite-quick-start.cpp).
+
+The optional [Worm CLI](cli/README.md) can analyze one observed `SELECT` query or a semicolon-separated query log for repeated parameterized shapes without connecting to or executing statements against a database.
 
 ## Requirements
 

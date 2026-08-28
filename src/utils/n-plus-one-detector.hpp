@@ -75,6 +75,18 @@ namespace worm::utils
       return executionCount_;
     }
 
+    [[nodiscard]]
+    std::size_t patternCount() const noexcept
+    {
+      return entries_.size();
+    }
+
+    [[nodiscard]]
+    std::size_t repeatedPatternCount() const noexcept
+    {
+      return std::ranges::count_if(entries_, [](const Entry& entry) { return entry.executions > 1; });
+    }
+
     void clear() noexcept
     {
       entries_.clear();

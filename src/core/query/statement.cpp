@@ -1,5 +1,6 @@
 #include <core/query/statement.hpp>
 
+#include <algorithm>
 #include <cctype>
 #include <functional>
 #include <string_view>
@@ -94,6 +95,12 @@ namespace worm::core
       }
 
       return identifier;
+    }
+
+    [[nodiscard]]
+    bool isBlank(std::string_view value) noexcept
+    {
+      return std::ranges::all_of(value, [](unsigned char ch) { return std::isspace(ch); });
     }
 
     [[nodiscard]]
@@ -215,15 +222,11 @@ namespace worm::core
     [[nodiscard]]
     bool isWhereTerminator(std::string_view token)
     {
-      return equalsCaseInsensitive(token, "group")
-          || equalsCaseInsensitive(token, "having")
-          || equalsCaseInsensitive(token, "order")
-          || equalsCaseInsensitive(token, "limit")
-          || equalsCaseInsensitive(token, "offset")
-          || equalsCaseInsensitive(token, "returning")
-          || equalsCaseInsensitive(token, "union")
-          || equalsCaseInsensitive(token, "except")
-          || equalsCaseInsensitive(token, "intersect");
+      return equalsCaseInsensitive(token, "group") || equalsCaseInsensitive(token, "having") ||
+             equalsCaseInsensitive(token, "order") || equalsCaseInsensitive(token, "limit") ||
+             equalsCaseInsensitive(token, "offset") || equalsCaseInsensitive(token, "returning") ||
+             equalsCaseInsensitive(token, "union") || equalsCaseInsensitive(token, "except") ||
+             equalsCaseInsensitive(token, "intersect");
     }
   } // namespace
 
@@ -289,6 +292,105 @@ namespace worm::core
     }
 
     return false;
+  }
+
+  std::vector<std::string> splitStatementQueries(std::string_view sql)
+  {
+    std::vector<std::string> statements;
+    std::string current;
+
+    bool singleQuoted = false;
+    bool doubleQuoted = false;
+    bool backtickQuoted = false;
+    bool bracketQuoted = false;
+    bool lineComment = false;
+    bool blockComment = false;
+
+    for (std::size_t i = 0; i < sql.size(); ++i) {
+      const char ch = sql[i];
+
+      if (lineComment) {
+        current += ch;
+        if (ch == '\n')
+          lineComment = false;
+        continue;
+      }
+
+      if (blockComment) {
+        current += ch;
+        if (ch == '*' && i + 1 < sql.size() && sql[i + 1] == '/') {
+          current += '/';
+          ++i;
+          blockComment = false;
+        }
+        continue;
+      }
+
+      const bool quoted = singleQuoted || doubleQuoted || backtickQuoted || bracketQuoted;
+      if (!quoted && ch == '-' && i + 1 < sql.size() && sql[i + 1] == '-') {
+        current += "--";
+        ++i;
+        lineComment = true;
+        continue;
+      }
+
+      if (!quoted && ch == '/' && i + 1 < sql.size() && sql[i + 1] == '*') {
+        current += "/*";
+        ++i;
+        blockComment = true;
+        continue;
+      }
+
+      if (ch == '\'' && !doubleQuoted && !backtickQuoted && !bracketQuoted) {
+        if (singleQuoted && i + 1 < sql.size() && sql[i + 1] == '\'') {
+          current += "''";
+          ++i;
+          continue;
+        }
+
+        singleQuoted = !singleQuoted;
+      }
+
+      if (ch == '"' && !singleQuoted && !backtickQuoted && !bracketQuoted) {
+        if (doubleQuoted && i + 1 < sql.size() && sql[i + 1] == '"') {
+          current += "\"\"";
+          ++i;
+          continue;
+        }
+        doubleQuoted = !doubleQuoted;
+      }
+
+      if (ch == '`' && !singleQuoted && !doubleQuoted && !bracketQuoted) {
+        if (backtickQuoted && i + 1 < sql.size() && sql[i + 1] == '`') {
+          current += "``";
+          ++i;
+          continue;
+        }
+        backtickQuoted = !backtickQuoted;
+      }
+
+      if (ch == '[' && !singleQuoted && !doubleQuoted && !backtickQuoted && !bracketQuoted)
+        bracketQuoted = true;
+      else if (ch == ']' && bracketQuoted)
+        bracketQuoted = false;
+
+      if (ch == ';' && !singleQuoted && !doubleQuoted && !backtickQuoted && !bracketQuoted) {
+        if (!isBlank(current)) {
+          statements.emplace_back(std::move(current));
+          current.clear();
+        }
+
+        continue;
+      }
+
+      current += ch;
+    }
+
+    if (!isBlank(current)) {
+      statements.emplace_back(std::move(current));
+    }
+
+    return statements;
   }
 
 } // namespace worm::core

@@ -39,6 +39,7 @@ namespace worm::cli
     inline constexpr std::string_view pullCommand = "pull";
     inline constexpr std::string_view pushCommand = "push";
     inline constexpr std::string_view checkCommand = "check";
+    inline constexpr std::string_view nPlusOneCommand = "n-plus-one";
 
     inline constexpr std::string_view entityCommand = "--entity";
     inline constexpr std::string_view tableCommand = "--table";
@@ -46,6 +47,9 @@ namespace worm::cli
     inline constexpr std::string_view namespaceCommand = "--namespace";
     inline constexpr std::string_view nameCommand = "--name";
     inline constexpr std::string_view applyCommand = "--apply";
+    inline constexpr std::string_view queryCommand = "--query";
+    inline constexpr std::string_view fileCommand = "--file";
+    inline constexpr std::string_view maxExecutionsCommand = "--max-executions";
 
     [[nodiscard]]
     constexpr std::optional<GlobalOptions> parseGlobalOption(std::string_view opt) noexcept
@@ -89,6 +93,8 @@ namespace worm::cli
         return Push;
       if (cmd == checkCommand)
         return Check;
+      if (cmd == nPlusOneCommand)
+        return NPlusOne;
 
       return std::nullopt;
     }
@@ -110,6 +116,12 @@ namespace worm::cli
         return Name;
       if (opt == applyCommand)
         return Apply;
+      if (opt == queryCommand)
+        return Query;
+      if (opt == fileCommand)
+        return File;
+      if (opt == maxExecutionsCommand)
+        return MaxExecutions;
 
       return std::nullopt;
     }
@@ -196,7 +208,10 @@ namespace worm::cli
     }
 
     void assignCommandOption(
-      CommandArguments& arguments, CommandOptions option, std::optional<std::string> value, std::string_view token)
+      CommandArguments& arguments,
+      CommandOptions option,
+      std::optional<std::string> value,
+      std::string_view token)
     {
       using enum CommandOptions;
 
@@ -221,6 +236,15 @@ namespace worm::cli
           throw DuplicateCommandException("Option '--apply' was specified more than once.");
         }
         arguments.apply = true;
+        return;
+      case Query:
+        assignUnique(arguments.query, std::move(value).value(), token);
+        return;
+      case File:
+        assignUnique(arguments.file, std::move(value).value(), token);
+        return;
+      case MaxExecutions:
+        assignUnique(arguments.maxExecutions, std::move(value).value(), token);
         return;
       }
     }

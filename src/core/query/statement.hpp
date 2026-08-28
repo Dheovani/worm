@@ -10,7 +10,6 @@
 
 namespace worm::core
 {
-
   struct Statement
   {
     std::string sql;
@@ -40,4 +39,6 @@ namespace worm::core
   [[nodiscard]]
   bool hasFilterWhere(std::string_view sql, std::string_view qualifier);
 
+  [[nodiscard]]
+  std::vector<std::string> splitStatementQueries(std::string_view sql);
 } // namespace worm::core

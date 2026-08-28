@@ -19,6 +19,7 @@ add_worm_cli_test(WormCliCheckTests check-tests.cpp Worm.Cli.Check)
 add_worm_cli_test(WormCliPullTests pull-tests.cpp Worm.Cli.Pull)
 add_worm_cli_test(WormCliPushTests push-tests.cpp Worm.Cli.Push)
 add_worm_cli_test(WormCliRunnerTests runner-tests.cpp Worm.Cli.Runner)
+add_worm_cli_test(WormCliNPlusOneTests n-plus-one-tests.cpp Worm.Cli.NPlusOne)
 
 if(WORM_ENABLE_SQLITE)
   add_worm_cli_test(WormCliSqliteCheckTests check-sqlite-tests.cpp Worm.Cli.Check.SQLite)

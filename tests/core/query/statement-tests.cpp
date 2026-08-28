@@ -44,5 +44,16 @@ int main()
     return 1;
   }
 
+  const auto queries = worm::core::splitStatementQueries(
+    "-- captured query; the comment is not a separator\n"
+    "SELECT \"semi;column\" FROM users WHERE note = 'first;value';\n"
+    "/* another; captured query */ SELECT * FROM posts WHERE title = 'It''s; valid';\n\n");
+
+  if (queries.size() != 2 || queries[0].find("semi;column") == std::string::npos ||
+      queries[0].find("first;value") == std::string::npos || queries[1].find("It''s; valid") == std::string::npos) {
+    std::cerr << "Statement splitting did not preserve semicolons inside quoted SQL or comments.\n";
+    return 1;
+  }
+
   return 0;
 }

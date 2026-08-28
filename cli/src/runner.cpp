@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "database/n-plus-one.hpp"
 #include "errors/invalid-cli-argument-exception.hpp"
 #include "generator/check.hpp"
 #include "generator/pull.hpp"
@@ -19,6 +20,8 @@ namespace worm::cli
       switch (status) {
       case ExecutionStatus::Success:
         return "success";
+      case ExecutionStatus::IssuesDetected:
+        return "issues";
       case ExecutionStatus::DriftDetected:
         return "drift";
       case ExecutionStatus::Blocked:
@@ -85,6 +88,7 @@ namespace worm::cli
               << "  check                 Compare C++ entities with the database schema\n"
               << "  push                  Generate missing database objects from C++ entities\n"
               << "  pull                  Generate missing C++ entities from database tables\n"
+              << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
               << '\n'
               << "Global options:\n"
               << "  -c, --config <path>   Path to the Worm configuration file\n"
@@ -108,6 +112,9 @@ namespace worm::cli
               << "  --namespace <name>    Namespace for generated entities\n"
               << "  --name <name>         Explicit generated entity name\n"
               << "  --apply               Apply the generated plan\n"
+              << "  --query <sql>         Analyze one observed SELECT query\n"
+              << "  --file <path>         Analyze semicolon-separated SELECT queries from a file\n"
+              << "  --max-executions <n>  Allow a query pattern to execute n times before reporting it\n"
               << '\n'
               << "Examples:\n"
               << "  worm check\n"
@@ -116,7 +123,9 @@ namespace worm::cli
               << "  worm pull\n"
               << "  worm pull --apply\n"
               << "  worm push --entity User\n"
-              << "  worm pull --table users\n";
+              << "  worm pull --table users\n"
+              << "  worm n-plus-one --query \"SELECT * FROM posts WHERE user_id = 1\"\n"
+              << "  worm n-plus-one --file query-log.sql --max-executions 1\n";
   }
 
   void printSystemVersion() noexcept
@@ -139,11 +148,13 @@ namespace worm::cli
       const std::string_view argument = argv[index];
       if (argument.starts_with("--password=")) {
         command << "--password=<redacted>";
+      } else if (argument.starts_with("--query=")) {
+        command << "--query=<redacted>";
       } else {
         command << argument;
       }
 
-      if (argument == "--password" && index + 1 < argc) {
+      if ((argument == "--password" || argument == "--query") && index + 1 < argc) {
         command << " <redacted>";
         ++index;
       }
@@ -158,6 +169,7 @@ namespace worm::cli
       return 0;
     case ExecutionStatus::Failed:
       return 1;
+    case ExecutionStatus::IssuesDetected:
     case ExecutionStatus::DriftDetected:
       return 2;
     case ExecutionStatus::Blocked:
@@ -202,6 +214,9 @@ namespace worm::cli
       break;
     case Commands::Push:
       report = generator::push(invocation);
+      break;
+    case Commands::NPlusOne:
+      report = database::verify(invocation);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

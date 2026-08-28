@@ -123,7 +123,7 @@ This milestone should end with a complete example that creates, persists, querie
 - [ ] Define the usage syntax for each one of the following commands (if accepted):
   - [ ] `migrate`: Apply pending migrations to the database, updating the schema from a previous version to the version expected by the application.
   - [ ] `seed`: Populate the database with pre-defined initial or test data—such as default users, permissions, settings, categories, or fixtures—for development and testing.
-  - [ ] `n-plus-one`: Detect N+1 query patterns—instances where an initial query triggers multiple unnecessary, repetitive queries to load related data.
+  - [x] `n-plus-one`: Detect N+1 query patterns—instances where an initial query triggers multiple unnecessary, repetitive queries to load related data.
   - [ ] `status`: Display the current state of the database relative to the project: applied and pending migrations, potential schema discrepancies, and other status information.
   - [ ] `inspect`: Introspect the database and display its actual structure: schemas, tables, columns, data types, PKs, FKs, indexes, and other metadata.
 

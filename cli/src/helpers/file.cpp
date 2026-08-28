@@ -7,6 +7,16 @@
 
 namespace worm::cli
 {
+  std::string readFile(const std::filesystem::path& path)
+  {
+    std::ifstream stream{path, std::ios::binary};
+    if (!stream) {
+      throw WormCliException("Failed to read file '{}'.", path.string());
+    }
+
+    return {std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
+  }
+
   void writeGeneratedFile(const std::filesystem::path& path, std::string_view contents)
   {
     std::error_code error;
@@ -43,5 +53,17 @@ namespace worm::cli
       std::filesystem::remove(temporary, error);
       throw WormCliException("Failed to publish generated file '{}'.", path.string());
     }
+  }
+
+  bool fileExists(const std::filesystem::path& path) noexcept
+  {
+    std::error_code error;
+    return std::filesystem::is_regular_file(path, error);
+  }
+
+  bool fileHasContent(const std::filesystem::path& path)
+  {
+    std::error_code error;
+    return std::filesystem::file_size(path, error) > 0 && !error;
   }
 } // namespace worm::cli

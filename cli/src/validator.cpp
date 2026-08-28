@@ -1,10 +1,15 @@
 #include "validator.hpp"
 
+#include <core/query/statement.hpp>
+#include <core/query/validator.hpp>
+
+#include <algorithm>
 #include <charconv>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -13,13 +18,13 @@
 
 #include "errors/empty-command-exception.hpp"
 #include "errors/invalid-cli-argument-exception.hpp"
+#include "helpers/file.hpp"
 
 namespace worm::cli
 {
   namespace
   {
-    inline constexpr std::string_view cppKeywords[] = {
-      "alignas",
+    inline constexpr std::string_view cppKeywords[] = {"alignas",
       "alignof",
       "and",
       "and_eq",
@@ -159,10 +164,7 @@ namespace worm::cli
     template <typename... Args>
     [[noreturn]]
     void throwConfigurationError(
-      const std::filesystem::path& path,
-      std::size_t line,
-      std::format_string<Args...> message,
-      Args&&... args)
+      const std::filesystem::path& path, std::size_t line, std::format_string<Args...> message, Args&&... args)
     {
       throw InvalidCliArgumentException("Invalid configuration file '{}' at line {}: {}",
         path.string(),
@@ -455,11 +457,35 @@ namespace worm::cli
       }
     }
 
-    void validateCommand(Commands command)
+    [[nodiscard]]
+    bool isPositiveInteger(std::string_view value) noexcept
     {
-      if (command != Commands::Check && command != Commands::Push && command != Commands::Pull) {
-        throw EmptyCommandException("No valid command given");
+      std::size_t result{};
+
+      const auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), result);
+
+      return ec == std::errc{} && ptr == value.data() + value.size() && result > 0 &&
+             result < std::numeric_limits<std::size_t>::max();
+    }
+
+    [[nodiscard]]
+    bool fileContainsOnlySelectQueries(const std::filesystem::path& path)
+    {
+      std::ifstream file{path};
+
+      if (!file) {
+        return false;
       }
+
+      const std::string content{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
+
+      const auto statements = worm::core::splitStatementQueries(content);
+
+      if (statements.empty()) {
+        return false;
+      }
+
+      return std::ranges::all_of(statements, [](const std::string& sql) { return worm::core::isSelect(sql); });
     }
 
     void validateGlobalArguments(const GlobalArguments& args)
@@ -531,6 +557,10 @@ namespace worm::cli
         throw InvalidCliArgumentException("Option '--apply' is not valid for the 'check' command.");
       }
 
+      if (args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
+        throw InvalidCliArgumentException("N+1 options are only valid for the 'n-plus-one' command.");
+      }
+
       if (!args.entities.empty() && !args.tables.empty()) {
         throw InvalidCliArgumentException("Options '--entity' and '--table' cannot be used together "
                                           "for the 'check' command.");
@@ -558,6 +588,10 @@ namespace worm::cli
       if (args.name.has_value()) {
         throw InvalidCliArgumentException("Option '--name' is not valid for the 'push' command.");
       }
+
+      if (args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
+        throw InvalidCliArgumentException("N+1 options are only valid for the 'n-plus-one' command.");
+      }
     }
 
     void validatePullArguments(const CommandArguments& args)
@@ -581,6 +615,58 @@ namespace worm::cli
       if (args.namespaceName.has_value()) {
         isValidNamespace(*args.namespaceName);
       }
+
+      if (args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
+        throw InvalidCliArgumentException("N+1 options are only valid for the 'n-plus-one' command.");
+      }
+    }
+
+    void validateNPlusOneArguments(const CommandArguments& args)
+    {
+      if (args.file.has_value() == args.query.has_value()) {
+        throw InvalidCliArgumentException(
+          "Exactly one of '--query' or '--file' must be provided for the 'n-plus-one' command.");
+      }
+
+      if (!args.entities.empty() || !args.tables.empty() || args.output.has_value() || args.namespaceName.has_value() ||
+          args.name.has_value() || args.apply) {
+        throw InvalidCliArgumentException("Generator options are not valid for the 'n-plus-one' command.");
+      }
+
+      if (args.query.has_value()) {
+        if (args.query->empty()) {
+          throw InvalidCliArgumentException("Option '--query' cannot be empty.");
+        }
+
+        const auto statements = worm::core::splitStatementQueries(*args.query);
+        if (statements.size() != 1 || !worm::core::isSelect(statements.front())) {
+          throw InvalidCliArgumentException("Option '--query' accepts exactly one read-only query.");
+        }
+      }
+
+      if (args.file.has_value()) {
+        if (args.file->empty()) {
+          throw InvalidCliArgumentException("Option '--file' cannot be empty.");
+        }
+
+        if (!fileExists(args.file.value())) {
+          throw InvalidCliArgumentException("Provided file does not exist.");
+        }
+
+        if (!fileHasContent(args.file.value())) {
+          throw InvalidCliArgumentException("Provided file does not have any content.");
+        }
+
+        if (!fileContainsOnlySelectQueries(args.file.value())) {
+          throw InvalidCliArgumentException("Option '--file' accepts only read-only query files.");
+        }
+      }
+
+      if (args.maxExecutions.has_value()) {
+        if (!isPositiveInteger(*args.maxExecutions)) {
+          throw InvalidCliArgumentException("Option '--max-executions' must be a positive integer.");
+        }
+      }
     }
   } // namespace
 
@@ -596,21 +682,23 @@ namespace worm::cli
 
   void validate(const Invocation& invocation)
   {
-    validateCommand(invocation.command);
     validateGlobalArguments(invocation.global);
 
     switch (invocation.command) {
     case Commands::Check:
       validateCheckArguments(invocation.arguments);
       break;
-
     case Commands::Push:
       validatePushArguments(invocation.arguments);
       break;
-
     case Commands::Pull:
       validatePullArguments(invocation.arguments);
       break;
+    case Commands::NPlusOne:
+      validateNPlusOneArguments(invocation.arguments);
+      break;
+    default:
+      throw EmptyCommandException("No valid command given");
     }
   }
 

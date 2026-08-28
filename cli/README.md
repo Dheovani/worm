@@ -1,8 +1,8 @@
 # Worm CLI
 
-`worm` is the command-line interface for inspecting database schemas and generating Worm entity declarations.
+`worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `pull`, and the safe initial form of `push`. `check` compares a JSON entity manifest with the selected database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged.
+The implemented commands are `check`, `pull`, the safe initial form of `push`, and `n-plus-one`. `check` compares a JSON entity manifest with the selected database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -37,7 +37,7 @@ Driver libraries remain optional. A disabled driver is not compiled or linked in
 The command syntax is:
 
 ```text
-worm [global-options] <check|pull|push> [command-options]
+worm [global-options] <check|pull|push|n-plus-one> [command-options]
 ```
 
 Show the built-in reference or version:
@@ -297,12 +297,38 @@ worm --format json check
 
 | Code | Meaning |
 | ---: | --- |
-| `0` | The command completed and no schema drift was found |
+| `0` | The command completed and no schema or diagnostic issue was found |
 | `1` | Invalid input, configuration failure, database failure, or another execution error |
-| `2` | Schema drift was detected |
+| `2` | Schema drift or diagnostic issues were detected |
 | `3` | The requested operation was blocked by a safety rule; reserved for commands that can plan changes |
 
-Exit code `2` allows CI to distinguish schema drift from an execution failure.
+Exit code `2` allows CI to distinguish detected schema or query issues from an execution failure.
+
+## The `n-plus-one` command
+
+`n-plus-one` is an offline diagnostic command. It groups observed `SELECT` statements by normalized query shape and reports a pattern when its number of distinct executions exceeds the allowed maximum. SQL literals and supported placeholders are converted to internal parameters, and concrete literal values are never written to text or JSON reports.
+
+Analyze one observed query:
+
+```bash
+worm n-plus-one --query "SELECT * FROM posts WHERE user_id = 42"
+```
+
+Analyze a semicolon-separated file containing multiple observed queries:
+
+```bash
+worm n-plus-one --file query-log.sql
+```
+
+Exactly one of `--query` and `--file` is required. Only read-only `SELECT` statements are accepted. Semicolons inside quoted SQL string literals do not split a statement.
+
+The default maximum is one execution per normalized query pattern. Use `--max-executions` to permit a larger number before the command reports an issue:
+
+```bash
+worm n-plus-one --file query-log.sql --max-executions 3
+```
+
+The value must be a positive integer. The command exits with `0` when no pattern exceeds the limit, `2` when potential N+1 patterns are found, and `1` for invalid input or an execution error. Use the global `--format json` option for machine-readable metrics and findings.
 
 ## The `pull` command
 

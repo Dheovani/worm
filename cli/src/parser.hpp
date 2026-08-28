@@ -25,7 +25,8 @@ namespace worm::cli
   {
     Pull,
     Push,
-    Check
+    Check,
+    NPlusOne
   };
 
   enum class CommandOptions
@@ -35,7 +36,10 @@ namespace worm::cli
     Output,
     Namespace,
     Name,
-    Apply
+    Apply,
+    Query,
+    File,
+    MaxExecutions
   };
 
   struct GlobalArguments
@@ -63,6 +67,9 @@ namespace worm::cli
     std::optional<std::string> output;
     std::optional<std::string> namespaceName;
     std::optional<std::string> name;
+    std::optional<std::string> file;
+    std::optional<std::string> query;
+    std::optional<std::string> maxExecutions;
 
     bool apply{false};
   };

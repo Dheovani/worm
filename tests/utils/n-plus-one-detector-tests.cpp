@@ -14,7 +14,8 @@ int main()
 
   const auto warnings = detector.warnings();
   if (warnings.size() != 1 || warnings[0].sql != "select * from posts where user_id = ?" ||
-      warnings[0].executions != 2 || warnings[0].distinctParameterSets != 2) {
+      warnings[0].executions != 2 || warnings[0].distinctParameterSets != 2 || detector.patternCount() != 1 ||
+      detector.repeatedPatternCount() != 1) {
     std::cerr << "N+1 detector did not report repeated parameterized SELECT statements.\n";
     return 1;
   }
@@ -46,13 +47,15 @@ int main()
   ignoredStatements.record({"select * from posts"});
   ignoredStatements.record({"select * from posts where user_id = ?", {std::int64_t{1}}});
   ignoredStatements.record({"select * from profiles where user_id = ?", {std::int64_t{1}}});
-  if (!ignoredStatements.warnings().empty() || ignoredStatements.executionCount() != 4) {
+  if (!ignoredStatements.warnings().empty() || ignoredStatements.executionCount() != 4 ||
+      ignoredStatements.patternCount() != 2 || ignoredStatements.repeatedPatternCount() != 0) {
     std::cerr << "N+1 detector reported unrelated or non-parameterized statements.\n";
     return 1;
   }
 
   ignoredStatements.clear();
-  if (!ignoredStatements.warnings().empty() || ignoredStatements.executionCount() != 0) {
+  if (!ignoredStatements.warnings().empty() || ignoredStatements.executionCount() != 0 ||
+      ignoredStatements.patternCount() != 0 || ignoredStatements.repeatedPatternCount() != 0) {
     std::cerr << "N+1 detector did not clear its state.\n";
     return 1;
   }
