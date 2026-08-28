@@ -37,8 +37,9 @@ namespace worm::utils
         return;
       }
 
-      auto entry = std::find_if(
-        entries_.begin(), entries_.end(), [&](const Entry& candidate) { return candidate.sql == statement.sql; });
+      auto entry = std::find_if(entries_.begin(), entries_.end(), [&](const Entry& candidate) {
+        return candidate.sql == statement.sql;
+      });
 
       if (entry == entries_.end()) {
         entries_.push_back(Entry{statement.sql, 1, {statement.parameters}});
@@ -58,11 +59,12 @@ namespace worm::utils
 
       for (const Entry& entry : entries_) {
         if (entry.executions >= minimumExecutions_ && entry.parameterSets.size() >= minimumExecutions_) {
-          result.push_back(NPlusOneWarning{
-            entry.sql,
-            entry.executions,
-            entry.parameterSets.size(),
-          });
+          result.push_back(
+            NPlusOneWarning{
+              entry.sql,
+              entry.executions,
+              entry.parameterSets.size(),
+            });
         }
       }
 

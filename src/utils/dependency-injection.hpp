@@ -141,9 +141,8 @@ namespace worm
   struct DependencyInjector<connection::Client>
   {
     [[nodiscard]]
-    static std::unique_ptr<connection::Client> get(
-      const connection::ConnectionConfig& config,
-      connection::DatabaseType dbType)
+    static std::unique_ptr<connection::Client>
+    get(const connection::ConnectionConfig& config, connection::DatabaseType dbType)
     {
       return connection::makeClient(config, dbType);
     }
@@ -152,7 +151,8 @@ namespace worm
     static std::unique_ptr<connection::Client> get()
     {
       return get(
-        DependencyInjector<connection::ConnectionConfig>::get(), DependencyInjector<connection::DatabaseType>::get());
+        DependencyInjector<connection::ConnectionConfig>::get(),
+        DependencyInjector<connection::DatabaseType>::get());
     }
   };
 
@@ -257,7 +257,8 @@ namespace worm
     static connection::SchemaInspector get()
     {
       return get(
-        DependencyInjector<connection::ConnectionConfig>::get(), DependencyInjector<connection::DatabaseType>::get());
+        DependencyInjector<connection::ConnectionConfig>::get(),
+        DependencyInjector<connection::DatabaseType>::get());
     }
   };
 

@@ -258,7 +258,8 @@ namespace worm::cli::database
     }
 
     [[nodiscard]]
-    ExecutionReport analyze(const std::vector<std::string>& queries,
+    ExecutionReport analyze(
+      const std::vector<std::string>& queries,
       const std::shared_ptr<NPlusOneMetrics>& metrics,
       std::size_t allowedExecutions)
     {

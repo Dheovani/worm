@@ -27,9 +27,8 @@ namespace worm::reflection
 
     template <typename Entity, std::size_t... Indexes>
     [[nodiscard]]
-    constexpr auto snapshot_type(std::index_sequence<Indexes...>)
-      -> std::tuple<std::remove_cv_t<
-        typename std::tuple_element_t<Indexes, std::remove_cvref_t<decltype(Entity::reflect())>>::value_type>...>;
+    constexpr auto snapshot_type(std::index_sequence<Indexes...>) -> std::tuple<std::remove_cv_t<
+      typename std::tuple_element_t<Indexes, std::remove_cvref_t<decltype(Entity::reflect())>>::value_type>...>;
 
     template <typename Entity, std::size_t... Indexes>
     [[nodiscard]]
@@ -41,7 +40,10 @@ namespace worm::reflection
 
     template <typename Entity, typename Snapshot, typename Visitor, std::size_t... Indexes>
     constexpr std::size_t for_each_changed_field_impl(
-      const Entity& object, const Snapshot& snapshot, Visitor&& visitor, std::index_sequence<Indexes...>)
+      const Entity& object,
+      const Snapshot& snapshot,
+      Visitor&& visitor,
+      std::index_sequence<Indexes...>)
     {
       const auto fields = Entity::reflect();
       std::size_t changed = 0;
@@ -86,7 +88,10 @@ namespace worm::reflection
   {
     using Entity = std::remove_cvref_t<T>;
     return detail::for_each_changed_field_impl<Entity>(
-      object, snapshot, std::forward<Visitor>(visitor), std::make_index_sequence<field_count<Entity>>{});
+      object,
+      snapshot,
+      std::forward<Visitor>(visitor),
+      std::make_index_sequence<field_count<Entity>>{});
   }
 
   template <Snapshotable T>

@@ -76,7 +76,11 @@ namespace
 
       sqlite3_stmt* statement = nullptr;
       const int prepared = sqlite3_prepare_v2(
-        database, "select 1 from sqlite_master where type = ? and name = ?", -1, &statement, nullptr);
+        database,
+        "select 1 from sqlite_master where type = ? and name = ?",
+        -1,
+        &statement,
+        nullptr);
       if (prepared == SQLITE_OK) {
         sqlite3_bind_text(statement, 1, type.data(), static_cast<int>(type.size()), SQLITE_TRANSIENT);
         sqlite3_bind_text(statement, 2, name.data(), static_cast<int>(name.size()), SQLITE_TRANSIENT);

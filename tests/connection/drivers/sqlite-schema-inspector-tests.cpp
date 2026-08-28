@@ -23,7 +23,8 @@ namespace
       }
 
       char* message = nullptr;
-      const int result = sqlite3_exec(database,
+      const int result = sqlite3_exec(
+        database,
         "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, note TEXT NULL, "
         "tenant TEXT NOT NULL, external_id TEXT NOT NULL, UNIQUE (tenant, external_id))",
         nullptr,

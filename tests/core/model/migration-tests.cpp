@@ -25,8 +25,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id, {.generated = true, .nullable = false}),
+      return std::tuple{worm::reflection::field("id", &User::id, {.generated = true, .nullable = false}),
         worm::reflection::field("name", &User::name, {.nullable = false})};
     }
   };
@@ -88,8 +87,7 @@ int main()
     return 1;
   }
 
-  const worm::core::TableMetadata matchingTable{
-    User::table(),
+  const worm::core::TableMetadata matchingTable{User::table(),
     {
       column("id", {.generated = true, .nullable = false}),
       column("name", {.nullable = false}),

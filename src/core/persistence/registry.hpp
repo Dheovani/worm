@@ -181,7 +181,9 @@ namespace worm::core
         return 0;
 
       return reflection::for_each_changed_field(
-        *instances_.at(key), snapshots_.at(key), std::forward<Visitor>(visitor));
+        *instances_.at(key),
+        snapshots_.at(key),
+        std::forward<Visitor>(visitor));
     }
 
     template <typename Visitor>

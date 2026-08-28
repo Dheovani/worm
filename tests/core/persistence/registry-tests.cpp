@@ -29,8 +29,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id), worm::reflection::field("name", &User::name)};
+      return std::tuple{worm::reflection::field("id", &User::id), worm::reflection::field("name", &User::name)};
     }
   };
 
@@ -51,8 +50,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &Post::id), worm::reflection::field("title", &Post::title)};
+      return std::tuple{worm::reflection::field("id", &Post::id), worm::reflection::field("title", &Post::title)};
     }
   };
 } // namespace
@@ -76,7 +74,8 @@ int main()
   added->name = "Byron";
   std::vector<std::string> changedFields;
   const std::size_t changedFieldsCount = users.forEachChangedField(
-    1, [&](const auto& descriptor, const auto&, const auto&) { changedFields.emplace_back(descriptor.name()); });
+    1,
+    [&](const auto& descriptor, const auto&, const auto&) { changedFields.emplace_back(descriptor.name()); });
 
   if (!users.isDirty(1) || users.changedFieldCount(1) != 1 || changedFieldsCount != 1 ||
       changedFields != std::vector<std::string>{"name"}) {

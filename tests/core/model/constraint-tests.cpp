@@ -11,16 +11,14 @@ int main()
   constexpr worm::core::Column userEmail{"email", users};
   constexpr worm::core::PrimaryKey emptyPrimaryKey{"pk_empty", {}};
   constexpr worm::core::PrimaryKey userPrimaryKey{"pk_users", {userId}};
-  constexpr worm::core::ForeignKey postUserForeignKey{
-    "fk_posts_users",
+  constexpr worm::core::ForeignKey postUserForeignKey{"fk_posts_users",
     {postUserId},
     users,
     {userId},
     {{worm::core::Operation::Delete, worm::core::ReferentialAction::Cascade},
       {worm::core::Operation::Update, worm::core::ReferentialAction::Restrict}}};
   constexpr worm::core::Index uniqueUserEmail{"idx_users_email", {{userEmail}}, true};
-  constexpr worm::core::Index descendingUserEmail{
-    "idx_users_email_desc",
+  constexpr worm::core::Index descendingUserEmail{"idx_users_email_desc",
     {{userEmail, worm::core::IndexOrder::Descending}}};
 
   static_assert(emptyPrimaryKey.empty());

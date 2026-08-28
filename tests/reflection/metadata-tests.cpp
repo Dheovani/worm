@@ -12,14 +12,16 @@ namespace
     std::string_view transientValue{};
   };
 
-  constexpr auto idField = worm::reflection::field("id",
+  constexpr auto idField = worm::reflection::field(
+    "id",
     &Entity::id,
     worm::reflection::FieldMetadata{
       .columnName = "entity_id",
       .generated = true,
     });
 
-  constexpr auto ignoredField = worm::reflection::field("transientValue",
+  constexpr auto ignoredField = worm::reflection::field(
+    "transientValue",
     &Entity::transientValue,
     worm::reflection::FieldMetadata{
       .ignored = true,

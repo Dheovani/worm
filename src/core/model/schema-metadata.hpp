@@ -24,7 +24,8 @@ namespace worm::core
   class TableMetadata
   {
   public:
-    explicit TableMetadata(Table table,
+    explicit TableMetadata(
+      Table table,
       std::vector<ColumnMetadata> columns = {},
       std::optional<PrimaryKey> primaryKey = std::nullopt,
       std::vector<Index> indexes = {},

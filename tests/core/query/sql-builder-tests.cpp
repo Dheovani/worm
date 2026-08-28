@@ -155,14 +155,27 @@ int main()
 
   try {
     static_cast<void>(pgBuilder.select(
-      {Field{"*", users, Aggregate::Count, "row_count"}}, users, {}, std::nullopt, {}, std::nullopt, {}, having));
+      {Field{"*", users, Aggregate::Count, "row_count"}},
+      users,
+      {},
+      std::nullopt,
+      {},
+      std::nullopt,
+      {},
+      having));
     std::cerr << "Select builder accepted HAVING without GROUP BY.\n";
     return 1;
   } catch (const worm::SqlBuildException&) {}
 
   try {
     static_cast<void>(pgBuilder.select(
-      {Field{"*", users, Aggregate::Count, "row_count"}}, users, {}, std::nullopt, {}, std::nullopt, {Grouping{""}}));
+      {Field{"*", users, Aggregate::Count, "row_count"}},
+      users,
+      {},
+      std::nullopt,
+      {},
+      std::nullopt,
+      {Grouping{""}}));
     std::cerr << "Select builder accepted an empty GROUP BY column.\n";
     return 1;
   } catch (const worm::SqlBuildException&) {}
@@ -350,9 +363,10 @@ int main()
 
   const worm::core::Table schemaUsers{worm::core::Schema{"public"}, "users"};
   const worm::core::Column schemaId{
-    worm::reflection::FieldMetadata{.columnName = "id", .generated = true, .nullable = false}, schemaUsers};
-  const worm::core::Column schemaEmail{
-    worm::reflection::FieldMetadata{.columnName = "email", .nullable = false}, schemaUsers};
+    worm::reflection::FieldMetadata{.columnName = "id", .generated = true, .nullable = false},
+    schemaUsers};
+  const worm::core::Column schemaEmail{worm::reflection::FieldMetadata{.columnName = "email", .nullable = false},
+    schemaUsers};
   const worm::core::TableMetadata usersMetadata{
     schemaUsers,
     {
@@ -383,8 +397,8 @@ int main()
   }
 
   try {
-    const worm::core::TableMetadata invalidMetadata{
-      schemaUsers, {worm::core::ColumnMetadata{schemaId, {.kind = worm::core::ColumnTypeKind::Unknown}}}};
+    const worm::core::TableMetadata invalidMetadata{schemaUsers,
+      {worm::core::ColumnMetadata{schemaId, {.kind = worm::core::ColumnTypeKind::Unknown}}}};
     static_cast<void>(pgBuilder.create(invalidMetadata));
     std::cerr << "CREATE TABLE accepted a column with an unknown type.\n";
     return 1;

@@ -240,16 +240,19 @@ namespace worm::cli::generator
         const std::string columnName = requiredString(columnObject, "name", context);
         if (!columnNames.insert(columnName).second) {
           throw InvalidCliArgumentException(
-            "Manifest entity '{}' contains duplicate column '{}'.", entity.name, columnName);
+            "Manifest entity '{}' contains duplicate column '{}'.",
+            entity.name,
+            columnName);
         }
 
-        entity.table.columns.push_back({
-          .name = columnName,
-          .type = optionalColumnType(columnObject, context),
-          .nullable = optionalBoolean(columnObject, "nullable", true, context),
-          .generated = optionalBoolean(columnObject, "generated", false, context),
-          .unique = optionalBoolean(columnObject, "unique", false, context),
-        });
+        entity.table.columns.push_back(
+          {
+            .name = columnName,
+            .type = optionalColumnType(columnObject, context),
+            .nullable = optionalBoolean(columnObject, "nullable", true, context),
+            .generated = optionalBoolean(columnObject, "generated", false, context),
+            .unique = optionalBoolean(columnObject, "unique", false, context),
+          });
       }
 
       const auto primaryKey = entityObject.find("primaryKey");
@@ -264,12 +267,16 @@ namespace worm::cli::generator
         const std::string columnName = column.get<std::string>();
         if (!columnNames.contains(columnName)) {
           throw InvalidCliArgumentException(
-            "Primary-key column '{}' does not exist in entity '{}'.", columnName, entity.name);
+            "Primary-key column '{}' does not exist in entity '{}'.",
+            columnName,
+            entity.name);
         }
         if (std::find(entity.table.primaryKey.begin(), entity.table.primaryKey.end(), columnName) !=
             entity.table.primaryKey.end()) {
           throw InvalidCliArgumentException(
-            "Manifest entity '{}' contains duplicate primary-key column '{}'.", entity.name, columnName);
+            "Manifest entity '{}' contains duplicate primary-key column '{}'.",
+            entity.name,
+            columnName);
         }
         entity.table.primaryKey.push_back(columnName);
       }
@@ -293,7 +300,9 @@ namespace worm::cli::generator
           };
           if (!indexNames.insert(index.name).second) {
             throw InvalidCliArgumentException(
-              "Manifest entity '{}' contains duplicate index '{}'.", entity.name, index.name);
+              "Manifest entity '{}' contains duplicate index '{}'.",
+              entity.name,
+              index.name);
           }
 
           const auto indexColumns = indexObject.find("columns");
@@ -335,7 +344,8 @@ namespace worm::cli::generator
         for (const Json& foreignKeyObject : *foreignKeys) {
           if (!foreignKeyObject.is_object()) {
             throw InvalidCliArgumentException(
-              "Every foreign key of manifest entity '{}' must be an object.", entity.name);
+              "Every foreign key of manifest entity '{}' must be an object.",
+              entity.name);
           }
 
           const std::string context = std::format("foreign key of entity '{}'", entity.name);
@@ -355,11 +365,14 @@ namespace worm::cli::generator
           }
           if (foreignKey.columns.size() != foreignKey.referencedColumns.size()) {
             throw InvalidCliArgumentException(
-              "Manifest {} requires matching local and referenced column counts.", context);
+              "Manifest {} requires matching local and referenced column counts.",
+              context);
           }
           if (!foreignKeyNames.insert(foreignKey.name).second) {
             throw InvalidCliArgumentException(
-              "Manifest entity '{}' contains duplicate foreign key '{}'.", entity.name, foreignKey.name);
+              "Manifest entity '{}' contains duplicate foreign key '{}'.",
+              entity.name,
+              foreignKey.name);
           }
           entity.foreignKeys.push_back(std::move(foreignKey));
         }
@@ -381,7 +394,8 @@ namespace worm::cli::generator
 
         for (const std::string& referencedColumn : foreignKey.referencedColumns) {
           if (referencedEntity->table.findColumn(referencedColumn) == nullptr) {
-            throw InvalidCliArgumentException("Foreign key '{}' of entity '{}' references unknown column '{}.{}'.",
+            throw InvalidCliArgumentException(
+              "Foreign key '{}' of entity '{}' references unknown column '{}.{}'.",
               foreignKey.name,
               entity.name,
               foreignKey.referencedTable,
@@ -433,7 +447,9 @@ namespace worm::cli::generator
           indexedColumns.push_back({core::Column{column.name, table}, column.order});
         }
         indexes.emplace_back(
-          manifestIndex.name, std::span<const core::IndexedColumn>{indexedColumns}, manifestIndex.unique);
+          manifestIndex.name,
+          std::span<const core::IndexedColumn>{indexedColumns},
+          manifestIndex.unique);
       }
 
       std::vector<core::ForeignKey> foreignKeys;
@@ -445,8 +461,8 @@ namespace worm::cli::generator
           localColumns.emplace_back(columnName, table);
         }
 
-        const core::Table referencedTable{
-          core::Schema{manifestForeignKey.referencedSchema}, manifestForeignKey.referencedTable};
+        const core::Table referencedTable{core::Schema{manifestForeignKey.referencedSchema},
+          manifestForeignKey.referencedTable};
         std::vector<core::Column> referencedColumns;
         referencedColumns.reserve(manifestForeignKey.referencedColumns.size());
         for (const std::string& columnName : manifestForeignKey.referencedColumns) {
@@ -461,14 +477,16 @@ namespace worm::cli::generator
           actions.push_back({core::Operation::Delete, manifestForeignKey.onDelete});
         }
 
-        foreignKeys.emplace_back(manifestForeignKey.name,
+        foreignKeys.emplace_back(
+          manifestForeignKey.name,
           std::span<const core::Column>{localColumns},
           referencedTable,
           std::span<const core::Column>{referencedColumns},
           std::span<const core::ReferentialActionEntry>{actions});
       }
 
-      tables.emplace_back(table,
+      tables.emplace_back(
+        table,
         std::move(columns),
         core::PrimaryKey{"", std::span<const core::Column>{primaryKeyColumns}},
         std::move(indexes),

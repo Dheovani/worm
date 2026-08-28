@@ -123,7 +123,8 @@ namespace
   class RecordingBuilder final : public worm::core::SqlBuilder
   {
   public:
-    worm::core::Statement selectAll(const worm::core::Source& source,
+    worm::core::Statement selectAll(
+      const worm::core::Source& source,
       const std::vector<worm::core::Relation>&,
       const std::optional<worm::core::Filter>& filter = std::nullopt,
       const std::vector<worm::core::Ordering>& = {},
@@ -137,7 +138,8 @@ namespace
       return {"select all users", filter ? filter->expression().parameters : std::vector<worm::core::Parameter>{}};
     }
 
-    worm::core::Statement insert(const worm::core::Source& source,
+    worm::core::Statement insert(
+      const worm::core::Source& source,
       const std::vector<std::pair<std::string, worm::core::Parameter>>& columns) const override
     {
       sourceName = source.name;
@@ -164,7 +166,8 @@ namespace
       return {sql + values, std::move(parameters)};
     }
 
-    worm::core::Statement insertFromSelect(const worm::core::Source& target,
+    worm::core::Statement insertFromSelect(
+      const worm::core::Source& target,
       const std::vector<std::string>& targetColumns,
       const worm::core::Statement& sourceStatement) const override
     {
@@ -174,7 +177,8 @@ namespace
       return {"insert into " + std::string{target.name} + " select delegated", sourceStatement.parameters};
     }
 
-    worm::core::Statement insertFromSelect(const worm::core::Source& target,
+    worm::core::Statement insertFromSelect(
+      const worm::core::Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<worm::core::Field>& selectedFields,
       const worm::core::Source& source,
@@ -196,7 +200,8 @@ namespace
       return {"insert into " + std::string{target.name} + " structured select delegated"};
     }
 
-    worm::core::Statement update(const worm::core::Source& source,
+    worm::core::Statement update(
+      const worm::core::Source& source,
       const std::vector<std::pair<std::string, worm::core::Parameter>>& columns,
       const std::optional<worm::core::Filter>& filter = std::nullopt) const override
     {
@@ -223,14 +228,17 @@ namespace
 
       if (filter.has_value()) {
         parameters.insert(
-          parameters.end(), filter->expression().parameters.begin(), filter->expression().parameters.end());
+          parameters.end(),
+          filter->expression().parameters.begin(),
+          filter->expression().parameters.end());
       }
 
       return {std::move(sql), std::move(parameters)};
     }
 
     worm::core::Statement delete_(
-      const worm::core::Source& source, const std::optional<worm::core::Filter>& filter = std::nullopt) const override
+      const worm::core::Source& source,
+      const std::optional<worm::core::Filter>& filter = std::nullopt) const override
     {
       sourceName = source.name;
       sourceAlias = source.alias.value_or("");
@@ -254,16 +262,17 @@ namespace
     mutable std::string sourceQuery;
   };
 
-  worm::core::ResultSet usersResult(
-    std::initializer_list<std::pair<std::int64_t, std::string>> users, std::uint64_t affectedRows = 0)
+  worm::core::ResultSet
+  usersResult(std::initializer_list<std::pair<std::int64_t, std::string>> users, std::uint64_t affectedRows = 0)
   {
     std::vector<worm::core::ResultRow> rows;
 
     for (const auto& [id, name] : users) {
-      rows.push_back({{
-        {"id", id},
-        {"name", name},
-      }});
+      rows.push_back(
+        {{
+          {"id", id},
+          {"name", name},
+        }});
     }
 
     return worm::core::ResultSet{std::move(rows), affectedRows};
@@ -300,8 +309,9 @@ int main()
   }
 
   RecordingClient sharedFindClient{{usersResult({{8, "Grace"}})}};
-  const worm::core::Repository<User> sharedRepository{
-    nonOwning(sharedFindClient), queryBuilder, nonOwning(sharedRegistry)};
+  const worm::core::Repository<User> sharedRepository{nonOwning(sharedFindClient),
+    queryBuilder,
+    nonOwning(sharedRegistry)};
   const std::shared_ptr<User> sharedFound = sharedRepository.find(std::int64_t{7});
   if (!sharedFound || sharedFound != found || sharedFound->name != "Ada" || !sharedFindClient.statements.empty()) {
     std::cerr << "Repository did not reuse entities registered by another repository.\n";
@@ -400,8 +410,8 @@ int main()
   bool missingGeneratedIdFailed = false;
   try {
     RecordingClient missingGeneratedIdClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-    const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{
-      nonOwning(missingGeneratedIdClient), queryBuilder};
+    const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{nonOwning(missingGeneratedIdClient),
+      queryBuilder};
     static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Missing"}));
   } catch (const worm::MappingException&) {
     missingGeneratedIdFailed = true;
@@ -452,7 +462,8 @@ int main()
   RecordingClient insertFromSelectClient{{worm::core::ResultSet{std::uint64_t{4}}}};
   const worm::core::Repository<User> insertFromSelectRepository{nonOwning(insertFromSelectClient), queryBuilder};
   const std::uint64_t insertFromSelectRows = insertFromSelectRepository.insertFromSelect(
-    {"id", "name"}, {"select id,name from archived_users where active = ?", {true}});
+    {"id", "name"},
+    {"select id,name from archived_users where active = ?", {true}});
 
   if (insertFromSelectRows != 4 || insertFromSelectClient.statements.size() != 1 || builder.targetColumnsCount != 2 ||
       builder.sourceQuery.find("select id,name") == std::string::npos) {
@@ -463,8 +474,8 @@ int main()
   bool invalidInsertFromSelectFailed = false;
   try {
     RecordingClient invalidInsertFromSelectClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-    const worm::core::Repository<User> invalidInsertFromSelectRepository{
-      nonOwning(invalidInsertFromSelectClient), queryBuilder};
+    const worm::core::Repository<User> invalidInsertFromSelectRepository{nonOwning(invalidInsertFromSelectClient),
+      queryBuilder};
     static_cast<void>(invalidInsertFromSelectRepository.insertFromSelect({"id", "name"}, {"delete from users"}));
   } catch (const worm::InvalidOperationException&) {
     invalidInsertFromSelectFailed = true;
@@ -496,8 +507,9 @@ int main()
   }
 
   RecordingClient unchangedUpdateClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-  const worm::core::Repository<User> unchangedUpdateRepository{
-    nonOwning(unchangedUpdateClient), queryBuilder, nonOwning(sharedRegistry)};
+  const worm::core::Repository<User> unchangedUpdateRepository{nonOwning(unchangedUpdateClient),
+    queryBuilder,
+    nonOwning(sharedRegistry)};
   const std::uint64_t unchangedUpdatedRows =
     unchangedUpdateRepository.update(std::int64_t{7}, User{.id = 7, .name = "Lovelace"});
 
@@ -589,9 +601,10 @@ int main()
   const worm::core::QueryBuilder schemaQueryBuilder{schemaBuilder};
   const worm::core::Table schemaTable{"users"};
   const worm::core::Column schemaId{
-    worm::reflection::FieldMetadata{.columnName = "id", .generated = true, .nullable = false}, schemaTable};
-  const worm::core::Column schemaName{
-    worm::reflection::FieldMetadata{.columnName = "name", .nullable = false}, schemaTable};
+    worm::reflection::FieldMetadata{.columnName = "id", .generated = true, .nullable = false},
+    schemaTable};
+  const worm::core::Column schemaName{worm::reflection::FieldMetadata{.columnName = "name", .nullable = false},
+    schemaTable};
   const worm::core::TableMetadata schemaTableMetadata{
     schemaTable,
     {
@@ -601,8 +614,8 @@ int main()
     worm::core::PrimaryKey{"pk_users", {schemaId}},
     {worm::core::Index{"idx_users_name", {{schemaName}}}},
   };
-  const worm::core::Repository<worm::core::SchemaMetadata> schemaRepository{
-    nonOwning(schemaClient), schemaQueryBuilder};
+  const worm::core::Repository<worm::core::SchemaMetadata> schemaRepository{nonOwning(schemaClient),
+    schemaQueryBuilder};
   schemaRepository.create(schemaTableMetadata);
 
   if (schemaClient.statements.size() != 2 || !schemaClient.statements[0].parameters.empty() ||

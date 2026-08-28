@@ -18,7 +18,8 @@ namespace
     {
       return std::tuple{
         worm::reflection::field("id", &Entity::id),
-        worm::reflection::field("email",
+        worm::reflection::field(
+          "email",
           &Entity::email,
           worm::reflection::FieldMetadata{
             .columnName = "email_address",
@@ -66,7 +67,8 @@ int main()
 
   std::string columnName;
   const bool columnFound = worm::reflection::visit_column_descriptor<Entity>(
-    "email_address", [&columnName](const auto& descriptor) { columnName = descriptor.columnName(); });
+    "email_address",
+    [&columnName](const auto& descriptor) { columnName = descriptor.columnName(); });
 
   if (!columnFound || columnName != "email_address") {
     std::cerr << "Column lookup did not return the expected descriptor.\n";
@@ -75,7 +77,9 @@ int main()
 
   bool visitedMissingField = false;
   const bool missingFound = worm::reflection::visit_field_descriptor<Entity>(
-    "missing", [&visitedMissingField](const auto&) { visitedMissingField = true; }, ConstantHasher{});
+    "missing",
+    [&visitedMissingField](const auto&) { visitedMissingField = true; },
+    ConstantHasher{});
 
   if (missingFound || visitedMissingField) {
     std::cerr << "Field lookup accepted a hash collision as an exact match.\n";

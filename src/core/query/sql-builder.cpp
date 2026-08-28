@@ -259,7 +259,9 @@ namespace worm::core
   }
 
   Expression SqlServerBuilder::renderPagination(
-    const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const
+    const Pagination& pagination,
+    std::size_t firstParameterIndex,
+    bool hasOrdering) const
   {
     if (!hasOrdering) {
       throw worm::SqlBuildException("SQL Server pagination requires an ORDER BY clause.");
@@ -372,7 +374,8 @@ namespace worm::core
     return sql;
   }
 
-  Statement SqlBuilder::selectAll(const Source& source,
+  Statement SqlBuilder::selectAll(
+    const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
     const std::vector<Ordering>& ordering,
@@ -426,7 +429,8 @@ namespace worm::core
 
   Statement SqlBuilder::selectAll(const Source& source, const Criteria& criteria) const
   {
-    return selectAll(source,
+    return selectAll(
+      source,
       criteria.relations(),
       criteria.filter(),
       criteria.ordering(),
@@ -435,7 +439,8 @@ namespace worm::core
       criteria.having());
   }
 
-  Statement SqlBuilder::select(const std::vector<worm::core::Field>& fields,
+  Statement SqlBuilder::select(
+    const std::vector<worm::core::Field>& fields,
     const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
@@ -492,10 +497,11 @@ namespace worm::core
     return {std::move(sql), std::move(parameters)};
   }
 
-  Statement SqlBuilder::select(
-    const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const
+  Statement
+  SqlBuilder::select(const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const
   {
-    return select(fields,
+    return select(
+      fields,
       source,
       criteria.relations(),
       criteria.filter(),
@@ -505,8 +511,8 @@ namespace worm::core
       criteria.having());
   }
 
-  Statement SqlBuilder::insert(
-    const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
+  Statement
+  SqlBuilder::insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
     if (columns.empty()) {
       throw worm::SqlBuildException("INSERT operation must receive at least one column.");
@@ -533,7 +539,9 @@ namespace worm::core
   }
 
   Statement SqlBuilder::insertFromSelect(
-    const Source& target, const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
+    const Source& target,
+    const std::vector<std::string>& targetColumns,
+    const Statement& sourceStatement) const
   {
     if (targetColumns.empty()) {
       throw worm::SqlBuildException("INSERT FROM SELECT operation must receive at least one target column.");
@@ -552,11 +560,12 @@ namespace worm::core
 
     columns += ")";
 
-    return {
-      "insert into " + std::string{target.name} + columns + " " + sourceStatement.sql, sourceStatement.parameters};
+    return {"insert into " + std::string{target.name} + columns + " " + sourceStatement.sql,
+      sourceStatement.parameters};
   }
 
-  Statement SqlBuilder::insertFromSelect(const Source& target,
+  Statement SqlBuilder::insertFromSelect(
+    const Source& target,
     const std::vector<std::string>& targetColumns,
     const std::vector<Field>& selectedFields,
     const Source& source,
@@ -573,13 +582,15 @@ namespace worm::core
     return insertFromSelect(target, targetColumns, selectStatement);
   }
 
-  Statement SqlBuilder::insertFromSelect(const Source& target,
+  Statement SqlBuilder::insertFromSelect(
+    const Source& target,
     const std::vector<std::string>& targetColumns,
     const std::vector<Field>& selectedFields,
     const Source& source,
     const Criteria& criteria) const
   {
-    return insertFromSelect(target,
+    return insertFromSelect(
+      target,
       targetColumns,
       selectedFields,
       source,
@@ -591,7 +602,8 @@ namespace worm::core
       criteria.having());
   }
 
-  Statement SqlBuilder::update(const Source& source,
+  Statement SqlBuilder::update(
+    const Source& source,
     const std::vector<std::pair<std::string, Parameter>>& columns,
     const std::optional<Filter>& filter) const
   {
@@ -669,7 +681,9 @@ namespace worm::core
       for (std::size_t index = 0; index < columns.size(); ++index) {
         if (metadata.findColumn(columns[index].columnName) == nullptr) {
           throw worm::SqlBuildException(
-            "Constraint column '{}' does not exist in table '{}'.", columns[index].columnName, table.name());
+            "Constraint column '{}' does not exist in table '{}'.",
+            columns[index].columnName,
+            table.name());
         }
         if (index != 0) {
           result += ",";
@@ -738,7 +752,9 @@ namespace worm::core
     for (const ForeignKey& foreignKey : metadata.foreignKeys()) {
       if (foreignKey.columns().empty() || foreignKey.columns().size() != foreignKey.referencedColumns().size()) {
         throw worm::SqlBuildException(
-          "Foreign key '{}' on table '{}' has incompatible column lists.", foreignKey.name(), table.name());
+          "Foreign key '{}' on table '{}' has incompatible column lists.",
+          foreignKey.name(),
+          table.name());
       }
 
       const Table referencedTable = foreignKey.referencedTable();
@@ -800,7 +816,9 @@ namespace worm::core
         const IndexedColumn& indexedColumn = index.columns()[columnIndex];
         if (metadata.findColumn(indexedColumn.column.columnName) == nullptr) {
           throw worm::SqlBuildException(
-            "Index '{}' references missing column '{}'.", index.name(), indexedColumn.column.columnName);
+            "Index '{}' references missing column '{}'.",
+            index.name(),
+            indexedColumn.column.columnName);
         }
         if (columnIndex != 0) {
           indexSql += ",";
@@ -838,7 +856,9 @@ namespace worm::core
     if (column.type().kind != ColumnTypeKind::Int16 && column.type().kind != ColumnTypeKind::Int32 &&
         column.type().kind != ColumnTypeKind::Int64) {
       throw worm::SqlBuildException(
-        "Generated column '{}.{}' must use an integer type.", column.table().name(), column.columnName);
+        "Generated column '{}.{}' must use an integer type.",
+        column.table().name(),
+        column.columnName);
     }
     return " generated by default as identity";
   }

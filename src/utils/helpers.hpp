@@ -86,10 +86,11 @@ namespace worm::utils
   {};
 
   template <class T>
-  struct is_iterable<T, std::void_t<
-    typename std::iterator_traits<decltype(std::begin(std::declval<T>()))>::value_type,
-    typename std::iterator_traits<decltype(std::end(std::declval<T>()))>::value_type
-  >> : std::true_type
+  struct is_iterable<
+    T,
+    std::void_t<
+      typename std::iterator_traits<decltype(std::begin(std::declval<T>()))>::value_type,
+      typename std::iterator_traits<decltype(std::end(std::declval<T>()))>::value_type>> : std::true_type
   {};
 
   template <class T>

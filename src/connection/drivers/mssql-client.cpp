@@ -312,7 +312,8 @@ namespace worm::connection
 
     if (databaseConfig.timeoutConfig.connectionTimeout.has_value()) {
       const SQLULEN timeout = odbcTimeoutSeconds(*databaseConfig.timeoutConfig.connectionTimeout);
-      const SQLRETURN result = SQLSetConnectAttr(connection_.get(),
+      const SQLRETURN result = SQLSetConnectAttr(
+        connection_.get(),
         SQL_ATTR_LOGIN_TIMEOUT,
         reinterpret_cast<SQLPOINTER>(static_cast<std::uintptr_t>(timeout)),
         0);
@@ -323,7 +324,8 @@ namespace worm::connection
     }
 
     std::string connectionString = buildConnectionString(databaseConfig);
-    const SQLRETURN result = SQLDriverConnect(connection_.get(),
+    const SQLRETURN result = SQLDriverConnect(
+      connection_.get(),
       nullptr,
       reinterpret_cast<SQLCHAR*>(connectionString.data()),
       SQL_NTS,
@@ -356,7 +358,10 @@ namespace worm::connection
   {
     if (!SQL_SUCCEEDED(SQLEndTran(SQL_HANDLE_DBC, connection_.get(), SQL_ROLLBACK)) ||
         !SQL_SUCCEEDED(SQLSetConnectAttr(
-          connection_.get(), SQL_ATTR_AUTOCOMMIT, reinterpret_cast<SQLPOINTER>(SQL_AUTOCOMMIT_ON), 0))) {
+          connection_.get(),
+          SQL_ATTR_AUTOCOMMIT,
+          reinterpret_cast<SQLPOINTER>(SQL_AUTOCOMMIT_ON),
+          0))) {
       throw QueryExecutionException(diagnostics(SQL_HANDLE_DBC, connection_.get()));
     }
   }
@@ -365,7 +370,10 @@ namespace worm::connection
   {
     if (!SQL_SUCCEEDED(SQLEndTran(SQL_HANDLE_DBC, connection_.get(), SQL_COMMIT)) ||
         !SQL_SUCCEEDED(SQLSetConnectAttr(
-          connection_.get(), SQL_ATTR_AUTOCOMMIT, reinterpret_cast<SQLPOINTER>(SQL_AUTOCOMMIT_ON), 0))) {
+          connection_.get(),
+          SQL_ATTR_AUTOCOMMIT,
+          reinterpret_cast<SQLPOINTER>(SQL_AUTOCOMMIT_ON),
+          0))) {
       throw QueryExecutionException(diagnostics(SQL_HANDLE_DBC, connection_.get()));
     }
   }
@@ -381,7 +389,8 @@ namespace worm::connection
 
     if (const auto timeout = timeoutConfig_.queryTimeout; timeout.has_value()) {
       const SQLULEN seconds = odbcTimeoutSeconds(*timeout);
-      const SQLRETURN result = SQLSetStmtAttr(preparedStatement.get(),
+      const SQLRETURN result = SQLSetStmtAttr(
+        preparedStatement.get(),
         SQL_ATTR_QUERY_TIMEOUT,
         reinterpret_cast<SQLPOINTER>(static_cast<std::uintptr_t>(seconds)),
         0);
@@ -391,7 +400,8 @@ namespace worm::connection
       }
     }
 
-    if (!SQL_SUCCEEDED(SQLPrepare(preparedStatement.get(),
+    if (!SQL_SUCCEEDED(SQLPrepare(
+          preparedStatement.get(),
           reinterpret_cast<SQLCHAR*>(const_cast<char*>(statement.sql.data())),
           static_cast<SQLINTEGER>(statement.sql.size())))) {
       throw QueryExecutionException(diagnostics(SQL_HANDLE_STMT, preparedStatement.get()));
@@ -406,7 +416,8 @@ namespace worm::connection
 
     for (std::size_t index = 0; index < parameters.size(); ++index) {
       BoundParameter& parameter = parameters[index];
-      const SQLRETURN result = SQLBindParameter(preparedStatement.get(),
+      const SQLRETURN result = SQLBindParameter(
+        preparedStatement.get(),
         static_cast<SQLUSMALLINT>(index + 1),
         SQL_PARAM_INPUT,
         parameter.valueType,
@@ -452,7 +463,8 @@ namespace worm::connection
         SQLSMALLINT decimalDigits = 0;
         SQLSMALLINT nullable = 0;
 
-        if (!SQL_SUCCEEDED(SQLDescribeCol(preparedStatement.get(),
+        if (!SQL_SUCCEEDED(SQLDescribeCol(
+              preparedStatement.get(),
               index,
               name.data(),
               static_cast<SQLSMALLINT>(name.size()),
@@ -466,8 +478,9 @@ namespace worm::connection
 
         const std::size_t safeNameLength =
           (std::min)(static_cast<std::size_t>(nameLength), name.size() - std::size_t{1});
-        columns.push_back({std::string{reinterpret_cast<const char*>(name.data()), safeNameLength},
-          columnValue(preparedStatement.get(), index, dataType)});
+        columns.push_back(
+          {std::string{reinterpret_cast<const char*>(name.data()), safeNameLength},
+            columnValue(preparedStatement.get(), index, dataType)});
       }
 
       rows.push_back({std::move(columns)});
@@ -478,7 +491,7 @@ namespace worm::connection
       throw QueryExecutionException(diagnostics(SQL_HANDLE_STMT, preparedStatement.get()));
     }
 
-    return core::ResultSet{
-      std::move(rows), affectedRows > 0 ? static_cast<std::uint64_t>(affectedRows) : std::uint64_t{0}};
+    return core::ResultSet{std::move(rows),
+      affectedRows > 0 ? static_cast<std::uint64_t>(affectedRows) : std::uint64_t{0}};
   }
 } // namespace worm::connection

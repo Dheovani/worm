@@ -36,13 +36,16 @@ namespace worm::core
 
     template <Entity Owner, Entity Target>
     Criteria& include(
-      const DirectRelationship<Owner, Target>& relationship, std::string_view ownerAlias, std::string_view targetAlias)
+      const DirectRelationship<Owner, Target>& relationship,
+      std::string_view ownerAlias,
+      std::string_view targetAlias)
     {
       return addRelation(relationship.relation(ownerAlias, targetAlias));
     }
 
     template <Entity Owner, Entity Target>
-    Criteria& include(const ManyToManyRelationship<Owner, Target>& relationship,
+    Criteria& include(
+      const ManyToManyRelationship<Owner, Target>& relationship,
       std::string_view ownerAlias,
       std::string_view joinAlias,
       std::string_view targetAlias)

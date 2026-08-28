@@ -123,7 +123,8 @@ namespace worm::cli::generator
       case core::ColumnTypeKind::Int64:
         if (column.type.unsignedValue) {
           throw EntityCreationException(
-            "unsigned 64-bit column '{}' cannot be represented without possible data loss", column.name);
+            "unsigned 64-bit column '{}' cannot be represented without possible data loss",
+            column.name);
         }
         type = "std::int64_t";
         break;
@@ -140,7 +141,8 @@ namespace worm::cli::generator
         type = "std::chrono::sys_days";
         break;
       default:
-        throw EntityCreationException("column '{}' uses unsupported SQL type '{}' ({})",
+        throw EntityCreationException(
+          "column '{}' uses unsupported SQL type '{}' ({})",
           column.name,
           column.type.nativeName,
           core::columnTypeKindName(column.type.kind));
@@ -149,13 +151,15 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
-    std::string generateFileContents(const core::SchemaTableSnapshot& table,
+    std::string generateFileContents(
+      const core::SchemaTableSnapshot& table,
       std::string_view entityName,
       const std::optional<std::string>& namespaceName)
     {
       if (table.primaryKey.size() != 1) {
         throw EntityCreationException(
-          "table '{}' must have exactly one primary-key column to generate a persistable entity", table.name);
+          "table '{}' must have exactly one primary-key column to generate a persistable entity",
+          table.name);
       }
 
       std::ostringstream out;
@@ -181,7 +185,9 @@ namespace worm::cli::generator
         const std::string memberName = camelCase(column.name);
         if (!uniqueMemberNames.insert(memberName).second) {
           throw EntityCreationException(
-            "columns of table '{}' produce duplicate C++ member name '{}'", table.name, memberName);
+            "columns of table '{}' produce duplicate C++ member name '{}'",
+            table.name,
+            memberName);
         }
         memberNames.push_back(memberName);
         out << indent << "  " << cppType(column) << ' ' << memberName << "{};\n";
@@ -227,10 +233,8 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
-    std::string reportInfo(
-      const std::vector<GenerationFailure>& failures,
-      const std::vector<GenerationPlan>& plans,
-      bool applied)
+    std::string
+    reportInfo(const std::vector<GenerationFailure>& failures, const std::vector<GenerationPlan>& plans, bool applied)
     {
       std::string message;
       if (!failures.empty()) {
@@ -252,9 +256,8 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
-    std::vector<const core::SchemaTableSnapshot*> selectedTables(
-      const Invocation& invocation,
-      const core::SchemaSnapshot& databaseSchema)
+    std::vector<const core::SchemaTableSnapshot*>
+    selectedTables(const Invocation& invocation, const core::SchemaSnapshot& databaseSchema)
     {
       std::vector<const core::SchemaTableSnapshot*> selected;
       for (const auto& table : databaseSchema.tables) {
@@ -288,8 +291,8 @@ namespace worm::cli::generator
 
       for (const auto* table : tables) {
         const std::string entityName = invocation.arguments.name.has_value() && tables.size() == 1
-          ? *invocation.arguments.name
-          : pascalCase(table->name);
+                                         ? *invocation.arguments.name
+                                         : pascalCase(table->name);
         const auto path = outputDirectory(invocation) / fileName(entityName);
 
         if (std::filesystem::exists(path)) {
@@ -303,11 +306,12 @@ namespace worm::cli::generator
         }
 
         try {
-          plans.push_back({
-            table->name,
-            path,
-            generateFileContents(*table, entityName, invocation.arguments.namespaceName),
-          });
+          plans.push_back(
+            {
+              table->name,
+              path,
+              generateFileContents(*table, entityName, invocation.arguments.namespaceName),
+            });
         } catch (const std::exception& error) {
           failures.push_back({table->name, error.what()});
         }

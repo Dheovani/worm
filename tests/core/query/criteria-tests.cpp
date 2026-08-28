@@ -106,7 +106,10 @@ int main()
 
   Criteria relationshipCriteria;
   relationshipCriteria.include(
-    worm::core::manyToMany<User, Role>("roles", "user_roles", "id", "user_id", "role_id", "id"), "u", "ur", "r");
+    worm::core::manyToMany<User, Role>("roles", "user_roles", "id", "user_id", "role_id", "id"),
+    "u",
+    "ur",
+    "r");
 
   if (relationshipCriteria.relations().size() != 2 ||
       relationshipCriteria.relations()[0].condition.sql != "u.id = ur.user_id" ||

@@ -25,7 +25,8 @@ namespace worm::core
     explicit QueryBuilder(const SqlBuilder& sqlBuilder) noexcept;
 
     [[nodiscard]]
-    Statement selectAll(const Source& source,
+    Statement selectAll(
+      const Source& source,
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
@@ -37,7 +38,8 @@ namespace worm::core
     Statement selectAll(const Source& source, const Criteria& criteria) const;
 
     [[nodiscard]]
-    Statement select(const std::vector<worm::core::Field>& fields,
+    Statement select(
+      const std::vector<worm::core::Field>& fields,
       const Source& source,
       const std::vector<Relation>& relations = {},
       const std::optional<Filter>& filter = std::nullopt,
@@ -47,18 +49,21 @@ namespace worm::core
       const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
-    Statement select(
-      const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const;
+    Statement
+    select(const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const;
 
     [[nodiscard]]
     Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
 
     [[nodiscard]]
     Statement insertFromSelect(
-      const Source& target, const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const;
+      const Source& target,
+      const std::vector<std::string>& targetColumns,
+      const Statement& sourceStatement) const;
 
     [[nodiscard]]
-    Statement insertFromSelect(const Source& target,
+    Statement insertFromSelect(
+      const Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
@@ -70,14 +75,16 @@ namespace worm::core
       const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
-    Statement insertFromSelect(const Source& target,
+    Statement insertFromSelect(
+      const Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
       const Criteria& criteria) const;
 
     [[nodiscard]]
-    Statement update(const Source& source,
+    Statement update(
+      const Source& source,
       const std::vector<std::pair<std::string, Parameter>>& columns,
       const std::optional<Filter>& filter = std::nullopt) const;
 

@@ -35,10 +35,8 @@ namespace worm::cli::generator
   };
 
   [[nodiscard]]
-  ExecutionReport check(
-    const Invocation& invocation,
-    const SchemaManifest& manifest,
-    const core::SchemaSnapshot& databaseSchema);
+  ExecutionReport
+  check(const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema);
 
   [[nodiscard]]
   ExecutionReport check(const Invocation& invocation);

@@ -164,9 +164,13 @@ namespace worm::cli
     template <typename... Args>
     [[noreturn]]
     void throwConfigurationError(
-      const std::filesystem::path& path, std::size_t line, std::format_string<Args...> message, Args&&... args)
+      const std::filesystem::path& path,
+      std::size_t line,
+      std::format_string<Args...> message,
+      Args&&... args)
     {
-      throw InvalidCliArgumentException("Invalid configuration file '{}' at line {}: {}",
+      throw InvalidCliArgumentException(
+        "Invalid configuration file '{}' at line {}: {}",
         path.string(),
         line,
         std::format(message, std::forward<Args>(args)...));
@@ -217,7 +221,8 @@ namespace worm::cli
       return result;
     }
 
-    void assignConfigurationValue(std::optional<std::string>& destination,
+    void assignConfigurationValue(
+      std::optional<std::string>& destination,
       std::string value,
       std::string_view key,
       const std::filesystem::path& path,
@@ -230,7 +235,8 @@ namespace worm::cli
       destination = std::move(value);
     }
 
-    void parseGeneratorValue(Configuration& configuration,
+    void parseGeneratorValue(
+      Configuration& configuration,
       std::string_view key,
       std::string_view value,
       const std::filesystem::path& path,
@@ -249,7 +255,8 @@ namespace worm::cli
       }
     }
 
-    void parseDatabaseValue(Configuration& configuration,
+    void parseDatabaseValue(
+      Configuration& configuration,
       std::string_view key,
       std::string_view value,
       const std::filesystem::path& path,
@@ -370,7 +377,8 @@ namespace worm::cli
       const char* password = std::getenv(arguments.passwordEnv->c_str());
       if (password == nullptr) {
         throw InvalidCliArgumentException(
-          "Environment variable '{}' referenced by '--password-env' is not defined.", *arguments.passwordEnv);
+          "Environment variable '{}' referenced by '--password-env' is not defined.",
+          *arguments.passwordEnv);
       }
 
       arguments.password = password;
@@ -562,8 +570,9 @@ namespace worm::cli
       }
 
       if (!args.entities.empty() && !args.tables.empty()) {
-        throw InvalidCliArgumentException("Options '--entity' and '--table' cannot be used together "
-                                          "for the 'check' command.");
+        throw InvalidCliArgumentException(
+          "Options '--entity' and '--table' cannot be used together "
+          "for the 'check' command.");
       }
     }
 
@@ -722,7 +731,9 @@ namespace worm::cli
 
     if (error) {
       throw InvalidCliArgumentException(
-        "Unable to inspect configuration file '{}': {}.", configurationPath.string(), error.message());
+        "Unable to inspect configuration file '{}': {}.",
+        configurationPath.string(),
+        error.message());
     }
 
     const bool configurationExists = std::filesystem::is_regular_file(configurationStatus);

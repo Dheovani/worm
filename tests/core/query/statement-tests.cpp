@@ -22,7 +22,8 @@ int main()
   }
 
   const worm::core::Statement fromStatement = worm::core::Statement::prepare(
-    "select * from users where email = ? and active = ?", {std::string{"ada@example.com"}, true});
+    "select * from users where email = ? and active = ?",
+    {std::string{"ada@example.com"}, true});
 
   if (fromStatement.sql != "select * from users where email = ? and active = ?" ||
       fromStatement.parameters != std::vector<worm::core::Parameter>{std::string{"ada@example.com"}, true}) {

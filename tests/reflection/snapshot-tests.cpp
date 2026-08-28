@@ -19,7 +19,8 @@ namespace
       return std::tuple{
         worm::reflection::field("id", &Entity::id),
         worm::reflection::field("name", &Entity::name),
-        worm::reflection::field("transientValue",
+        worm::reflection::field(
+          "transientValue",
           &Entity::transientValue,
           worm::reflection::FieldMetadata{
             .ignored = true,
@@ -71,7 +72,9 @@ int main()
   bool nameValuesAreCorrect = false;
 
   const std::size_t changed = worm::reflection::for_each_changed_field(
-    entity, snapshot, [&](const auto& descriptor, const auto& previousValue, const auto& currentValue) {
+    entity,
+    snapshot,
+    [&](const auto& descriptor, const auto& previousValue, const auto& currentValue) {
       changedNames.emplace_back(descriptor.name());
 
       using Value = std::remove_cvref_t<decltype(currentValue)>;

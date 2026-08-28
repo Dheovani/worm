@@ -13,7 +13,8 @@ namespace worm::core
     : sqlBuilder_(sqlBuilder)
   {}
 
-  Statement QueryBuilder::selectAll(const Source& source,
+  Statement QueryBuilder::selectAll(
+    const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
     const std::vector<Ordering>& ordering,
@@ -29,7 +30,8 @@ namespace worm::core
     return sqlBuilder_.selectAll(source, criteria);
   }
 
-  Statement QueryBuilder::select(const std::vector<worm::core::Field>& fields,
+  Statement QueryBuilder::select(
+    const std::vector<worm::core::Field>& fields,
     const Source& source,
     const std::vector<Relation>& relations,
     const std::optional<Filter>& filter,
@@ -42,24 +44,29 @@ namespace worm::core
   }
 
   Statement QueryBuilder::select(
-    const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const
+    const std::vector<worm::core::Field>& fields,
+    const Source& source,
+    const Criteria& criteria) const
   {
     return sqlBuilder_.select(fields, source, criteria);
   }
 
-  Statement QueryBuilder::insert(
-    const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
+  Statement
+  QueryBuilder::insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
     return sqlBuilder_.insert(source, columns);
   }
 
   Statement QueryBuilder::insertFromSelect(
-    const Source& target, const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
+    const Source& target,
+    const std::vector<std::string>& targetColumns,
+    const Statement& sourceStatement) const
   {
     return sqlBuilder_.insertFromSelect(target, targetColumns, sourceStatement);
   }
 
-  Statement QueryBuilder::insertFromSelect(const Source& target,
+  Statement QueryBuilder::insertFromSelect(
+    const Source& target,
     const std::vector<std::string>& targetColumns,
     const std::vector<Field>& selectedFields,
     const Source& source,
@@ -71,10 +78,20 @@ namespace worm::core
     const std::optional<Filter>& having) const
   {
     return sqlBuilder_.insertFromSelect(
-      target, targetColumns, selectedFields, source, relations, filter, ordering, pagination, grouping, having);
+      target,
+      targetColumns,
+      selectedFields,
+      source,
+      relations,
+      filter,
+      ordering,
+      pagination,
+      grouping,
+      having);
   }
 
-  Statement QueryBuilder::insertFromSelect(const Source& target,
+  Statement QueryBuilder::insertFromSelect(
+    const Source& target,
     const std::vector<std::string>& targetColumns,
     const std::vector<Field>& selectedFields,
     const Source& source,
@@ -83,7 +100,8 @@ namespace worm::core
     return sqlBuilder_.insertFromSelect(target, targetColumns, selectedFields, source, criteria);
   }
 
-  Statement QueryBuilder::update(const Source& source,
+  Statement QueryBuilder::update(
+    const Source& source,
     const std::vector<std::pair<std::string, Parameter>>& columns,
     const std::optional<Filter>& filter) const
   {

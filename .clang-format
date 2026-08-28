@@ -10,7 +10,12 @@ UseTab: Never
 ColumnLimit: 120
 BinPackArguments: false
 BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
 AlignAfterOpenBracket: DontAlign
+# Requires clang-format 22. Wrapped function lists must start after the opening parenthesis.
+BreakAfterOpenBracketFunction: true
+PenaltyBreakBeforeFirstCallParameter: 0
 AlwaysBreakTemplateDeclarations: Yes
 BreakAfterAttributes: Always
 BreakConstructorInitializers: BeforeColon

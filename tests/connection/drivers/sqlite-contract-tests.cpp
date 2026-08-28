@@ -26,7 +26,8 @@ namespace
       }
 
       char* errorMessage = nullptr;
-      const int result = sqlite3_exec(connection,
+      const int result = sqlite3_exec(
+        connection,
         "CREATE TABLE worm_driver_contract ("
         "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL)",
         nullptr,

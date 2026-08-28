@@ -161,7 +161,8 @@ namespace worm::connection
       }
     }
 
-    if (mysql_real_connect(connection_.get(),
+    if (mysql_real_connect(
+          connection_.get(),
           databaseConfig.host.c_str(),
           databaseConfig.username.c_str(),
           databaseConfig.password.c_str(),
@@ -221,7 +222,9 @@ namespace worm::connection
     }
 
     if (mysql_stmt_prepare(
-          preparedStatement, statement.sql.c_str(), static_cast<unsigned long>(statement.sql.size()))) {
+          preparedStatement,
+          statement.sql.c_str(),
+          static_cast<unsigned long>(statement.sql.size()))) {
       const std::string error = mysql_stmt_error(preparedStatement);
       mysql_stmt_close(preparedStatement);
       throw QueryExecutionException(error);

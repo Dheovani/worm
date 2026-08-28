@@ -44,14 +44,12 @@ namespace worm::core
     constexpr explicit PrimaryKey(std::string_view name, std::span<const Column> cols) noexcept
       : name_(name),
         columnsCount_(detail::copyBounded<Column>(columns_, cols))
-    {
-    }
+    {}
 
     constexpr explicit PrimaryKey(std::string_view name, std::initializer_list<Column> cols) noexcept
       : name_(name),
         columnsCount_(detail::copyBounded<Column>(columns_, cols))
-    {
-    }
+    {}
 
     [[nodiscard]]
     constexpr std::string_view name() const noexcept override
@@ -106,8 +104,7 @@ namespace worm::core
         columnsCount_(detail::copyBounded<Column>(columns_, columns)),
         referencedColumnsCount_(detail::copyBounded<Column>(referencedColumns_, referencedColumns)),
         referentialActionsCount_(detail::copyBounded<ReferentialActionEntry>(referentialActions_, referentialActions))
-    {
-    }
+    {}
 
     constexpr explicit ForeignKey(
       std::string_view name,
@@ -120,8 +117,7 @@ namespace worm::core
         columnsCount_(detail::copyBounded<Column>(columns_, columns)),
         referencedColumnsCount_(detail::copyBounded<Column>(referencedColumns_, referencedColumns)),
         referentialActionsCount_(detail::copyBounded<ReferentialActionEntry>(referentialActions_, referentialActions))
-    {
-    }
+    {}
 
     [[nodiscard]]
     constexpr std::string_view name() const noexcept override
@@ -197,8 +193,7 @@ namespace worm::core
       : name_(name),
         columnsCount_(detail::copyBounded<IndexedColumn>(columns_, columns)),
         unique_(unique)
-    {
-    }
+    {}
 
     constexpr explicit Index(
       std::string_view name,
@@ -207,8 +202,7 @@ namespace worm::core
       : name_(name),
         columnsCount_(detail::copyBounded<IndexedColumn>(columns_, columns)),
         unique_(unique)
-    {
-    }
+    {}
 
     [[nodiscard]]
     constexpr std::string_view name() const noexcept override

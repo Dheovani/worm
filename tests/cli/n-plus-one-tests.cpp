@@ -92,7 +92,8 @@ namespace
   [[nodiscard]]
   bool analyzesRepeatedQueriesWithoutExposingValues(const TemporaryDirectory& temporary)
   {
-    const auto file = temporary.write("query-log.sql",
+    const auto file = temporary.write(
+      "query-log.sql",
       "SELECT * FROM posts WHERE user_id = 104729;\n"
       "SELECT * FROM posts WHERE user_id = 1299709;\n");
     const auto invocation = cli::parse({"--format", "json", "n-plus-one", "--file", file.string()});
@@ -116,7 +117,8 @@ namespace
   [[nodiscard]]
   bool respectsMaximumExecutions(const TemporaryDirectory& temporary)
   {
-    const auto file = temporary.write("allowed-query-log.sql",
+    const auto file = temporary.write(
+      "allowed-query-log.sql",
       "SELECT * FROM posts WHERE user_id = 1;\n"
       "SELECT * FROM posts WHERE user_id = 2;\n");
     const auto invocation = cli::parse({"n-plus-one", "--file", file.string(), "--max-executions", "2"});

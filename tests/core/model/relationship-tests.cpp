@@ -175,7 +175,13 @@ int main()
   static_assert(!postCascade.empty());
 
   constexpr auto posts = worm::core::oneToMany<User, Post>(
-    "posts", "id", "user_id", Join::Inner, RelationshipLoadStrategy::Eager, postCascade, true);
+    "posts",
+    "id",
+    "user_id",
+    Join::Inner,
+    RelationshipLoadStrategy::Eager,
+    postCascade,
+    true);
   static_assert(posts.kind() == RelationshipKind::OneToMany);
   static_assert(posts.loadStrategy() == RelationshipLoadStrategy::Eager);
   static_assert(posts.cascadePolicy().persist);
@@ -190,7 +196,14 @@ int main()
   }
 
   constexpr auto roles = worm::core::manyToMany<User, Role>(
-    "roles", "user_roles", "id", "user_id", "role_id", "id", Join::Left, RelationshipLoadStrategy::Lazy);
+    "roles",
+    "user_roles",
+    "id",
+    "user_id",
+    "role_id",
+    "id",
+    Join::Left,
+    RelationshipLoadStrategy::Lazy);
   static_assert(roles.kind() == RelationshipKind::ManyToMany);
   static_assert(roles.joinTable() == "user_roles");
   static_assert(roles.loadStrategy() == RelationshipLoadStrategy::Lazy);

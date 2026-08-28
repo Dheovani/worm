@@ -130,9 +130,10 @@ int main()
         dynamic_cast<const worm::core::SqliteBuilder*>(&explicitSqlBuilder) == nullptr ||
         client->type() != worm::connection::DatabaseType::SQLite ||
         queryBuilder
-            .create(worm::core::TableMetadata{worm::core::Table{"users"},
-              {worm::core::ColumnMetadata{
-                worm::core::Column{"id", worm::core::Table{"users"}}, {.kind = worm::core::ColumnTypeKind::Int64}}}})
+            .create(
+              worm::core::TableMetadata{worm::core::Table{"users"},
+                {worm::core::ColumnMetadata{worm::core::Column{"id", worm::core::Table{"users"}},
+                  {.kind = worm::core::ColumnTypeKind::Int64}}}})
             .front()
             .sql != "create table \"users\" (\"id\" integer)") {
       std::cerr << "Dependency injection did not resolve database-specific abstractions.\n";

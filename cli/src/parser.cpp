@@ -160,7 +160,10 @@ namespace worm::cli
     }
 
     void assignGlobalOption(
-      GlobalArguments& global, GlobalOptions option, std::optional<std::string> value, std::string_view token)
+      GlobalArguments& global,
+      GlobalOptions option,
+      std::optional<std::string> value,
+      std::string_view token)
     {
       using enum GlobalOptions;
 

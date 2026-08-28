@@ -14,7 +14,8 @@ namespace
   class RecordingBuilder final : public worm::core::SqlBuilder
   {
   public:
-    worm::core::Statement select(const std::vector<worm::core::Field>& fields,
+    worm::core::Statement select(
+      const std::vector<worm::core::Field>& fields,
       const worm::core::Source& source,
       const std::vector<worm::core::Relation>& relations,
       const std::optional<worm::core::Filter>& filter = std::nullopt,
@@ -34,7 +35,8 @@ namespace
       return {std::string{query_}};
     }
 
-    worm::core::Statement insert(const worm::core::Source& source,
+    worm::core::Statement insert(
+      const worm::core::Source& source,
       const std::vector<std::pair<std::string, worm::core::Parameter>>& columns) const override
     {
       sourceName_ = source.name;
@@ -42,7 +44,8 @@ namespace
       return {std::string{insertQuery_}};
     }
 
-    worm::core::Statement insertFromSelect(const worm::core::Source& target,
+    worm::core::Statement insertFromSelect(
+      const worm::core::Source& target,
       const std::vector<std::string>& targetColumns,
       const worm::core::Statement& sourceStatement) const override
     {
@@ -52,7 +55,8 @@ namespace
       return {std::string{insertFromSelectQuery_}, sourceStatement.parameters};
     }
 
-    worm::core::Statement insertFromSelect(const worm::core::Source& target,
+    worm::core::Statement insertFromSelect(
+      const worm::core::Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<worm::core::Field>& selectedFields,
       const worm::core::Source& source,
@@ -76,7 +80,8 @@ namespace
       return {std::string{structuredInsertFromSelectQuery_}};
     }
 
-    worm::core::Statement update(const worm::core::Source& source,
+    worm::core::Statement update(
+      const worm::core::Source& source,
       const std::vector<std::pair<std::string, worm::core::Parameter>>& columns,
       const std::optional<worm::core::Filter>& filter) const override
     {
@@ -86,8 +91,8 @@ namespace
       return {std::string{updateQuery_}};
     }
 
-    worm::core::Statement delete_(
-      const worm::core::Source& source, const std::optional<worm::core::Filter>& filter) const override
+    worm::core::Statement
+    delete_(const worm::core::Source& source, const std::optional<worm::core::Filter>& filter) const override
     {
       sourceName_ = source.name;
       hasFilter_ = filter.has_value();
@@ -153,7 +158,8 @@ int main()
     Relation{Join::Inner, users, orders, Expression{"u.id = o.user_id", {}}},
   };
 
-  const auto query = queryBuilder.select(fields,
+  const auto query = queryBuilder.select(
+    fields,
     users,
     relations,
     Filter{Predicate::equal("u.active", true)},
@@ -222,7 +228,8 @@ int main()
     return 1;
   }
 
-  const worm::core::Statement structuredInsertFromSelectQuery = queryBuilder.insertFromSelect(archivedUsers,
+  const worm::core::Statement structuredInsertFromSelectQuery = queryBuilder.insertFromSelect(
+    archivedUsers,
     targetColumns,
     fields,
     users,

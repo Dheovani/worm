@@ -12,7 +12,8 @@ namespace worm::core
     static constexpr std::size_t defaultItemsPerPage = 5;
 
   public:
-    explicit Paginator(ResultSet resultSet,
+    explicit Paginator(
+      ResultSet resultSet,
       std::size_t initialPage = defaultInitialPage,
       std::size_t itemsPerPage = defaultItemsPerPage);
 

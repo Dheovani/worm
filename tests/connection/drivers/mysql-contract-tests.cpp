@@ -41,7 +41,8 @@ namespace
     }
 
     const unsigned int port = static_cast<unsigned int>(std::stoul(config.port));
-    if (mysql_real_connect(connection.get(),
+    if (mysql_real_connect(
+          connection.get(),
           config.host.c_str(),
           config.username.c_str(),
           config.password.c_str(),
@@ -54,10 +55,12 @@ namespace
 
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_driver_contract");
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_schema_contract");
-    executeSql(connection.get(),
+    executeSql(
+      connection.get(),
       "CREATE TABLE worm_driver_contract ("
       "id VARCHAR(64) PRIMARY KEY, label VARCHAR(255) NOT NULL, note VARCHAR(255) NULL)");
-    executeSql(connection.get(),
+    executeSql(
+      connection.get(),
       "CREATE TABLE worm_schema_contract ("
       "id VARCHAR(64) PRIMARY KEY, email VARCHAR(255) UNIQUE, tenant VARCHAR(64), external_id VARCHAR(64), "
       "UNIQUE (tenant, external_id))");

@@ -42,7 +42,8 @@ namespace worm::core
         aggregate(std::nullopt)
     {}
 
-    Field(std::string_view name,
+    Field(
+      std::string_view name,
       Source source,
       Aggregate aggregate,
       std::optional<std::string_view> alias = std::nullopt) noexcept

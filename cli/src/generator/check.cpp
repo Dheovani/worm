@@ -42,7 +42,8 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
-    bool selectedTable(const Invocation& invocation,
+    bool selectedTable(
+      const Invocation& invocation,
       const core::SchemaTableSnapshot& table,
       const std::vector<const ManifestEntity*>& selectedEntities)
     {
@@ -65,7 +66,9 @@ namespace worm::cli::generator
     }
 
     void validateSelections(
-      const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema)
+      const Invocation& invocation,
+      const SchemaManifest& manifest,
+      const core::SchemaSnapshot& databaseSchema)
     {
       for (const auto& requestedEntity : invocation.arguments.entities) {
         const bool exists = std::any_of(manifest.entities.begin(), manifest.entities.end(), [&](const auto& entity) {
@@ -77,12 +80,14 @@ namespace worm::cli::generator
       }
 
       for (const auto& requestedTable : invocation.arguments.tables) {
-        const bool existsInCode = std::any_of(manifest.entities.begin(),
-          manifest.entities.end(),
-          [&](const auto& entity) { return entity.table.name == requestedTable; });
-        const bool existsInDatabase = std::any_of(databaseSchema.tables.begin(),
-          databaseSchema.tables.end(),
-          [&](const auto& table) { return table.name == requestedTable; });
+        const bool existsInCode =
+          std::any_of(manifest.entities.begin(), manifest.entities.end(), [&](const auto& entity) {
+            return entity.table.name == requestedTable;
+          });
+        const bool existsInDatabase =
+          std::any_of(databaseSchema.tables.begin(), databaseSchema.tables.end(), [&](const auto& table) {
+            return table.name == requestedTable;
+          });
         if (!existsInCode && !existsInDatabase) {
           throw InvalidCliArgumentException("Unknown table '{}'.", requestedTable);
         }
@@ -91,7 +96,9 @@ namespace worm::cli::generator
 
     [[nodiscard]]
     bool compareTables(
-      const core::SchemaTableSnapshot& expected, const core::SchemaTableSnapshot& actual, CheckMetrics& metrics)
+      const core::SchemaTableSnapshot& expected,
+      const core::SchemaTableSnapshot& actual,
+      CheckMetrics& metrics)
     {
       bool compatible = true;
       const std::string label = tableLabel(expected);
@@ -110,7 +117,8 @@ namespace worm::cli::generator
         }
         if (expectedColumn.type.kind != core::ColumnTypeKind::Unknown &&
             expectedColumn.type.kind != actualColumn->type.kind) {
-          addDifference(metrics,
+          addDifference(
+            metrics,
             label + "." + expectedColumn.name + ": type differs (expected " +
               std::string{core::columnTypeKindName(expectedColumn.type.kind)} + ", found " +
               std::string{core::columnTypeKindName(actualColumn->type.kind)} + ")");
@@ -142,7 +150,8 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
-    ExecutionReport compareSchemas(const Invocation& invocation,
+    ExecutionReport compareSchemas(
+      const Invocation& invocation,
       const SchemaManifest& manifest,
       const core::SchemaSnapshot& databaseSchema,
       const std::shared_ptr<CheckMetrics>& metrics)
@@ -252,10 +261,8 @@ namespace worm::cli::generator
     out << "]}";
   }
 
-  ExecutionReport check(
-    const Invocation& invocation,
-    const SchemaManifest& manifest,
-    const core::SchemaSnapshot& databaseSchema)
+  ExecutionReport
+  check(const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema)
   {
     auto metrics = std::make_shared<CheckMetrics>();
     return compareSchemas(invocation, manifest, databaseSchema, metrics);

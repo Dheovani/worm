@@ -66,7 +66,7 @@ namespace worm::core
       replaceFirst(sql, "{rightAlias}", rightAlias);
       replaceFirst(sql, "{rightColumn}", rightColumn);
 
-      return { sql, {} };
+      return {sql, {}};
     }
   } // namespace detail
 
@@ -169,8 +169,7 @@ namespace worm::core
 
       const Source ownerSource{ownerTable().name(), ownerAlias};
       const Source targetSource{targetTable().name(), targetAlias};
-      return Relation{
-        joinType_,
+      return Relation{joinType_,
         ownerSource,
         targetSource,
         detail::joinExpression(ownerAlias, ownerColumn_, targetAlias, targetColumn_)};
@@ -300,10 +299,8 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::vector<Relation> relations(
-      std::string_view ownerAlias,
-      std::string_view joinAlias,
-      std::string_view targetAlias) const
+    std::vector<Relation>
+    relations(std::string_view ownerAlias, std::string_view joinAlias, std::string_view targetAlias) const
     {
       detail::validateRelationshipText(ownerAlias, "Relationship owner alias must not be empty.");
       detail::validateRelationshipText(joinAlias, "Relationship join alias must not be empty.");
@@ -349,8 +346,7 @@ namespace worm::core
     CascadePolicy cascadePolicy = {},
     bool orphanRemoval = false)
   {
-    return {
-      name,
+    return {name,
       RelationshipKind::OneToOne,
       ownerColumn,
       targetColumn,
@@ -371,8 +367,7 @@ namespace worm::core
     CascadePolicy cascadePolicy = {},
     bool orphanRemoval = false)
   {
-    return {
-      name,
+    return {name,
       RelationshipKind::OneToMany,
       ownerColumn,
       targetColumn,
@@ -396,8 +391,7 @@ namespace worm::core
     CascadePolicy cascadePolicy = {},
     bool orphanRemoval = false)
   {
-    return {
-      name,
+    return {name,
       joinTable,
       ownerColumn,
       joinOwnerColumn,

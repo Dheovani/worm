@@ -40,10 +40,8 @@ namespace worm::cli::generator
   ExecutionReport push(const Invocation& invocation, const SchemaManifest& manifest);
 
   [[nodiscard]]
-  ExecutionReport planPush(
-    const Invocation& invocation,
-    const SchemaManifest& manifest,
-    const core::SchemaSnapshot& databaseSchema);
+  ExecutionReport
+  planPush(const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema);
 
   ExecutionReport push(const Invocation& invocation);
 } // namespace worm::cli::generator

@@ -91,10 +91,11 @@ namespace worm::core
       return false;
     }
 
-    records_.push_back({
-      .id = std::move(id),
-      .checksum = migrationChecksum(plan),
-    });
+    records_.push_back(
+      {
+        .id = std::move(id),
+        .checksum = migrationChecksum(plan),
+      });
 
     return true;
   }

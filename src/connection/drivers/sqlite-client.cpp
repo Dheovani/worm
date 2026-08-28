@@ -69,7 +69,8 @@ namespace worm::connection
 
     if (databaseConfig.timeoutConfig.queryTimeout.has_value() &&
         sqlite3_busy_timeout(
-          connection_.get(), sqliteTimeoutMilliseconds(*databaseConfig.timeoutConfig.queryTimeout)) != SQLITE_OK) {
+          connection_.get(),
+          sqliteTimeoutMilliseconds(*databaseConfig.timeoutConfig.queryTimeout)) != SQLITE_OK) {
       throwConnectionError();
     }
   }
@@ -108,7 +109,11 @@ namespace worm::connection
     std::vector<core::ResultRow> rows;
     sqlite3_stmt* statement = nullptr;
     int resultCode = sqlite3_prepare_v2(
-      connection_.get(), statementData.sql.c_str(), static_cast<int>(statementData.sql.size()), &statement, nullptr);
+      connection_.get(),
+      statementData.sql.c_str(),
+      static_cast<int>(statementData.sql.size()),
+      &statement,
+      nullptr);
 
     if (resultCode != SQLITE_OK) {
       if (statement != nullptr) {

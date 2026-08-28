@@ -24,7 +24,8 @@ namespace worm::core
   {
   public:
     [[nodiscard]]
-    virtual Statement selectAll(const Source& source,
+    virtual Statement selectAll(
+      const Source& source,
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
       const std::vector<Ordering>& ordering = {},
@@ -36,7 +37,8 @@ namespace worm::core
     Statement selectAll(const Source& source, const Criteria& criteria) const;
 
     [[nodiscard]]
-    virtual Statement select(const std::vector<worm::core::Field>& fields,
+    virtual Statement select(
+      const std::vector<worm::core::Field>& fields,
       const Source& source,
       const std::vector<Relation>& relations,
       const std::optional<Filter>& filter = std::nullopt,
@@ -46,18 +48,21 @@ namespace worm::core
       const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
-    Statement select(
-      const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const;
+    Statement
+    select(const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const;
 
     [[nodiscard]]
     virtual Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
 
     [[nodiscard]]
     virtual Statement insertFromSelect(
-      const Source& target, const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const;
+      const Source& target,
+      const std::vector<std::string>& targetColumns,
+      const Statement& sourceStatement) const;
 
     [[nodiscard]]
-    virtual Statement insertFromSelect(const Source& target,
+    virtual Statement insertFromSelect(
+      const Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
@@ -69,14 +74,16 @@ namespace worm::core
       const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
-    Statement insertFromSelect(const Source& target,
+    Statement insertFromSelect(
+      const Source& target,
       const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
       const Criteria& criteria) const;
 
     [[nodiscard]]
-    virtual Statement update(const Source& source,
+    virtual Statement update(
+      const Source& source,
       const std::vector<std::pair<std::string, Parameter>>& columns,
       const std::optional<Filter>& filter = std::nullopt) const;
 
@@ -102,8 +109,8 @@ namespace worm::core
     virtual std::string renderDeletePrefix(const Source& source) const;
 
     [[nodiscard]]
-    virtual Expression renderPagination(
-      const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const;
+    virtual Expression
+    renderPagination(const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const;
 
     [[nodiscard]]
     virtual std::string quoteIdentifier(std::string_view identifier) const;
@@ -210,8 +217,8 @@ namespace worm::core
     std::string renderGeneratedColumn(const ColumnMetadata& column) const override;
 
     [[nodiscard]]
-    Expression renderPagination(
-      const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const override;
+    Expression
+    renderPagination(const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const override;
   };
 
   template <typename T>

@@ -161,8 +161,21 @@ The production-specific rules are defined in `src/AGENTS.md`; the rules below ar
 - Use `const` and references to express intent and lifetime clearly, without adding meaningless qualifiers.
 - Prefer existing project types and concepts over duplicating equivalent traits or abstractions.
 - Do not perform mass renames or unrelated reformatting just to fix older convention violations.
-- Format C++ code using the root `.clang-format`.
+- Format C++ code using clang-format 22 and the root `.clang-format`; older formatter versions do not support the wrapped-function-list rule used by this repository.
 - The `.clang-format` 120-column limit applies to code; it must not be used to hard-wrap documentation.
+- When a function declaration, function definition, constructor, or call exceeds the 120-column limit, break immediately after the opening parenthesis and place exactly one parameter or argument on each continuation line. Do not keep the first item on the original line, combine multiple items on one continuation line, or align items with tabs.
+- Keep declarations that fit within 120 columns on one line; the one-item-per-line rule applies when the parameter or argument list must wrap.
+
+Valid wrapped declaration:
+
+```cpp
+void assignGlobalOption(
+  GlobalArguments& global,
+  GlobalOptions option,
+  std::optional<std::string> value,
+  std::string_view token)
+{ ... }
+```
 
 ## Includes and headers
 

@@ -16,7 +16,8 @@ namespace worm::core
       queryBuilder_(DependencyInjector<QueryBuilder>::get())
   {}
 
-  Session::Session(const connection::ConnectionConfig& connectionConfig,
+  Session::Session(
+    const connection::ConnectionConfig& connectionConfig,
     std::shared_ptr<connection::Client> client,
     const QueryBuilder& queryBuilder)
     : connectionConfig_(connectionConfig),

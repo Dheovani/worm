@@ -93,8 +93,7 @@ namespace
     [[nodiscard]]
     static constexpr worm::core::PrimaryKey primaryKey() noexcept
     {
-      return worm::core::PrimaryKey{
-        "pk_duplicated_primary_keys",
+      return worm::core::PrimaryKey{"pk_duplicated_primary_keys",
         {worm::core::Column{"id", table()}, worm::core::Column{"external_id", table()}}};
     }
 

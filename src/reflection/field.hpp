@@ -86,7 +86,7 @@ namespace worm::reflection
 
   template <typename Owner, typename Value>
   [[nodiscard]]
-  constexpr auto field(std::string_view name, Value Owner::*member, FieldMetadata metadata = {}) noexcept
+  constexpr auto field(std::string_view name, Value Owner::* member, FieldMetadata metadata = {}) noexcept
   {
     return FieldDescriptor<Owner, Value>{name, member, metadata};
   }

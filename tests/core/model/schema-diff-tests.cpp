@@ -27,8 +27,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id, {.generated = true, .nullable = false}),
+      return std::tuple{worm::reflection::field("id", &User::id, {.generated = true, .nullable = false}),
         worm::reflection::field("name", &User::name, {.nullable = false}),
         worm::reflection::field("email", &User::email, {.unique = true, .nullable = false}),
         worm::reflection::field("ignoredValue", &User::ignoredValue, {.ignored = true})};
@@ -58,8 +57,7 @@ namespace
 
 int main()
 {
-  const worm::core::TableMetadata matchingTable{
-    User::table(),
+  const worm::core::TableMetadata matchingTable{User::table(),
     {
       column("id", {.generated = true, .nullable = false}),
       column("name", {.nullable = false}),
@@ -78,8 +76,7 @@ int main()
     return 1;
   }
 
-  const worm::core::TableMetadata incompatibleTable{
-    User::table(),
+  const worm::core::TableMetadata incompatibleTable{User::table(),
     {
       column("id", {.nullable = false}),
       column("name"),
@@ -99,8 +96,7 @@ int main()
     return 1;
   }
 
-  const worm::core::TableMetadata missingColumnTable{
-    User::table(),
+  const worm::core::TableMetadata missingColumnTable{User::table(),
     {
       column("id", {.generated = true, .nullable = false}),
       column("name", {.nullable = false}),
@@ -114,8 +110,7 @@ int main()
     return 1;
   }
 
-  const worm::core::TableMetadata missingPrimaryKeyTable{
-    User::table(),
+  const worm::core::TableMetadata missingPrimaryKeyTable{User::table(),
     {
       column("id", {.generated = true, .nullable = false}),
       column("name", {.nullable = false}),

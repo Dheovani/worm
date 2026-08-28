@@ -19,8 +19,9 @@ namespace worm::connection
     [[nodiscard]]
     const core::Parameter* findValue(const core::ResultRow& row, std::string_view name) noexcept
     {
-      const auto column = std::find_if(
-        row.columns.begin(), row.columns.end(), [name](const auto& candidate) { return candidate.name == name; });
+      const auto column = std::find_if(row.columns.begin(), row.columns.end(), [name](const auto& candidate) {
+        return candidate.name == name;
+      });
 
       return column == row.columns.end() ? nullptr : &column->value;
     }
@@ -96,8 +97,9 @@ namespace worm::connection
     [[nodiscard]]
     std::string lower(std::string value)
     {
-      std::ranges::transform(
-        value, value.begin(), [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+      std::ranges::transform(value, value.begin(), [](unsigned char character) {
+        return static_cast<char>(std::tolower(character));
+      });
       return value;
     }
 
@@ -303,13 +305,14 @@ namespace worm::connection
       }
 
       const std::string columnName = stringValue(row, "column_name");
-      table->columns.push_back({
-        .name = columnName,
-        .type = columnType(row, client_->type()),
-        .nullable = boolValue(row, "is_nullable"),
-        .generated = boolValue(row, "is_generated"),
-        .unique = boolValue(row, "is_unique"),
-      });
+      table->columns.push_back(
+        {
+          .name = columnName,
+          .type = columnType(row, client_->type()),
+          .nullable = boolValue(row, "is_nullable"),
+          .generated = boolValue(row, "is_generated"),
+          .unique = boolValue(row, "is_unique"),
+        });
 
       if (boolValue(row, "is_primary_key")) {
         table->primaryKey.push_back(columnName);

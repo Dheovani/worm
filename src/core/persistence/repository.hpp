@@ -189,8 +189,8 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::uint64_t insertFromSelect(
-      const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
+    std::uint64_t
+    insertFromSelect(const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
       requires PersistableEntity<T>
     {
       if (!isOperationValid(sourceStatement, core::Operation::Select)) {
@@ -203,7 +203,8 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    std::uint64_t insertFromSelect(const std::vector<std::string>& targetColumns,
+    std::uint64_t insertFromSelect(
+      const std::vector<std::string>& targetColumns,
       const std::vector<Field>& selectedFields,
       const Source& source,
       const std::vector<Relation>& relations = {},
@@ -213,7 +214,14 @@ namespace worm::core
       requires PersistableEntity<T>
     {
       const Statement statement = queryBuilder.insertFromSelect(
-        {T::table().name()}, targetColumns, selectedFields, source, relations, filter, ordering, pagination);
+        {T::table().name()},
+        targetColumns,
+        selectedFields,
+        source,
+        relations,
+        filter,
+        ordering,
+        pagination);
 
       return insert(statement);
     }
@@ -376,7 +384,9 @@ namespace worm::core
       result.reserve(registry->instances<T>().changedFieldCount(id, entity));
 
       registry->instances<T>().forEachChangedField(
-        id, entity, [&](const auto& field, const auto&, const auto& currentValue) {
+        id,
+        entity,
+        [&](const auto& field, const auto&, const auto& currentValue) {
           if (!isPrimaryKeyField(field) && !field.isGenerated()) {
             result.emplace_back(std::string{field.columnName()}, encode(currentValue));
           }
@@ -421,8 +431,8 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    core::ResultSet executeFiltered(
-      const Statement& statement, std::string_view filterQualifier, std::string_view operation) const
+    core::ResultSet
+    executeFiltered(const Statement& statement, std::string_view filterQualifier, std::string_view operation) const
     {
       if (!core::hasFilterWhere(statement.sql, filterQualifier)) {
         throw worm::SqlBuildException("{} operation's statement must have a `WHERE` filter clause.", operation);

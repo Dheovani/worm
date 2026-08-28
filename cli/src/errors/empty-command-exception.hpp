@@ -9,4 +9,4 @@ namespace worm::cli
   public:
     using WormCliException::WormCliException;
   };
-}
+} // namespace worm::cli

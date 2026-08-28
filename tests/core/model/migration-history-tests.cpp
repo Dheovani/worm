@@ -9,13 +9,14 @@ namespace
 {
   worm::core::MigrationPlan planForColumn(std::string column)
   {
-    return worm::core::generateMigrationPlan(std::vector<worm::core::SchemaDifference>{
-      {
-        .kind = worm::core::SchemaDifferenceKind::MissingColumn,
-        .table = worm::core::Table{"users"},
-        .column = std::move(column),
-      },
-    });
+    return worm::core::generateMigrationPlan(
+      std::vector<worm::core::SchemaDifference>{
+        {
+          .kind = worm::core::SchemaDifferenceKind::MissingColumn,
+          .table = worm::core::Table{"users"},
+          .column = std::move(column),
+        },
+      });
   }
 } // namespace
 
@@ -52,8 +53,8 @@ int main()
   }
 
   const worm::core::MigrationRecord* applied = history.find("202608200001_add_user_name");
-  if (applied == nullptr || applied->state != worm::core::MigrationState::Applied ||
-      applied->appliedAt != appliedAt || applied->rolledBackAt.has_value() || !applied->failureReason.empty()) {
+  if (applied == nullptr || applied->state != worm::core::MigrationState::Applied || applied->appliedAt != appliedAt ||
+      applied->rolledBackAt.has_value() || !applied->failureReason.empty()) {
     std::cerr << "Migration history did not preserve application metadata.\n";
     return 1;
   }

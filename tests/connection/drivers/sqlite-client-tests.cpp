@@ -49,7 +49,8 @@ namespace
     }
 
     char* errorMessage = nullptr;
-    const int result = sqlite3_exec(connection,
+    const int result = sqlite3_exec(
+      connection,
       "CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT NOT NULL, active INTEGER NOT NULL)",
       nullptr,
       nullptr,

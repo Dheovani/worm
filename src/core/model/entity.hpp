@@ -54,9 +54,7 @@ namespace worm::core
 
   template <typename T>
   concept Entity =
-    reflection::Reflectable<std::remove_cvref_t<T>> &&
-    reflection::Snapshotable<std::remove_cvref_t<T>> &&
-    requires {
+    reflection::Reflectable<std::remove_cvref_t<T>> && reflection::Snapshotable<std::remove_cvref_t<T>> && requires {
       { std::remove_cvref_t<T>::table() } -> std::same_as<Table>;
       { std::remove_cvref_t<T>::primaryKey() } -> std::same_as<PrimaryKey>;
       requires detail::hasConstexprTable<std::remove_cvref_t<T>>();

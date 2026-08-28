@@ -82,17 +82,23 @@ int main()
 
   if (
     !rejects("worm-cli-invalid-manifest.json", R"({"version":1,"entities":[{"name":"User"}]})") ||
-    !rejects("worm-cli-duplicate-column.json",
+    !rejects(
+      "worm-cli-duplicate-column.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id"},{"name":"id"}],"primaryKey":["id"]}]})") ||
-    !rejects("worm-cli-unknown-primary-key.json",
+    !rejects(
+      "worm-cli-unknown-primary-key.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id"}],"primaryKey":["missing"]}]})") ||
-    !rejects("worm-cli-unknown-type.json",
+    !rejects(
+      "worm-cli-unknown-type.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"integer"}],"primaryKey":["id"]}]})") ||
-    !rejects("worm-cli-invalid-scale.json",
+    !rejects(
+      "worm-cli-invalid-scale.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"decimal","scale":2}],"primaryKey":["id"]}]})") ||
-    !rejects("worm-cli-invalid-index.json",
+    !rejects(
+      "worm-cli-invalid-index.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"int64"}],"primaryKey":["id"],"indexes":[{"name":"idx_users_missing","columns":["missing"]}]}]})") ||
-    !rejects("worm-cli-invalid-foreign-key.json",
+    !rejects(
+      "worm-cli-invalid-foreign-key.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"int64"}],"primaryKey":["id"],"foreignKeys":[{"name":"fk_users","columns":["id"],"referencedTable":"users","referencedColumns":["missing"]}]}]})")) {
     std::cerr << "Invalid manifest was accepted.\n";
     return 1;

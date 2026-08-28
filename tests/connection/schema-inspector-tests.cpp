@@ -45,7 +45,8 @@ namespace
     worm::connection::DatabaseType type_;
   };
 
-  worm::core::ResultRow columnRow(std::string column,
+  worm::core::ResultRow columnRow(
+    std::string column,
     std::string type,
     std::string nativeType,
     std::int64_t nullable,

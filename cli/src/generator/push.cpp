@@ -88,8 +88,9 @@ namespace worm::cli::generator
     void validateSelections(const Invocation& invocation, const SchemaManifest& manifest)
     {
       for (const std::string& requestedEntity : invocation.arguments.entities) {
-        const bool found = std::ranges::any_of(
-          manifest.entities, [&](const ManifestEntity& entity) { return entity.name == requestedEntity; });
+        const bool found = std::ranges::any_of(manifest.entities, [&](const ManifestEntity& entity) {
+          return entity.name == requestedEntity;
+        });
         if (!found) {
           throw InvalidCliArgumentException("Unknown manifest entity '{}'.", requestedEntity);
         }
@@ -173,13 +174,11 @@ namespace worm::cli::generator
           return false;
         }
 
-        const bool typeMatches =
-          expectedColumn.type.kind == core::ColumnTypeKind::Unknown ||
-          expectedColumn.type.kind == actualColumn->type.kind;
-        const bool constraintsMatch =
-          expectedColumn.nullable == actualColumn->nullable &&
-          expectedColumn.generated == actualColumn->generated &&
-          expectedColumn.unique == actualColumn->unique;
+        const bool typeMatches = expectedColumn.type.kind == core::ColumnTypeKind::Unknown ||
+                                 expectedColumn.type.kind == actualColumn->type.kind;
+        const bool constraintsMatch = expectedColumn.nullable == actualColumn->nullable &&
+                                      expectedColumn.generated == actualColumn->generated &&
+                                      expectedColumn.unique == actualColumn->unique;
 
         if (!typeMatches || !constraintsMatch) {
           return false;
@@ -276,7 +275,8 @@ namespace worm::cli::generator
       }
 
       return {
-        .info = reportInfo(failures,
+        .info = reportInfo(
+          failures,
           metrics->plannedTables,
           metrics->incompatibleTables,
           invocation.arguments.apply,
@@ -353,8 +353,8 @@ namespace worm::cli::generator
     return report;
   }
 
-  ExecutionReport planPush(
-    const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema)
+  ExecutionReport
+  planPush(const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema)
   {
     if (invocation.arguments.apply) {
       throw InvalidCliArgumentException("A push plan cannot apply schema changes.");

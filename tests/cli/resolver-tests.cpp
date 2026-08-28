@@ -93,7 +93,8 @@ namespace
   bool resolvesExplicitConfiguration(const TemporaryDirectory& temporary)
   {
     setEnvironment("WORM_CLI_TEST_PASSWORD", "secret");
-    const auto path = temporary.write("explicit.toml",
+    const auto path = temporary.write(
+      "explicit.toml",
       "[generator]\n"
       "manifest = \"build/schema.json\"\n"
       "output = \"src/entities\"\n"
@@ -121,7 +122,8 @@ namespace
 
   bool preservesCommandLinePrecedence(const TemporaryDirectory& temporary)
   {
-    const auto path = temporary.write("precedence.toml",
+    const auto path = temporary.write(
+      "precedence.toml",
       "[generator]\n"
       "manifest = \"configured.json\"\n"
       "output = \"configured/entities\"\n"
@@ -158,7 +160,8 @@ namespace
 
   bool discoversDefaultConfiguration(const TemporaryDirectory& temporary)
   {
-    temporary.write("worm.toml",
+    temporary.write(
+      "worm.toml",
       "[generator]\n"
       "manifest = \"default.json\"\n"
       "\n"
@@ -177,7 +180,8 @@ namespace
 
   bool ignoresPullOnlyConfigurationForOtherCommands(const TemporaryDirectory& temporary)
   {
-    const auto path = temporary.write("scope.toml",
+    const auto path = temporary.write(
+      "scope.toml",
       "[generator]\n"
       "output = \"src/entities\"\n"
       "namespace = \"application::entities\"\n");
@@ -206,7 +210,8 @@ namespace
   bool rejectsMissingPasswordEnvironment(const TemporaryDirectory& temporary)
   {
     unsetEnvironment("WORM_CLI_MISSING_PASSWORD");
-    const auto path = temporary.write("password.toml",
+    const auto path = temporary.write(
+      "password.toml",
       "[database]\n"
       "password_env = \"WORM_CLI_MISSING_PASSWORD\"\n");
 
