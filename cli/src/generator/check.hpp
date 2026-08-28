@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "../parser.hpp"
-#include "../runner.hpp"
 #include <helpers/manifest.hpp>
+#include <parser.hpp>
+#include <runner.hpp>
 
 namespace worm::cli::generator
 {

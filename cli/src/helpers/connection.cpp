@@ -2,10 +2,10 @@
 
 #include <utils/dependency-injection.hpp>
 
-#include "../errors/invalid-cli-argument-exception.hpp"
+#include <errors/invalid-cli-argument-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
 
-namespace worm::cli::generator
+namespace worm::cli
 {
   namespace
   {
@@ -74,4 +74,4 @@ namespace worm::cli::generator
     const auto type = databaseType(invocation);
     return DependencyInjector<connection::SchemaInspector>::get(connectionConfig(invocation, type), type);
   }
-} // namespace worm::cli::generator
+} // namespace worm::cli

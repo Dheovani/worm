@@ -25,6 +25,8 @@ namespace worm::core
     std::string name;
     std::vector<SchemaColumnSnapshot> columns;
     std::vector<std::string> primaryKey;
+    std::vector<std::string> foreignKey;
+    std::vector<std::string> indexes;
 
     [[nodiscard]]
     const SchemaColumnSnapshot* findColumn(std::string_view columnName) const noexcept;

@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -42,6 +43,7 @@ namespace worm::cli
     std::string info;
     ExecutionStatus status{ExecutionStatus::Failed};
     std::shared_ptr<const ExecutionMetrics> metrics;
+    std::optional<std::string> renderedOutput;
   };
 
   void printUsage() noexcept;

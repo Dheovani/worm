@@ -7,7 +7,7 @@
 
 namespace
 {
-  worm::cli::generator::SchemaManifest manifest()
+  worm::cli::SchemaManifest manifest()
   {
     return {
       .entities = {{

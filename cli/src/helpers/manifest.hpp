@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace worm::cli::generator
+namespace worm::cli
 {
   struct ManifestIndexColumn
   {
@@ -52,4 +52,4 @@ namespace worm::cli::generator
 
   [[nodiscard]]
   core::SchemaMetadata schemaMetadata(const SchemaManifest& manifest);
-} // namespace worm::cli::generator
+} // namespace worm::cli

@@ -2,7 +2,7 @@
 
 `worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `pull`, the safe initial form of `push`, and `n-plus-one`. `check` compares a JSON entity manifest with the selected database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `pull`, the safe initial form of `push`, `inspect`, and `n-plus-one`. `check` compares a JSON entity manifest with the selected database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -37,7 +37,7 @@ Driver libraries remain optional. A disabled driver is not compiled or linked in
 The command syntax is:
 
 ```text
-worm [global-options] <check|pull|push|n-plus-one> [command-options]
+worm [global-options] <check|pull|push|inspect|n-plus-one> [command-options]
 ```
 
 Show the built-in reference or version:
@@ -205,6 +205,17 @@ worm --password-env WORM_DATABASE_PASSWORD check
 ```
 
 The referenced environment variable must exist. The resolved secret is not included in reports or reconstructed command output.
+
+## The `inspect` command
+
+`inspect` connects to the configured database and prints every schema object represented by the current driver introspection contract. It is read-only and deliberately has no command-specific options; connection settings and `--format` remain global options.
+
+```bash
+worm --driver postgresql --database application --username worm inspect
+worm --driver sqlite --database data/application.db --format json inspect
+```
+
+Text output groups tables by schema and displays columns, native data types, nullability, generated and unique flags, primary keys, foreign keys, and indexes when those values are supplied by the driver. JSON output emits a `schemas` array containing the same structure. Schemas and tables are sorted by name so repeated inspection produces stable output.
 
 ## The `check` command
 

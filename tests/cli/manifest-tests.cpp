@@ -38,7 +38,7 @@ namespace
   {
     const TemporaryManifest manifest{name, contents};
     try {
-      static_cast<void>(worm::cli::generator::loadManifest(manifest.path(), "public"));
+      static_cast<void>(worm::cli::loadManifest(manifest.path(), "public"));
     } catch (const worm::cli::InvalidCliArgumentException&) {
       return true;
     }
@@ -56,7 +56,7 @@ int main()
     R"("primaryKey":["id"],"indexes":[{"name":"idx_users_email","columns":[{"name":"email","order":"desc"}],"unique":true}],)"
     R"("foreignKeys":[{"name":"fk_users_role","columns":["role_id"],"referencedTable":"roles","referencedColumns":["id"],"onUpdate":"cascade","onDelete":"restrict"}]}]})",
   };
-  const auto manifest = worm::cli::generator::loadManifest(valid.path(), "public");
+  const auto manifest = worm::cli::loadManifest(valid.path(), "public");
   const auto& userManifest = manifest.entities[1];
   if (manifest.entities.size() != 2 || userManifest.name != "User" || userManifest.table.schema != "public" ||
       userManifest.table.columns.size() != 3 ||
@@ -67,7 +67,7 @@ int main()
     return 1;
   }
 
-  const worm::core::SchemaMetadata metadata = worm::cli::generator::schemaMetadata(manifest);
+  const worm::core::SchemaMetadata metadata = worm::cli::schemaMetadata(manifest);
   const auto* users = metadata.findTable(worm::core::Table{worm::core::Schema{"public"}, "users"});
   const auto* id = users == nullptr ? nullptr : users->findColumn("id");
   if (metadata.schema().name() != "public" || users == nullptr || id == nullptr ||

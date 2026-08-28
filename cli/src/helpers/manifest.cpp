@@ -11,9 +11,9 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../errors/invalid-cli-argument-exception.hpp"
+#include <errors/invalid-cli-argument-exception.hpp>
 
-namespace worm::cli::generator
+namespace worm::cli
 {
   namespace
   {
@@ -496,4 +496,4 @@ namespace worm::cli::generator
     const core::Schema schema = manifest.entities.empty() ? core::Schema{} : tables.front().table().schema();
     return core::SchemaMetadata{schema, std::move(tables)};
   }
-} // namespace worm::cli::generator
+} // namespace worm::cli

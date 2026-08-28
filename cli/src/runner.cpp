@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "database/inspect.hpp"
 #include "database/n-plus-one.hpp"
 #include "errors/invalid-cli-argument-exception.hpp"
 #include "generator/check.hpp"
@@ -88,6 +89,7 @@ namespace worm::cli
               << "  check                 Compare C++ entities with the database schema\n"
               << "  push                  Generate missing database objects from C++ entities\n"
               << "  pull                  Generate missing C++ entities from database tables\n"
+              << "  inspect               Print the complete supported database structure\n"
               << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
               << '\n'
               << "Global options:\n"
@@ -121,6 +123,7 @@ namespace worm::cli
               << "  worm push\n"
               << "  worm push --apply\n"
               << "  worm pull\n"
+              << "  worm --driver sqlite --database application.db inspect\n"
               << "  worm pull --apply\n"
               << "  worm push --entity User\n"
               << "  worm pull --table users\n"
@@ -181,6 +184,14 @@ namespace worm::cli
 
   void outputReport(const ExecutionReport& report, std::string_view format, std::ostream& out)
   {
+    if (report.renderedOutput.has_value()) {
+      out << *report.renderedOutput;
+      if (report.renderedOutput->empty() || report.renderedOutput->back() != '\n') {
+        out << '\n';
+      }
+      return;
+    }
+
     if (report.metrics == nullptr) {
       throw InvalidCliArgumentException("Execution report has no metrics.");
     }
@@ -217,6 +228,9 @@ namespace worm::cli
       break;
     case Commands::NPlusOne:
       report = database::verify(invocation);
+      break;
+    case Commands::Inspect:
+      report = database::inspect(invocation);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

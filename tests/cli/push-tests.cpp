@@ -8,7 +8,7 @@
 
 namespace
 {
-  worm::cli::generator::SchemaManifest manifest()
+  worm::cli::SchemaManifest manifest()
   {
     return {
       .entities = {{
@@ -71,7 +71,7 @@ int main()
   } catch (const worm::cli::InvalidCliArgumentException&) {}
 
   invocation.arguments.entities.clear();
-  const worm::cli::generator::SchemaManifest cyclicManifest{
+  const worm::cli::SchemaManifest cyclicManifest{
     .entities =
       {
         {

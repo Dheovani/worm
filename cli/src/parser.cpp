@@ -40,6 +40,7 @@ namespace worm::cli
     inline constexpr std::string_view pushCommand = "push";
     inline constexpr std::string_view checkCommand = "check";
     inline constexpr std::string_view nPlusOneCommand = "n-plus-one";
+    inline constexpr std::string_view inspectCommand = "inspect";
 
     inline constexpr std::string_view entityCommand = "--entity";
     inline constexpr std::string_view tableCommand = "--table";
@@ -95,6 +96,8 @@ namespace worm::cli
         return Check;
       if (cmd == nPlusOneCommand)
         return NPlusOne;
+      if (cmd == inspectCommand)
+        return Inspect;
 
       return std::nullopt;
     }

@@ -677,6 +677,18 @@ namespace worm::cli
         }
       }
     }
+
+    void validateInspectArguments(const CommandArguments& args)
+    {
+      if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() || args.namespaceName.has_value() ||
+          args.name.has_value() || args.apply) {
+        throw InvalidCliArgumentException("Generator options are not valid for the 'inspect' command.");
+      }
+
+      if (args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
+        throw InvalidCliArgumentException("N+1 options are only valid for the 'n-plus-one' command.");
+      }
+    }
   } // namespace
 
   bool isCppKeyword(std::string_view value) noexcept
@@ -705,6 +717,9 @@ namespace worm::cli
       break;
     case Commands::NPlusOne:
       validateNPlusOneArguments(invocation.arguments);
+      break;
+    case Commands::Inspect:
+      validateInspectArguments(invocation.arguments);
       break;
     default:
       throw EmptyCommandException("No valid command given");

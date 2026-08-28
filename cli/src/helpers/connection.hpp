@@ -3,9 +3,9 @@
 #include <connection/configuration.hpp>
 #include <connection/schema-inspector.hpp>
 
-#include "../parser.hpp"
+#include <parser.hpp>
 
-namespace worm::cli::generator
+namespace worm::cli
 {
   [[nodiscard]]
   connection::DatabaseType databaseType(const Invocation& invocation);
@@ -18,4 +18,4 @@ namespace worm::cli::generator
 
   [[nodiscard]]
   connection::SchemaInspector schemaInspector(const Invocation& invocation);
-} // namespace worm::cli::generator
+} // namespace worm::cli

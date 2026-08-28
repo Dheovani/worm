@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-#include "../errors/invalid-cli-argument-exception.hpp"
+#include <errors/invalid-cli-argument-exception.hpp>
 #include <helpers/connection.hpp>
 
 namespace worm::cli::generator
