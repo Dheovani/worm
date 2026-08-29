@@ -95,6 +95,9 @@ try {
       contents.str().find("struct UserRecords") == std::string::npos ||
       contents.str().find("std::optional<std::string> displayName") == std::string::npos ||
       contents.str().find("#include <core/query/parameter-value.hpp>") == std::string::npos ||
+      contents.str().find("static constexpr std::string_view entityName() noexcept") == std::string::npos ||
+      contents.str().find("static worm::core::ColumnType columnType(std::string_view column)") == std::string::npos ||
+      contents.str().find("worm::core::ColumnTypeKind::Int64") == std::string::npos ||
       contents.str().find(".defaultExpression = \"'unknown'\"") == std::string::npos ||
       contents.str().find("namespace application::entities") == std::string::npos) {
     std::cerr << "Pull did not generate the expected entity.\n";

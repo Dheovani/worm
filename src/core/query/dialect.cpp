@@ -85,6 +85,19 @@ namespace worm::core
       return quote(type.enumeration->schema, '"') + "." + quote(type.enumeration->name, '"');
     }
 
+    void rejectUnsignedInteger(const ColumnType& type, std::string_view dialect)
+    {
+      if (type.unsignedValue) {
+        throw worm::SqlBuildException("{} does not support native unsigned integer columns.", dialect);
+      }
+    }
+
+    [[nodiscard]]
+    std::string mySqlIntegerType(const ColumnType& type, std::string_view name)
+    {
+      return std::string{name} + (type.unsignedValue ? " unsigned" : "");
+    }
+
     [[noreturn]]
     void throwUnsupportedType(std::string_view dialect)
     {
@@ -108,10 +121,13 @@ namespace worm::core
     case ColumnTypeKind::Boolean:
       return "boolean";
     case ColumnTypeKind::Int16:
+      rejectUnsignedInteger(type, "PostgreSQL");
       return "smallint";
     case ColumnTypeKind::Int32:
+      rejectUnsignedInteger(type, "PostgreSQL");
       return "integer";
     case ColumnTypeKind::Int64:
+      rejectUnsignedInteger(type, "PostgreSQL");
       return "bigint";
     case ColumnTypeKind::Float32:
       return "real";
@@ -158,11 +174,11 @@ namespace worm::core
     case ColumnTypeKind::Boolean:
       return "boolean";
     case ColumnTypeKind::Int16:
-      return "smallint";
+      return mySqlIntegerType(type, "smallint");
     case ColumnTypeKind::Int32:
-      return "int";
+      return mySqlIntegerType(type, "int");
     case ColumnTypeKind::Int64:
-      return "bigint";
+      return mySqlIntegerType(type, "bigint");
     case ColumnTypeKind::Float32:
       return "float";
     case ColumnTypeKind::Float64:
@@ -209,6 +225,7 @@ namespace worm::core
     case ColumnTypeKind::Int16:
     case ColumnTypeKind::Int32:
     case ColumnTypeKind::Int64:
+      rejectUnsignedInteger(type, "SQLite");
       return "integer";
     case ColumnTypeKind::Float32:
     case ColumnTypeKind::Float64:
@@ -259,10 +276,13 @@ namespace worm::core
     case ColumnTypeKind::Boolean:
       return "bit";
     case ColumnTypeKind::Int16:
+      rejectUnsignedInteger(type, "SQL Server");
       return "smallint";
     case ColumnTypeKind::Int32:
+      rejectUnsignedInteger(type, "SQL Server");
       return "int";
     case ColumnTypeKind::Int64:
+      rejectUnsignedInteger(type, "SQL Server");
       return "bigint";
     case ColumnTypeKind::Float32:
       return "real";

@@ -105,6 +105,9 @@ int main()
       "worm-cli-empty-enum.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"enum","values":[]}],"primaryKey":["id"]}]})") ||
     !rejects(
+      "worm-cli-invalid-enum-schema.json",
+      R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"enum","enumSchema":"","values":["active"]}],"primaryKey":["id"]}]})") ||
+    !rejects(
       "worm-cli-invalid-index.json",
       R"({"version":1,"entities":[{"name":"User","table":"users","columns":[{"name":"id","type":"int64"}],"primaryKey":["id"],"indexes":[{"name":"idx_users_missing","columns":["missing"]}]}]})") ||
     !rejects(

@@ -88,6 +88,8 @@ int main()
       postgresDialect.renderColumnType(postgresEnum) != "\"public\".\"account_status\"" ||
       mySqlDialect.renderColumnType(sizedString) != "varchar(120)" ||
       mySqlDialect.renderColumnType({.kind = worm::core::ColumnTypeKind::Uuid}) != "char(36)" ||
+      mySqlDialect.renderColumnType({.kind = worm::core::ColumnTypeKind::Int32, .unsignedValue = true}) !=
+        "int unsigned" ||
       mySqlDialect.renderColumnType(mySqlEnum) != "enum('active','on''hold')" ||
       sqliteDialect.renderColumnType(decimal) != "real" ||
       sqlServerDialect.renderColumnType(sizedString) != "nvarchar(120)" ||
@@ -99,6 +101,13 @@ int main()
   try {
     static_cast<void>(postgresDialect.renderColumnType({}));
     std::cerr << "Dialect accepted an unknown column type.\n";
+    return 1;
+  } catch (const worm::SqlBuildException&) {}
+
+  try {
+    static_cast<void>(
+      postgresDialect.renderColumnType({.kind = worm::core::ColumnTypeKind::Int32, .unsignedValue = true}));
+    std::cerr << "PostgreSQL accepted an unsupported unsigned integer column.\n";
     return 1;
   } catch (const worm::SqlBuildException&) {}
 

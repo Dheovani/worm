@@ -1,12 +1,23 @@
 #pragma once
 
 #include <core/model/entity.hpp>
+#include <core/model/schema-metadata.hpp>
+#include <core/query/parameter-value.hpp>
+#include <errors/mapping-exception.hpp>
 #include <reflection/visit.hpp>
+#include <utils/helpers.hpp>
 
+#include <chrono>
+#include <concepts>
 #include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace worm::core
 {
@@ -67,6 +78,90 @@ namespace worm::core
       using Fields = std::remove_cvref_t<decltype(EntityType::reflect())>;
 
       return selected_fields_impl<Selector, EntityType>(std::make_index_sequence<std::tuple_size_v<Fields>>{});
+    }
+
+    template <typename T>
+    struct column_value
+    {
+      using type = std::remove_cvref_t<T>;
+    };
+
+    template <typename T>
+    struct column_value<std::optional<T>>
+    {
+      using type = T;
+    };
+
+    template <typename T>
+    using column_value_t = typename column_value<std::remove_cvref_t<T>>::type;
+
+    template <typename T>
+    consteval bool is_column_type_mappable()
+    {
+      using Value = column_value_t<T>;
+      constexpr bool losslessInteger =
+        std::integral<Value> && (std::is_signed_v<Value> || sizeof(Value) < sizeof(std::uint64_t));
+      constexpr bool supportedFloat = std::same_as<Value, float> || std::same_as<Value, double>;
+      constexpr bool supportedEnum = [] {
+        if constexpr (std::is_enum_v<Value>) {
+          return is_column_type_mappable<std::underlying_type_t<Value>>();
+        }
+        return false;
+      }();
+      return std::same_as<Value, bool> || losslessInteger || supportedFloat || supportedEnum ||
+             utils::is_string_like<Value> || utils::is_date_type<Value> || std::same_as<Value, Decimal> ||
+             std::same_as<Value, Binary>;
+    }
+
+    template <typename T>
+    [[nodiscard]]
+    ColumnType inferredColumnType()
+    {
+      using Value = column_value_t<T>;
+      static_assert(is_column_type_mappable<Value>(), "Worm cannot infer a SQL column type for this C++ field type.");
+
+      if constexpr (std::same_as<Value, bool>) {
+        return {.kind = ColumnTypeKind::Boolean};
+      } else if constexpr (std::is_enum_v<Value>) {
+        return inferredColumnType<std::underlying_type_t<Value>>();
+      } else if constexpr (std::integral<Value>) {
+        constexpr ColumnTypeKind kind = sizeof(Value) <= sizeof(std::int16_t)
+          ? ColumnTypeKind::Int16 : sizeof(Value) <= sizeof(std::int32_t)
+            ? ColumnTypeKind::Int32 : ColumnTypeKind::Int64;
+        return {.kind = kind, .unsignedValue = std::is_unsigned_v<Value>};
+      } else if constexpr (std::same_as<Value, float> || std::same_as<Value, double>) {
+        return {.kind = sizeof(Value) <= sizeof(float) ? ColumnTypeKind::Float32 : ColumnTypeKind::Float64};
+      } else if constexpr (std::same_as<Value, Decimal>) {
+        return {.kind = ColumnTypeKind::Decimal};
+      } else if constexpr (std::same_as<Value, Binary>) {
+        return {.kind = ColumnTypeKind::Binary};
+      } else if constexpr (utils::is_date_type<Value>) {
+        return {.kind = ColumnTypeKind::Date};
+      } else {
+        return {.kind = ColumnTypeKind::String};
+      }
+    }
+
+    template <typename T>
+    concept HasColumnTypeMapping = requires(std::string_view column) {
+      { std::remove_cvref_t<T>::columnType(column) } -> std::same_as<ColumnType>;
+    };
+
+    template <typename T>
+    concept HasIndexes = requires { std::remove_cvref_t<T>::indexes(); };
+
+    template <typename T>
+    concept HasForeignKeys = requires { std::remove_cvref_t<T>::foreignKeys(); };
+
+    template <typename Value, typename Tuple>
+    void appendTuple(std::vector<Value>& target, Tuple&& tuple)
+    {
+      std::apply(
+        [&](const auto&... values) {
+          static_assert((std::same_as<std::remove_cvref_t<decltype(values)>, Value> && ...));
+          (target.push_back(values), ...);
+        },
+        std::forward<Tuple>(tuple));
     }
   } // namespace detail
 
@@ -138,6 +233,84 @@ namespace worm::core
   constexpr auto primary_key_field_of()
   {
     return std::get<0>(primary_key_fields_of<T>());
+  }
+
+  template <typename T>
+  concept MappableColumn = detail::is_column_type_mappable<T>();
+
+  template <MappableColumn T>
+  [[nodiscard]]
+  ColumnType column_type_of()
+  {
+    return detail::inferredColumnType<T>();
+  }
+
+  template <PersistableEntity T>
+  [[nodiscard]]
+  TableMetadata table_metadata_of()
+  {
+    const Table table = table_of<T>();
+    std::vector<ColumnMetadata> columns;
+    columns.reserve(persistent_field_count<T>);
+
+    std::apply(
+      [&](const auto&... fields) {
+        (
+          [&] {
+            using Field = std::remove_cvref_t<decltype(fields)>;
+            using Value = typename Field::value_type;
+            ColumnType type;
+            if constexpr (detail::HasColumnTypeMapping<T>) {
+              type = std::remove_cvref_t<T>::columnType(fields.columnName());
+              if (type.kind == ColumnTypeKind::Unknown) {
+                if constexpr (MappableColumn<Value>) {
+                  type = column_type_of<Value>();
+                } else {
+                  throw MappingException(
+                    "Entity column '{}.{}' has no SQL type mapping.",
+                    table.name(),
+                    fields.columnName());
+                }
+              }
+            } else {
+              type = column_type_of<Value>();
+            }
+            reflection::FieldMetadata metadata = fields.metadata();
+            metadata.columnName = fields.columnName();
+            columns.emplace_back(Column{metadata, table}, std::move(type));
+          }(),
+          ...);
+      },
+      persistent_fields_of<T>());
+
+    std::vector<Index> indexes;
+    if constexpr (detail::HasIndexes<T>) {
+      detail::appendTuple(indexes, std::remove_cvref_t<T>::indexes());
+    }
+
+    std::vector<ForeignKey> foreignKeys;
+    if constexpr (detail::HasForeignKeys<T>) {
+      detail::appendTuple(foreignKeys, std::remove_cvref_t<T>::foreignKeys());
+    }
+
+    return TableMetadata{table,
+      std::move(columns),
+      std::remove_cvref_t<T>::primaryKey(),
+      std::move(indexes),
+      std::move(foreignKeys)};
+  }
+
+  template <PersistableEntity... T>
+    requires(sizeof...(T) > 0)
+  [[nodiscard]]
+  SchemaMetadata schema_metadata_of()
+  {
+    std::vector<TableMetadata> tables;
+    tables.reserve(sizeof...(T));
+    (tables.push_back(table_metadata_of<T>()), ...);
+
+    const Schema schema = tables.front().table().schema();
+    return SchemaMetadata{schema, std::move(tables)};
   }
 
   template <Viewable T>

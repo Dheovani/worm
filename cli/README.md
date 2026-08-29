@@ -140,7 +140,7 @@ Each entity requires:
 - at least one primary-key column;
 - primary-key names that refer to declared columns.
 
-The optional `type` property uses Worm's canonical names: `boolean`, `int16`, `int32`, `int64`, `float32`, `float64`, `decimal`, `string`, `binary`, `date`, `time`, `datetime`, `uuid`, `json`, or `unknown`. Type modifiers are represented by `length`, `precision`, `scale`, `unsigned`, and `withTimeZone`. When a type is present, `check` compares its canonical kind with the database type normalized by the selected driver. Omitting it preserves compatibility with manifests that only describe structural metadata.
+The optional `type` property uses Worm's canonical names: `boolean`, `int16`, `int32`, `int64`, `float32`, `float64`, `decimal`, `string`, `enum`, `binary`, `date`, `time`, `datetime`, `uuid`, `json`, or `unknown`. Type modifiers are represented by `length`, `precision`, `scale`, `unsigned`, and `withTimeZone`. Native enums use `values` plus optional `enumName` and `enumSchema` properties. When a type is present, `check` compares its canonical kind with the database type normalized by the selected driver. Omitting it preserves compatibility with manifests that only describe structural metadata.
 
 The optional `default` property contains a database DDL expression, such as `0`, `'pending'`, or `CURRENT_TIMESTAMP`; it is not an application value and therefore is not represented as a bound `Statement` parameter. Manifest defaults are trusted schema input, but Worm still rejects empty expressions, SQL statement separators, comments, and line breaks. A generated column cannot also declare a default. Omitting `default` makes comparisons ignore that property for backward compatibility, while an explicitly supplied value participates in `check` and `push` compatibility checks.
 
@@ -155,7 +155,41 @@ The `schema` property is optional. Its default depends on the driver:
 | SQLite | `main` |
 | Microsoft SQL Server | `dbo` |
 
-The current CLI consumes this manifest but does not generate it from a compiled application yet.
+The CLI cannot scan types from another executable. Applications instead compile a small schema-export target that instantiates their entity types and serializes the static reflection metadata:
+
+```cpp
+#include <helpers/manifest.hpp>
+
+#include <iostream>
+
+#include "entities/role.hpp"
+#include "entities/user.hpp"
+
+int main()
+{
+  const auto manifest = worm::cli::schema_manifest_of<Role, User>();
+  std::cout << worm::cli::serializeManifest(manifest);
+}
+```
+
+Link that target to `Worm::CliCore`, execute it, and redirect its standard output to the manifest consumed by `worm`:
+
+```cmake
+add_executable(ApplicationSchema schema-manifest.cpp)
+target_link_libraries(ApplicationSchema PRIVATE Worm::CliCore)
+```
+
+```powershell
+cmake --build build --config Debug --target ApplicationSchema
+& build\Debug\ApplicationSchema.exe | Set-Content -Encoding utf8 build\worm-schema.json
+worm --manifest build/worm-schema.json check
+```
+
+`schema_manifest_of` infers unambiguous C++ types including losslessly representable integers, `float`, `double`, strings, dates, `Decimal`, `Binary`, optionals, and integral enums. An entity may provide `static ColumnType columnType(std::string_view)` when its C++ representation is intentionally shared by multiple SQL types, such as `std::string` for JSON, UUID, time, datetime, or a native enum; return an empty `ColumnType` for fields that should use inference. `std::uint64_t` and `long double` require an explicit mapping because Worm's parameter representation cannot preserve their entire value range. The field metadata remains authoritative for nullability. An entity may also provide `static constexpr auto indexes()` and `static constexpr auto foreignKeys()`, each returning a tuple of the corresponding Worm metadata objects. Generated entities include `entityName()` and `columnType()` automatically, so a database-to-code `pull` preserves enough type information, including a native enum's schema, for a later code-to-database export.
+
+Relationship descriptors such as `oneToMany` describe query navigation and do not by themselves determine foreign-key ownership, referential actions, or a complete join-table schema. Schema export therefore requires explicit `foreignKeys()` metadata and explicit join-table entities where applicable instead of guessing destructive DDL from navigation metadata.
+
+Worm deliberately does not provide a `sync` command. `check` is the read-only comparison operation, `pull` explicitly treats the database as the source, and `push` explicitly treats reflected entity metadata as the source. Keeping these commands separate makes direction and mutation intent visible and prevents an automatic mode from selecting a destructive synchronization direction.
 
 For generated entities, `date` columns use `std::chrono::sys_days`. SQL `time`, `datetime`, UUID, and JSON values currently use `std::string`, matching the portable parameter representation shared by the available drivers. Decimal columns use `worm::core::Decimal`, which validates and preserves their textual decimal representation without converting through floating point. Binary columns use `worm::core::Binary`, which owns the exact byte sequence including null bytes.
 

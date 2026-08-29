@@ -13,6 +13,7 @@ add_library(
     src/runner.cpp
     src/validator.cpp
 )
+add_library(Worm::CliCore ALIAS WormCliCore)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 

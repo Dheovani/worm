@@ -133,10 +133,19 @@ namespace worm::cli
         if (enumName != object.end() && (!enumName->is_string() || enumName->get_ref<const std::string&>().empty())) {
           throw InvalidCliArgumentException("Manifest {} requires 'enumName' to be a non-empty string.", context);
         }
+
+        const auto enumSchema = object.find("enumSchema");
+        if (enumSchema != object.end() &&
+            (!enumSchema->is_string() || enumSchema->get_ref<const std::string&>().empty())) {
+          throw InvalidCliArgumentException("Manifest {} requires 'enumSchema' to be a non-empty string.", context);
+        }
+
         type.enumeration = core::NativeEnum{
+          .schema = enumSchema == object.end() ? std::string{} : enumSchema->get<std::string>(),
           .name = enumName == object.end() ? std::string{} : enumName->get<std::string>(),
           .values = optionalStringList(object, "values", context),
         };
+
         if (type.enumeration->values.empty()) {
           throw InvalidCliArgumentException("Manifest {} requires enum type to define non-empty 'values'.", context);
         }
@@ -564,5 +573,120 @@ namespace worm::cli
 
     const core::Schema schema = manifest.entities.empty() ? core::Schema{} : tables.front().table().schema();
     return core::SchemaMetadata{schema, std::move(tables)};
+  }
+
+  std::string serializeManifest(const SchemaManifest& manifest)
+  {
+    const auto actionName = [](core::ReferentialAction action) -> std::string_view {
+      switch (action) {
+      case core::ReferentialAction::NoAction:
+        return "no-action";
+      case core::ReferentialAction::Restrict:
+        return "restrict";
+      case core::ReferentialAction::Cascade:
+        return "cascade";
+      case core::ReferentialAction::SetNull:
+        return "set-null";
+      case core::ReferentialAction::SetDefault:
+        return "set-default";
+      }
+      return "no-action";
+    };
+
+    Json document{{"version", manifest.version}, {"entities", Json::array()}};
+    for (const ManifestEntity& entity : manifest.entities) {
+      Json entityObject{
+        {"name", entity.name},
+        {"table", entity.table.name},
+        {"columns", Json::array()},
+        {"primaryKey", entity.table.primaryKey},
+      };
+
+      if (!entity.table.schema.empty()) {
+        entityObject["schema"] = entity.table.schema;
+      }
+
+      for (const core::SchemaColumnSnapshot& column : entity.table.columns) {
+        Json columnObject{
+          {"name", column.name},
+          {"type", core::columnTypeKindName(column.type.kind)},
+          {"nullable", column.nullable},
+          {"generated", column.generated},
+          {"unique", column.unique},
+        };
+
+        if (column.defaultExpression.has_value()) {
+          columnObject["default"] = *column.defaultExpression;
+        }
+
+        if (column.type.length.has_value()) {
+          columnObject["length"] = *column.type.length;
+        }
+
+        if (column.type.precision.has_value()) {
+          columnObject["precision"] = *column.type.precision;
+        }
+
+        if (column.type.scale.has_value()) {
+          columnObject["scale"] = *column.type.scale;
+        }
+
+        if (column.type.unsignedValue) {
+          columnObject["unsigned"] = true;
+        }
+
+        if (column.type.withTimeZone) {
+          columnObject["withTimeZone"] = true;
+        }
+
+        if (column.type.enumeration.has_value()) {
+          if (!column.type.enumeration->schema.empty()) {
+            columnObject["enumSchema"] = column.type.enumeration->schema;
+          }
+
+          if (!column.type.enumeration->name.empty()) {
+            columnObject["enumName"] = column.type.enumeration->name;
+          }
+
+          columnObject["values"] = column.type.enumeration->values;
+        }
+
+        entityObject["columns"].push_back(std::move(columnObject));
+      }
+
+      if (!entity.indexes.empty()) {
+        entityObject["indexes"] = Json::array();
+        for (const ManifestIndex& index : entity.indexes) {
+          Json indexObject{{"name", index.name}, {"columns", Json::array()}, {"unique", index.unique}};
+
+          for (const ManifestIndexColumn& column : index.columns) {
+            indexObject["columns"].push_back(
+              {{"name", column.name}, {"order", column.order == core::IndexOrder::Ascending ? "asc" : "desc"}});
+          }
+
+          entityObject["indexes"].push_back(std::move(indexObject));
+        }
+      }
+
+      if (!entity.foreignKeys.empty()) {
+        entityObject["foreignKeys"] = Json::array();
+        for (const ManifestForeignKey& foreignKey : entity.foreignKeys) {
+          Json foreignKeyObject{
+            {"name", foreignKey.name},
+            {"columns", foreignKey.columns},
+            {"referencedSchema", foreignKey.referencedSchema},
+            {"referencedTable", foreignKey.referencedTable},
+            {"referencedColumns", foreignKey.referencedColumns},
+            {"onUpdate", actionName(foreignKey.onUpdate)},
+            {"onDelete", actionName(foreignKey.onDelete)},
+          };
+          entityObject["foreignKeys"].push_back(std::move(foreignKeyObject));
+        }
+      }
+
+      document["entities"].push_back(std::move(entityObject));
+    }
+
+    return document.dump(2) + '\n';
   }
 } // namespace worm::cli

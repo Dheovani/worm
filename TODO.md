@@ -107,7 +107,7 @@ This milestone should end with a complete example that creates, persists, querie
 
 - [x] Define the decision rule between entity-as-source-of-truth, database-as-source-of-truth, or explicit command mode.
 - [x] Introspect the database schema and generate C++ entity classes with reflection metadata.
-- [ ] Read reflected entities and generate tables, columns, keys, indexes, and relationships in the database.
+- [x] Read reflected entities and generate tables, columns, keys, indexes, and relationships in the database.
 - [x] Parse columns, keys, indexes, and relationships from declarative manifests and generate them for missing tables.
 - [x] Generate missing tables from declarative schema metadata without modifying incompatible existing tables.
 - [x] Compare entity and database state to produce a reviewable synchronization plan before any change.
@@ -119,7 +119,6 @@ This milestone should end with a complete example that creates, persists, querie
   - [x] Preserve native enum definitions through introspection, manifests, generated entities, and DDL.
 - [x] Define how to preserve manual customizations when generated entities are regenerated.
 - [x] Add tests with small schemas to validate both directions: database to entity and entity to database.
-- [ ] Evaluate `sync` command as a way to compare C++ entities with the database schema and synchronize them.
 
 ### Database manipulation commands
 

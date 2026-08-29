@@ -183,6 +183,92 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
+    std::string columnTypeKindSymbol(core::ColumnTypeKind kind)
+    {
+      switch (kind) {
+      case core::ColumnTypeKind::Boolean:
+        return "Boolean";
+      case core::ColumnTypeKind::Int16:
+        return "Int16";
+      case core::ColumnTypeKind::Int32:
+        return "Int32";
+      case core::ColumnTypeKind::Int64:
+        return "Int64";
+      case core::ColumnTypeKind::Float32:
+        return "Float32";
+      case core::ColumnTypeKind::Float64:
+        return "Float64";
+      case core::ColumnTypeKind::Decimal:
+        return "Decimal";
+      case core::ColumnTypeKind::String:
+        return "String";
+      case core::ColumnTypeKind::Enum:
+        return "Enum";
+      case core::ColumnTypeKind::Binary:
+        return "Binary";
+      case core::ColumnTypeKind::Date:
+        return "Date";
+      case core::ColumnTypeKind::Time:
+        return "Time";
+      case core::ColumnTypeKind::DateTime:
+        return "DateTime";
+      case core::ColumnTypeKind::Uuid:
+        return "Uuid";
+      case core::ColumnTypeKind::Json:
+        return "Json";
+      case core::ColumnTypeKind::Unknown:
+        return "Unknown";
+      }
+      return "Unknown";
+    }
+
+    [[nodiscard]]
+    std::string columnTypeInitializer(const core::ColumnType& type, std::string_view indent)
+    {
+      std::ostringstream out;
+      out << "worm::core::ColumnType{\n"
+          << indent << "  .kind = worm::core::ColumnTypeKind::" << columnTypeKindSymbol(type.kind) << ",\n";
+
+      if (!type.nativeName.empty()) {
+        out << indent << "  .nativeName = \"" << escaped(type.nativeName) << "\",\n";
+      }
+
+      if (type.length.has_value()) {
+        out << indent << "  .length = " << *type.length << ",\n";
+      }
+
+      if (type.precision.has_value()) {
+        out << indent << "  .precision = " << *type.precision << ",\n";
+      }
+
+      if (type.scale.has_value()) {
+        out << indent << "  .scale = " << *type.scale << ",\n";
+      }
+
+      if (type.enumeration.has_value()) {
+        out << indent << "  .enumeration = worm::core::NativeEnum{\n"
+            << indent << "    .schema = \"" << escaped(type.enumeration->schema) << "\",\n"
+            << indent << "    .name = \"" << escaped(type.enumeration->name) << "\",\n"
+            << indent << "    .values = {\n";
+        for (const std::string& value : type.enumeration->values) {
+          out << indent << "      \"" << escaped(value) << "\",\n";
+        }
+        out << indent << "    },\n" << indent << "  },\n";
+      }
+
+      if (type.unsignedValue) {
+        out << indent << "  .unsignedValue = true,\n";
+      }
+
+      if (type.withTimeZone) {
+        out << indent << "  .withTimeZone = true,\n";
+      }
+
+      out << indent << "}";
+      return out.str();
+    }
+
+    [[nodiscard]]
     std::string generateFileContents(
       const core::SchemaTableSnapshot& table,
       std::string_view entityName,
@@ -227,6 +313,21 @@ namespace worm::cli::generator
         memberNames.push_back(memberName);
         out << indent << "  " << cppType(column) << ' ' << memberName << "{};\n";
       }
+
+      out << "\n"
+          << indent << "  static constexpr std::string_view entityName() noexcept\n"
+          << indent << "  {\n"
+          << indent << "    return \"" << escaped(entityName) << "\";\n"
+          << indent << "  }\n\n"
+          << indent << "  static worm::core::ColumnType columnType(std::string_view column)\n"
+          << indent << "  {\n";
+      for (const auto& column : table.columns) {
+        const std::string returnIndent = indent + "      ";
+        out << indent << "    if (column == \"" << escaped(column.name) << "\") {\n"
+            << returnIndent << "return " << columnTypeInitializer(column.type, returnIndent) << ";\n"
+            << indent << "    }\n";
+      }
+      out << indent << "    return {};\n" << indent << "  }\n";
 
       for (std::size_t index = 0; index < table.columns.size(); ++index) {
         const auto& column = table.columns[index];

@@ -8,6 +8,7 @@ function(add_worm_core_test target source test_name)
 endfunction()
 
 add_worm_core_test(WormEntityTests model/entity-tests.cpp Worm.Core.Entity)
+add_worm_core_test(WormEntityMetadataTests model/entity-metadata-tests.cpp Worm.Core.EntityMetadata)
 add_worm_core_test(WormSchemaTests model/schema-tests.cpp Worm.Core.Schema)
 add_worm_core_test(WormSchemaSnapshotTests model/schema-snapshot-tests.cpp Worm.Core.SchemaSnapshot)
 add_worm_core_test(WormSchemaDiffTests model/schema-diff-tests.cpp Worm.Core.SchemaDiff)
