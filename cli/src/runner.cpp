@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "database/diff.hpp"
 #include "database/inspect.hpp"
 #include "database/n-plus-one.hpp"
 #include "errors/invalid-cli-argument-exception.hpp"
@@ -89,6 +90,7 @@ namespace worm::cli
               << "  check                 Compare C++ entities with the database schema\n"
               << "  push                  Generate missing database objects from C++ entities\n"
               << "  pull                  Generate missing C++ entities from database tables\n"
+              << "  diff                  Display a migration-oriented schema difference report\n"
               << "  inspect               Print the complete supported database structure\n"
               << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
               << '\n'
@@ -123,6 +125,7 @@ namespace worm::cli
               << "  worm push\n"
               << "  worm push --apply\n"
               << "  worm pull\n"
+              << "  worm diff\n"
               << "  worm --driver sqlite --database application.db inspect\n"
               << "  worm pull --apply\n"
               << "  worm push --entity User\n"
@@ -231,6 +234,9 @@ namespace worm::cli
       break;
     case Commands::Inspect:
       report = database::inspect(invocation);
+      break;
+    case Commands::Diff:
+      report = database::diff(invocation);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

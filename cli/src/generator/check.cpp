@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 
+#include <core/model/schema-diff.hpp>
 #include <errors/invalid-cli-argument-exception.hpp>
 #include <helpers/connection.hpp>
 
@@ -115,18 +116,12 @@ namespace worm::cli::generator
           addDifference(metrics, label + "." + expectedColumn.name + ": nullability differs");
           compatible = false;
         }
-        if (expectedColumn.type.kind != core::ColumnTypeKind::Unknown &&
-            expectedColumn.type.kind != actualColumn->type.kind) {
+        if (!core::columnTypesCompatible(expectedColumn.type, actualColumn->type)) {
           addDifference(
             metrics,
             label + "." + expectedColumn.name + ": type differs (expected " +
               std::string{core::columnTypeKindName(expectedColumn.type.kind)} + ", found " +
               std::string{core::columnTypeKindName(actualColumn->type.kind)} + ")");
-          compatible = false;
-        }
-        if (expectedColumn.type.kind == core::ColumnTypeKind::Enum &&
-            expectedColumn.type.enumeration != actualColumn->type.enumeration) {
-          addDifference(metrics, label + "." + expectedColumn.name + ": native enum definition differs");
           compatible = false;
         }
         if (expectedColumn.generated != actualColumn->generated) {

@@ -1,6 +1,7 @@
 add_library(
   WormCliCore
   STATIC
+    src/database/diff.cpp
     src/database/inspect.cpp
     src/database/n-plus-one.cpp
     src/generator/check.cpp

@@ -13,7 +13,7 @@ namespace
       std::vector<worm::core::SchemaDifference>{
         {
           .kind = worm::core::SchemaDifferenceKind::MissingColumn,
-          .table = worm::core::Table{"users"},
+          .table = "users",
           .column = std::move(column),
         },
       });

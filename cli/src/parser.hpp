@@ -27,7 +27,8 @@ namespace worm::cli
     Push,
     Check,
     NPlusOne,
-    Inspect
+    Inspect,
+    Diff
   };
 
   enum class CommandOptions

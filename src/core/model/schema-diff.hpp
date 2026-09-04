@@ -2,12 +2,14 @@
 
 #include <core/model/entity-metadata.hpp>
 #include <core/model/schema-metadata.hpp>
+#include <core/model/schema-snapshot.hpp>
 
 #include <cstddef>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace worm::core
@@ -15,11 +17,14 @@ namespace worm::core
   enum class SchemaDifferenceKind
   {
     MissingTable,
+    UnexpectedTable,
     MissingColumn,
     UnexpectedColumn,
+    ColumnTypeMismatch,
     NullableMismatch,
     GeneratedMismatch,
     UniqueMismatch,
+    DefaultExpressionMismatch,
     MissingPrimaryKey,
     PrimaryKeyMismatch
   };
@@ -27,11 +32,15 @@ namespace worm::core
   struct SchemaDifference
   {
     SchemaDifferenceKind kind;
-    Table table;
+    std::string schema;
+    std::string table;
     std::string column;
     std::string expected;
     std::string actual;
   };
+
+  [[nodiscard]]
+  bool columnTypesCompatible(const ColumnType& expected, const ColumnType& actual);
 
   namespace detail
   {
@@ -39,6 +48,16 @@ namespace worm::core
     inline std::string boolValue(bool value)
     {
       return value ? "true" : "false";
+    }
+
+    [[nodiscard]]
+    inline SchemaDifference differenceFor(SchemaDifferenceKind kind, Table table)
+    {
+      return {
+        .kind = kind,
+        .schema = std::string{table.schema().name()},
+        .table = std::string{table.name()},
+      };
     }
 
     [[nodiscard]]
@@ -65,47 +84,35 @@ namespace worm::core
     {
       const ColumnMetadata* actualColumn = existing.findColumn(field.columnName());
       if (actualColumn == nullptr) {
-        differences.push_back(
-          {
-            .kind = SchemaDifferenceKind::MissingColumn,
-            .table = table_of<T>(),
-            .column = std::string{field.columnName()},
-          });
+        SchemaDifference difference = differenceFor(SchemaDifferenceKind::MissingColumn, table_of<T>());
+        difference.column = field.columnName();
+        differences.push_back(std::move(difference));
         return;
       }
 
       const auto& expectedMetadata = field.metadata();
       if (expectedMetadata.nullable != actualColumn->nullable) {
-        differences.push_back(
-          {
-            .kind = SchemaDifferenceKind::NullableMismatch,
-            .table = table_of<T>(),
-            .column = std::string{field.columnName()},
-            .expected = boolValue(expectedMetadata.nullable),
-            .actual = boolValue(actualColumn->nullable),
-          });
+        SchemaDifference difference = differenceFor(SchemaDifferenceKind::NullableMismatch, table_of<T>());
+        difference.column = field.columnName();
+        difference.expected = boolValue(expectedMetadata.nullable);
+        difference.actual = boolValue(actualColumn->nullable);
+        differences.push_back(std::move(difference));
       }
 
       if (expectedMetadata.generated != actualColumn->generated) {
-        differences.push_back(
-          {
-            .kind = SchemaDifferenceKind::GeneratedMismatch,
-            .table = table_of<T>(),
-            .column = std::string{field.columnName()},
-            .expected = boolValue(expectedMetadata.generated),
-            .actual = boolValue(actualColumn->generated),
-          });
+        SchemaDifference difference = differenceFor(SchemaDifferenceKind::GeneratedMismatch, table_of<T>());
+        difference.column = field.columnName();
+        difference.expected = boolValue(expectedMetadata.generated);
+        difference.actual = boolValue(actualColumn->generated);
+        differences.push_back(std::move(difference));
       }
 
       if (expectedMetadata.unique != actualColumn->unique) {
-        differences.push_back(
-          {
-            .kind = SchemaDifferenceKind::UniqueMismatch,
-            .table = table_of<T>(),
-            .column = std::string{field.columnName()},
-            .expected = boolValue(expectedMetadata.unique),
-            .actual = boolValue(actualColumn->unique),
-          });
+        SchemaDifference difference = differenceFor(SchemaDifferenceKind::UniqueMismatch, table_of<T>());
+        difference.column = field.columnName();
+        difference.expected = boolValue(expectedMetadata.unique);
+        difference.actual = boolValue(actualColumn->unique);
+        differences.push_back(std::move(difference));
       }
     }
 
@@ -139,13 +146,10 @@ namespace worm::core
     const Table expectedTable = table_of<T>();
 
     if (existing.table() != expectedTable) {
-      differences.push_back(
-        {
-          .kind = SchemaDifferenceKind::MissingTable,
-          .table = expectedTable,
-          .expected = std::string{expectedTable.name()},
-          .actual = std::string{existing.table().name()},
-        });
+      SchemaDifference difference = detail::differenceFor(SchemaDifferenceKind::MissingTable, expectedTable);
+      difference.expected = expectedTable.name();
+      difference.actual = existing.table().name();
+      differences.push_back(std::move(difference));
 
       return differences;
     }
@@ -156,31 +160,22 @@ namespace worm::core
 
     for (const ColumnMetadata& column : existing.columns()) {
       if (!detail::hasPersistentColumn<T>(column.columnName)) {
-        differences.push_back(
-          {
-            .kind = SchemaDifferenceKind::UnexpectedColumn,
-            .table = expectedTable,
-            .column = std::string{column.columnName},
-          });
+        SchemaDifference difference = detail::differenceFor(SchemaDifferenceKind::UnexpectedColumn, expectedTable);
+        difference.column = column.columnName;
+        differences.push_back(std::move(difference));
       }
     }
 
     const PrimaryKey expectedPrimaryKey = std::remove_cvref_t<T>::primaryKey();
     if (!existing.primaryKey().has_value()) {
-      differences.push_back(
-        {
-          .kind = SchemaDifferenceKind::MissingPrimaryKey,
-          .table = expectedTable,
-          .expected = std::string{expectedPrimaryKey.name()},
-        });
+      SchemaDifference difference = detail::differenceFor(SchemaDifferenceKind::MissingPrimaryKey, expectedTable);
+      difference.expected = expectedPrimaryKey.name();
+      differences.push_back(std::move(difference));
     } else if (!detail::samePrimaryKeyColumns(expectedPrimaryKey, existing.primaryKey().value())) {
-      differences.push_back(
-        {
-          .kind = SchemaDifferenceKind::PrimaryKeyMismatch,
-          .table = expectedTable,
-          .expected = std::string{expectedPrimaryKey.name()},
-          .actual = std::string{existing.primaryKey()->name()},
-        });
+      SchemaDifference difference = detail::differenceFor(SchemaDifferenceKind::PrimaryKeyMismatch, expectedTable);
+      difference.expected = expectedPrimaryKey.name();
+      difference.actual = existing.primaryKey()->name();
+      differences.push_back(std::move(difference));
     }
 
     return differences;
@@ -192,13 +187,14 @@ namespace worm::core
   {
     const TableMetadata* table = existing.findTable(table_of<T>());
     if (table == nullptr) {
-      return {{
-        .kind = SchemaDifferenceKind::MissingTable,
-        .table = table_of<T>(),
-        .expected = std::string{table_of<T>().name()},
-      }};
+      SchemaDifference difference = detail::differenceFor(SchemaDifferenceKind::MissingTable, table_of<T>());
+      difference.expected = table_of<T>().name();
+      return {std::move(difference)};
     }
 
     return compareEntityWithTable<T>(*table);
   }
+
+  [[nodiscard]]
+  std::vector<SchemaDifference> compareSchemas(const SchemaMetadata& expected, const SchemaSnapshot& actual);
 } // namespace worm::core

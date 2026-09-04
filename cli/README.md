@@ -2,7 +2,7 @@
 
 `worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `pull`, the safe initial form of `push`, `inspect`, and `n-plus-one`. `check` compares a JSON entity manifest with the selected database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -37,7 +37,7 @@ Driver libraries remain optional. A disabled driver is not compiled or linked in
 The command syntax is:
 
 ```text
-worm [global-options] <check|pull|push|inspect|n-plus-one> [command-options]
+worm [global-options] <check|diff|pull|push|inspect|n-plus-one> [command-options]
 ```
 
 Show the built-in reference or version:
@@ -257,6 +257,19 @@ worm --driver sqlite --database data/application.db --format json inspect
 ```
 
 Text output groups tables by schema and displays columns, native data types, nullability, generated and unique flags, default expressions, primary keys, foreign keys, and indexes when those values are supplied by the driver. JSON output emits a `schemas` array containing the same structure. Schemas and tables are sorted by name so repeated inspection produces stable output.
+
+## The `diff` command
+
+`diff` is a read-only, migration-oriented comparison between the configured manifest and the actual database schema. Unlike `check`, which emphasizes a concise compatibility result, `diff` emits each structured difference and its expected and actual values when available.
+
+```bash
+worm --manifest build/worm-schema.json diff
+worm --manifest build/worm-schema.json --format json diff
+```
+
+The current report classifies missing and unexpected tables or columns, canonical type and modifier differences, nullability, generated state, uniqueness, declared default expressions, and primary-key columns. A detected difference returns the same nonzero drift exit status used by `check`; an empty diff succeeds. The command never generates SQL and never applies changes.
+
+Indexes and foreign keys are displayed by `inspect`, but they do not yet participate in `diff` because the current database snapshot stores their introspected representations as driver-formatted text instead of structured metadata. They must be promoted to structured snapshot types before migration generation can compare them reliably.
 
 ## The `check` command
 

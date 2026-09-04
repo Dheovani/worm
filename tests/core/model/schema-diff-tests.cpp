@@ -57,6 +57,16 @@ namespace
 
 int main()
 {
+  if (!worm::core::columnTypesCompatible(
+        {.kind = worm::core::ColumnTypeKind::String},
+        {.kind = worm::core::ColumnTypeKind::String, .length = 120}) ||
+      worm::core::columnTypesCompatible(
+        {.kind = worm::core::ColumnTypeKind::String, .length = 255},
+        {.kind = worm::core::ColumnTypeKind::String, .length = 120})) {
+    std::cerr << "Column type compatibility did not respect explicit modifiers.\n";
+    return 1;
+  }
+
   const worm::core::TableMetadata matchingTable{User::table(),
     {
       column("id", {.generated = true, .nullable = false}),
@@ -130,8 +140,33 @@ int main()
 
   if (missingTableDifferences.size() != 1 ||
       missingTableDifferences.front().kind != worm::core::SchemaDifferenceKind::MissingTable ||
-      missingTableDifferences.front().table != User::table()) {
+      missingTableDifferences.front().table != User::table().name()) {
     std::cerr << "Schema diff did not report a missing entity table.\n";
+    return 1;
+  }
+
+  const auto dynamicDifferences = [] {
+    const worm::core::Table users{worm::core::Schema{"public"}, "users"};
+    const worm::core::SchemaMetadata expected{worm::core::Schema{"public"},
+      {worm::core::TableMetadata{users,
+        {worm::core::ColumnMetadata{worm::core::Column{"id", users}, {.kind = worm::core::ColumnTypeKind::Int64}}},
+        worm::core::PrimaryKey{"pk_users", {worm::core::Column{"id", users}}}}}};
+    const worm::core::SchemaSnapshot actual{{
+      {
+        .schema = "public",
+        .name = "users",
+        .columns = {{.name = "id", .type = {.kind = worm::core::ColumnTypeKind::Int32}}},
+        .primaryKey = {"id"},
+      },
+      {.schema = "public", .name = "audit_log"},
+    }};
+    return worm::core::compareSchemas(expected, actual);
+  }();
+
+  if (!hasDifference(dynamicDifferences, worm::core::SchemaDifferenceKind::ColumnTypeMismatch, "id") ||
+      !hasDifference(dynamicDifferences, worm::core::SchemaDifferenceKind::UnexpectedTable) ||
+      dynamicDifferences.back().table != "audit_log" || dynamicDifferences.back().schema != "public") {
+    std::cerr << "Dynamic schema diff did not preserve owned difference details.\n";
     return 1;
   }
 

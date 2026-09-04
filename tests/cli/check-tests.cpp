@@ -102,6 +102,16 @@ int main()
     return 1;
   }
 
+  auto sizedManifest = manifest();
+  sizedManifest.entities[0].table.columns[1].type.length = 255;
+  auto sizedDatabase = compatibleDatabase();
+  sizedDatabase.tables[0].columns[1].type.length = 120;
+  const auto sizeDrift = worm::cli::generator::check(invocation, sizedManifest, sizedDatabase);
+  if (sizeDrift.status != worm::cli::ExecutionStatus::DriftDetected) {
+    std::cerr << "Column type modifiers were ignored by check.\n";
+    return 1;
+  }
+
   worm::cli::Invocation selected{.command = worm::cli::Commands::Check};
   selected.arguments.entities = {"User"};
   const auto selection = worm::cli::generator::check(selected, manifest(), driftedDatabase);

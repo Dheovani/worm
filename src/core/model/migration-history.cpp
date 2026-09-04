@@ -27,8 +27,8 @@ namespace worm::core
       Hash value = enumHash(step.kind);
       value = combineHash(value, enumHash(step.risk));
       value = combineHash(value, enumHash(step.difference.kind));
-      value = combineHash(value, hashCode(step.difference.table.schema().name()));
-      value = combineHash(value, hashCode(step.difference.table.name()));
+      value = combineHash(value, hashCode(step.difference.schema));
+      value = combineHash(value, hashCode(step.difference.table));
       value = combineHash(value, hashCode(step.difference.column));
       value = combineHash(value, hashCode(step.difference.expected));
       value = combineHash(value, hashCode(step.difference.actual));

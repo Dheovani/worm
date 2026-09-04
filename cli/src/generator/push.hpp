@@ -37,11 +37,13 @@ namespace worm::cli::generator
     void writeJson(std::ostream& out) const override;
   };
 
+  [[nodiscard]]
   ExecutionReport push(const Invocation& invocation, const SchemaManifest& manifest);
 
   [[nodiscard]]
   ExecutionReport
   planPush(const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema);
 
+  [[nodiscard]]
   ExecutionReport push(const Invocation& invocation);
 } // namespace worm::cli::generator

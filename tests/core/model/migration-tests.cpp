@@ -42,24 +42,42 @@ int main()
   const std::vector<worm::core::SchemaDifference> differences{
     {
       .kind = worm::core::SchemaDifferenceKind::MissingTable,
-      .table = User::table(),
+      .table = "users",
       .expected = "users",
     },
     {
       .kind = worm::core::SchemaDifferenceKind::MissingColumn,
-      .table = User::table(),
+      .table = "users",
       .column = "name",
     },
     {
       .kind = worm::core::SchemaDifferenceKind::UnexpectedColumn,
-      .table = User::table(),
+      .table = "users",
       .column = "legacy_name",
     },
     {
       .kind = worm::core::SchemaDifferenceKind::PrimaryKeyMismatch,
-      .table = User::table(),
+      .table = "users",
       .expected = "pk_users",
       .actual = "pk_legacy_users",
+    },
+    {
+      .kind = worm::core::SchemaDifferenceKind::UnexpectedTable,
+      .table = "audit_log",
+    },
+    {
+      .kind = worm::core::SchemaDifferenceKind::ColumnTypeMismatch,
+      .table = "users",
+      .column = "age",
+      .expected = "int32",
+      .actual = "string",
+    },
+    {
+      .kind = worm::core::SchemaDifferenceKind::DefaultExpressionMismatch,
+      .table = "users",
+      .column = "active",
+      .expected = "true",
+      .actual = "false",
     },
   };
   const worm::core::MigrationPlan plan = worm::core::generateMigrationPlan(differences);
@@ -75,7 +93,13 @@ int main()
       plan.steps()[2].kind != worm::core::MigrationStepKind::DropColumn ||
       plan.steps()[2].risk != worm::core::MigrationRisk::Destructive ||
       plan.steps()[3].kind != worm::core::MigrationStepKind::ChangePrimaryKey ||
-      plan.steps()[3].risk != worm::core::MigrationRisk::Destructive) {
+      plan.steps()[3].risk != worm::core::MigrationRisk::Destructive ||
+      plan.steps()[4].kind != worm::core::MigrationStepKind::DropTable ||
+      plan.steps()[4].risk != worm::core::MigrationRisk::Destructive ||
+      plan.steps()[5].kind != worm::core::MigrationStepKind::AlterColumnType ||
+      plan.steps()[5].risk != worm::core::MigrationRisk::Destructive ||
+      plan.steps()[6].kind != worm::core::MigrationStepKind::AlterColumnDefault ||
+      plan.steps()[6].risk != worm::core::MigrationRisk::Ambiguous) {
     std::cerr << "Migration plan did not map schema differences to the expected step kinds.\n";
     return 1;
   }

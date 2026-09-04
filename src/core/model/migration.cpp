@@ -58,13 +58,13 @@ namespace worm::core
   namespace
   {
     [[nodiscard]]
-    std::string tableName(Table table)
+    std::string tableName(const SchemaDifference& difference)
     {
-      if (table.schema().empty()) {
-        return std::string{table.name()};
+      if (difference.schema.empty()) {
+        return difference.table;
       }
 
-      return std::string{table.schema().name()} + "." + std::string{table.name()};
+      return difference.schema + "." + difference.table;
     }
 
     [[nodiscard]]
@@ -72,7 +72,7 @@ namespace worm::core
     {
       std::string description{action};
       description += " on table '";
-      description += tableName(difference.table);
+      description += tableName(difference);
       description += "'";
 
       if (!difference.column.empty()) {
@@ -104,6 +104,14 @@ namespace worm::core
           .description = migrationDescription(difference, "Create missing table"),
         };
 
+      case SchemaDifferenceKind::UnexpectedTable:
+        return {
+          .kind = MigrationStepKind::DropTable,
+          .risk = MigrationRisk::Destructive,
+          .difference = difference,
+          .description = migrationDescription(difference, "Drop unexpected table"),
+        };
+
       case SchemaDifferenceKind::MissingColumn:
         return {
           .kind = MigrationStepKind::AddColumn,
@@ -118,6 +126,14 @@ namespace worm::core
           .risk = MigrationRisk::Destructive,
           .difference = difference,
           .description = migrationDescription(difference, "Drop unexpected column"),
+        };
+
+      case SchemaDifferenceKind::ColumnTypeMismatch:
+        return {
+          .kind = MigrationStepKind::AlterColumnType,
+          .risk = MigrationRisk::Destructive,
+          .difference = difference,
+          .description = migrationDescription(difference, "Alter column type"),
         };
 
       case SchemaDifferenceKind::NullableMismatch:
@@ -142,6 +158,14 @@ namespace worm::core
           .risk = MigrationRisk::Ambiguous,
           .difference = difference,
           .description = migrationDescription(difference, "Alter unique constraint"),
+        };
+
+      case SchemaDifferenceKind::DefaultExpressionMismatch:
+        return {
+          .kind = MigrationStepKind::AlterColumnDefault,
+          .risk = MigrationRisk::Ambiguous,
+          .difference = difference,
+          .description = migrationDescription(difference, "Alter column default"),
         };
 
       case SchemaDifferenceKind::MissingPrimaryKey:

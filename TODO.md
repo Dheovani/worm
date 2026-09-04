@@ -122,13 +122,25 @@ This milestone should end with a complete example that creates, persists, querie
 
 ### Database manipulation commands
 
-- [ ] Evaluate commands `migrate`, `seed`, `n-plus-one`, `[migration] status` e `inspect`.
+- [x] Evaluate commands `diff`, `migrate`, `seed`, `n-plus-one`, migration subcommands, `inspect`, and `doctor`.
 - [ ] Define the usage syntax for each one of the following commands (if accepted):
+  - [x] `diff`: Compare reflected entities with the current database schema and display the detected schema differences, including missing or unexpected tables and columns, metadata mismatches, and primary key differences.
   - [ ] `migrate`: Apply pending migrations to the database, updating the schema from a previous version to the version expected by the application.
+    - [ ] Define an immutable migration artifact containing an ordered ID, name, checksum, forward steps, and explicitly authored rollback steps.
+    - [ ] Discover migration artifacts and validate deterministic ordering, duplicate IDs, missing files, and edited checksums.
+    - [ ] Persist migration history in a Worm-owned database table instead of relying on the in-memory `MigrationHistory` container.
+    - [ ] Implement a database-specific migration lock to prevent concurrent migration processes.
+    - [ ] Compile migration steps into dialect-specific DDL and define transactional boundaries for each supported database.
+    - [ ] Define confirmation, failure recovery, and partially applied migration policies for ambiguous and destructive operations.
+    - [ ] Add integration contracts for migration history, locking, successful application, failure recovery, and dialect-specific DDL.
+    - [ ] `migrate create`: Create a reviewable migration artifact from the current `diff` without applying it.
+    - [ ] `migrate validate`: Validate local migration ordering, checksums, and artifact structure without changing the database.
+    - [ ] `migrate status`: Display applied, pending, failed, missing, and checksum-divergent migrations.
+    - [ ] `migrate rollback`: Execute only explicitly authored rollback steps; never infer destructive rollback SQL.
   - [ ] `seed`: Populate the database with pre-defined initial or test data—such as default users, permissions, settings, categories, or fixtures—for development and testing.
   - [x] `n-plus-one`: Detect N+1 query patterns—instances where an initial query triggers multiple unnecessary, repetitive queries to load related data.
-  - [ ] `status`: Display the current state of the database relative to the project: applied and pending migrations, potential schema discrepancies, and other status information.
   - [x] `inspect`: Introspect the database and display its actual structure: schemas, tables, columns, data types, PKs, FKs, indexes, and other metadata.
+  - [ ] `doctor`: Validate configuration, enabled driver availability, connectivity, permissions, and supported database version without modifying application data or schema.
 
 ## Milestone 5 — Developer experience
 

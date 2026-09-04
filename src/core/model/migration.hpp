@@ -12,11 +12,14 @@ namespace worm::core
   enum class MigrationStepKind
   {
     CreateTable,
+    DropTable,
     AddColumn,
     DropColumn,
+    AlterColumnType,
     AlterColumnNullability,
     AlterGeneratedColumn,
     AlterUniqueConstraint,
+    AlterColumnDefault,
     AddPrimaryKey,
     ChangePrimaryKey
   };

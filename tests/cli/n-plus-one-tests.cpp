@@ -99,7 +99,7 @@ namespace
     const auto invocation = cli::parse({"--format", "json", "n-plus-one", "--file", file.string()});
     cli::validate(invocation);
 
-    auto report = cli::database::verify(invocation);
+    auto report = cli::database::verifyNPlusOne(invocation);
     report.command = "worm n-plus-one --file query-log.sql";
     const auto metrics = std::dynamic_pointer_cast<const cli::database::NPlusOneMetrics>(report.metrics);
 
@@ -124,7 +124,7 @@ namespace
     const auto invocation = cli::parse({"n-plus-one", "--file", file.string(), "--max-executions", "2"});
     cli::validate(invocation);
 
-    const auto report = cli::database::verify(invocation);
+    const auto report = cli::database::verifyNPlusOne(invocation);
     const auto metrics = std::dynamic_pointer_cast<const cli::database::NPlusOneMetrics>(report.metrics);
 
     return report.status == cli::ExecutionStatus::Success && metrics != nullptr && metrics->repeatedPatterns == 1 &&
@@ -137,7 +137,7 @@ namespace
     const auto invocation = cli::parse({"n-plus-one", "--query", "SELECT * FROM users WHERE id = 7"});
     cli::validate(invocation);
 
-    const auto report = cli::database::verify(invocation);
+    const auto report = cli::database::verifyNPlusOne(invocation);
     const auto metrics = std::dynamic_pointer_cast<const cli::database::NPlusOneMetrics>(report.metrics);
 
     return report.status == cli::ExecutionStatus::Success && metrics != nullptr && metrics->queriesDiscovered == 1 &&
