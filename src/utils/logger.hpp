@@ -4,10 +4,11 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <source_location>
 #include <sstream>
 #include <string>
-#include <type_traits>
-#include <typeinfo>
+#include <string_view>
+#include <utility>
 
 namespace worm
 {
@@ -21,15 +22,14 @@ namespace worm
   };
 
   [[nodiscard]]
-  inline std::string getClassName(const char* path)
+  constexpr std::string_view getClassName(std::string_view path) noexcept
   {
-    const std::string fullPath(path);
-    const std::size_t separator = fullPath.find_last_of("/\\");
-    return separator == std::string::npos ? fullPath : fullPath.substr(separator + 1);
+    const std::size_t separator = path.find_last_of("/\\");
+    return separator == std::string_view::npos ? path : path.substr(separator + 1);
   }
 
   [[nodiscard]]
-  inline std::string getLogTypeMessage(LogLevel level)
+  constexpr std::string_view getLogTypeMessage(LogLevel level) noexcept
   {
     switch (level) {
     case LogLevel::Info:
@@ -50,90 +50,163 @@ namespace worm
   class Logger
   {
   public:
-    template <typename Class>
-    Logger(Class source, int lineNumber)
-      : line_(lineNumber)
+    class Message
     {
-      if constexpr (std::is_convertible_v<Class, const char*>)
-        className_ = getClassName(source);
-      else
-        className_ = typeid(source).name();
-    }
+    public:
+      constexpr Message(
+        const char* text,
+        std::source_location location = std::source_location::current()) noexcept
+        : text_(text),
+          location_(location)
+      {}
+
+      [[nodiscard]]
+      constexpr const char* text() const noexcept
+      {
+        return text_;
+      }
+
+      [[nodiscard]]
+      constexpr const std::source_location& location() const noexcept
+      {
+        return location_;
+      }
+
+    private:
+      const char* text_;
+      std::source_location location_;
+    };
+
+    class StreamValue
+    {
+    public:
+      template <typename Type>
+      StreamValue(
+        const Type& value,
+        std::source_location location = std::source_location::current())
+        : location_(location)
+      {
+        std::ostringstream stream;
+        stream << value;
+        text_ = stream.str();
+      }
+
+      [[nodiscard]]
+      const std::string& text() const noexcept
+      {
+        return text_;
+      }
+
+      [[nodiscard]]
+      const std::source_location& location() const noexcept
+      {
+        return location_;
+      }
+
+    private:
+      std::string text_;
+      std::source_location location_;
+    };
+
+    constexpr Logger() noexcept = default;
 
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
 
-    template <typename Type>
-    const Logger& operator<<(const Type& value) const
+    const Logger& operator<<(StreamValue value) const
     {
-      std::ostringstream stream;
-      stream << value;
-      debug("%s", stream.str().c_str());
+      logAt(LogLevel::Debug, value.location(), "%s", value.text().c_str());
       return *this;
     }
 
     template <typename... Args>
-    void log(LogLevel level, const char* message, Args... args) const
+    void info(Message message, Args&&... args) const
     {
-      std::ostringstream prefix;
-      prefix << className_;
-      if (line_ != 0)
-        prefix << ", line: " << line_;
-      prefix << ' ' << getLogTypeMessage(level);
+      logAt(LogLevel::Info, message.location(), message.text(), std::forward<Args>(args)...);
+    }
 
-      std::printf("%s", prefix.str().c_str());
-      std::printf(message, args...);
-      std::printf("\n");
+    template <typename... Args>
+    void debug(Message message, Args&&... args) const
+    {
+      logAt(LogLevel::Debug, message.location(), message.text(), std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    void trace(Message message, Args&&... args) const
+    {
+      logAt(LogLevel::Trace, message.location(), message.text(), std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    void warning(Message message, Args&&... args) const
+    {
+      logAt(LogLevel::Warning, message.location(), message.text(), std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    void error(Message message, Args&&... args) const
+    {
+      logAt(LogLevel::Error, message.location(), message.text(), std::forward<Args>(args)...);
+    }
+
+    void error(
+      const std::exception& exception,
+      std::source_location location = std::source_location::current()) const
+    {
+      logAt(LogLevel::Error, location, "%s", exception.what());
+    }
+
+  private:
+    template <typename... Args>
+    void logAt(
+      LogLevel level,
+      const std::source_location& location,
+      const char* message,
+      Args&&... args) const
+    {
+      const std::string formattedMessage = format(message, std::forward<Args>(args)...);
+      const std::string_view className = getClassName(location.file_name());
+      const std::string_view logType = getLogTypeMessage(level);
+
+      std::printf(
+        "%.*s, line: %u %.*s%s\n",
+        static_cast<int>(className.size()),
+        className.data(),
+        static_cast<unsigned>(location.line()),
+        static_cast<int>(logType.size()),
+        logType.data(),
+        formattedMessage.c_str());
 
 #ifdef _LOG_FILE
-      const std::string filename = className_ + "_log_file.log";
+      std::string filename(className);
+      filename += "_log_file.log";
+
       std::ofstream file(filename, std::ios::app);
       if (file.is_open())
-        file << getLogTypeMessage(level) << message << '\n';
+        file << logType << formattedMessage << '\n';
       else
         std::cerr << "Failed opening log file.\n";
 #endif
     }
 
     template <typename... Args>
-    void info(const char* message, Args... args) const
+    [[nodiscard]]
+    static std::string format(const char* message, Args&&... args)
     {
-      log(LogLevel::Info, message, args...);
-    }
+      const int size = std::snprintf(nullptr, 0, message, std::forward<Args>(args)...);
+      if (size <= 0)
+        return message;
 
-    template <typename... Args>
-    void debug(const char* message, Args... args) const
-    {
-      log(LogLevel::Debug, message, args...);
-    }
+      std::string result(static_cast<std::size_t>(size), '\0');
+      std::snprintf(
+        result.data(),
+        result.size() + 1,
+        message,
+        std::forward<Args>(args)...);
 
-    template <typename... Args>
-    void trace(const char* message, Args... args) const
-    {
-      log(LogLevel::Trace, message, args...);
+      return result;
     }
-
-    template <typename... Args>
-    void warning(const char* message, Args... args) const
-    {
-      log(LogLevel::Warning, message, args...);
-    }
-
-    template <typename... Args>
-    void error(const char* message, Args... args) const
-    {
-      log(LogLevel::Error, message, args...);
-    }
-
-    void error(const std::exception& exception) const
-    {
-      log(LogLevel::Error, "%s", exception.what());
-    }
-
-  private:
-    int line_;
-    std::string className_;
   };
-} // namespace worm
 
-#define WormLogger worm::Logger(__FILE__, __LINE__)
+  inline constexpr Logger logger{};
+} // namespace worm

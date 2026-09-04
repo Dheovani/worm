@@ -1,0 +1,98 @@
+## Logger
+
+- [ ] Define logging conventions and establish when each log level should be used:
+  - `Trace`: fine-grained execution flow, function entry/exit, iteration details.
+  - `Debug`: internal state, resolved options, generated plans, discovered metadata.
+  - `Info`: relevant high-level operations and successful execution steps.
+  - `Warning`: recoverable problems, suspicious states, skipped operations, fallbacks.
+  - `Error`: failed operations, exceptions, invalid states, database/filesystem failures.
+
+- [ ] Add logging to the CLI execution lifecycle:
+  - `Debug` when parsing command-line arguments.
+  - `Debug` after configuration resolution.
+  - `Trace` during individual validation rules.
+  - `Info` when command execution starts and finishes.
+  - `Error` when command execution fails.
+
+- [ ] Add logging to configuration loading:
+  - `Debug` for discovered configuration sources and resolved options.
+  - `Warning` when optional configuration is missing or ignored.
+  - `Error` when configuration files cannot be read or parsed.
+  - Never log passwords, credentials, or other sensitive values.
+
+- [ ] Add logging to database connection handling:
+  - `Info` when opening and closing connections.
+  - `Debug` for selected driver, host, port, and database.
+  - `Trace` for driver-specific connection lifecycle details.
+  - `Error` for connection and authentication failures.
+
+- [ ] Add logging to schema introspection:
+  - `Debug` for discovered schemas, tables, columns, keys, indexes, and relationships.
+  - `Trace` for individual metadata queries and inspected objects.
+  - `Warning` for unsupported or partially understood database metadata.
+  - `Error` when introspection fails.
+
+- [ ] Add logging to schema comparison and diff generation:
+  - `Debug` for compared entities/tables and generated differences.
+  - `Trace` for individual column, key, index, and relationship comparisons.
+  - `Info` when schema drift is detected.
+  - `Warning` for differences that cannot be mapped automatically.
+  - `Error` when comparison cannot be completed.
+
+- [ ] Add logging to migration planning and execution:
+  - `Debug` for generated migration operations and execution order.
+  - `Trace` before executing each migration statement.
+  - `Info` when migrations start, complete, or modify the schema.
+  - `Warning` for destructive or skipped operations.
+  - `Error` for failed migration operations and rollback failures.
+
+- [ ] Add logging to SQL execution:
+  - `Trace` for executed SQL statements and bindings when safe.
+  - `Debug` for execution time, affected rows, and result metadata.
+  - `Warning` for unusually slow queries or unexpected results.
+  - `Error` for SQL execution failures.
+  - Never expose sensitive parameter values.
+
+- [ ] Add logging to code generation:
+  - `Debug` for selected entities/tables and generated file paths.
+  - `Trace` for generated fields and type mappings.
+  - `Info` when files are created or regenerated.
+  - `Warning` when existing files or manual customizations prevent generation.
+  - `Error` for generation or filesystem failures.
+
+- [ ] Add logging to `push`, `pull`, and `check`:
+  - `Info` for command start, selected objects, and final outcome.
+  - `Debug` for discovered/selected entities and tables.
+  - `Trace` for object-by-object processing.
+  - `Warning` for skipped or incompatible objects.
+  - `Error` for command-specific failures.
+
+- [ ] Add logging to `inspect`, `status`, `sync`, `migrate`, and `seed`:
+  - Map each command's major phases to `Info`.
+  - Map internal decisions and generated plans to `Debug`.
+  - Map fine-grained processing to `Trace`.
+  - Map recoverable inconsistencies to `Warning`.
+  - Map aborted operations to `Error`.
+
+- [ ] Add logging to `n-plus-one` analysis:
+  - `Debug` for analyzed queries and detected access patterns.
+  - `Trace` for repeated query executions and grouping decisions.
+  - `Info` when an N+1 pattern is detected.
+  - `Warning` when analysis is inconclusive or partially supported.
+  - `Error` when the query cannot be analyzed.
+
+- [ ] Add logging to filesystem operations:
+  - `Debug` for files being read, written, or generated.
+  - `Trace` for resolved paths.
+  - `Warning` for skipped/overwritten files where applicable.
+  - `Error` for read/write/permission failures.
+
+- [ ] Add exception-boundary logging:
+  - Log exceptions once at the boundary responsible for handling them.
+  - Avoid logging and rethrowing the same exception at every layer.
+  - Use `Error` for failures that terminate the current operation.
+  - Use `Warning` when the failure is handled and execution can continue.
+
+- [ ] Review the codebase for missing logging points and eliminate duplicate/noisy logs.
+
+- [ ] Document the project's logging conventions and provide examples for each level.

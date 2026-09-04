@@ -140,6 +140,7 @@ This milestone should end with a complete example that creates, persists, querie
 - [ ] Create API documentation with Doxygen or an equivalent tool.
 - [ ] Publish an architecture guide and relevant technical decisions.
 - [ ] Add a changelog and migration guide for breaking changes.
+- [ ] Complete `LOGGER.todo` with a logging policy, severity levels, and structured logging.
 
 ## Milestone 6 — Quality, security, and performance
 

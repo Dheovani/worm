@@ -26,8 +26,7 @@ int main()
     return 1;
   }
 
-  worm::Logger logger("logger-tests.cpp", 42);
-  logger.info("Logger smoke test: %s", "ok");
+  worm::logger.info("Logger smoke test: %s", "ok");
 
   return 0;
 }
