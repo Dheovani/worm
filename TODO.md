@@ -127,7 +127,7 @@ This milestone should end with a complete example that creates, persists, querie
   - [x] `diff`: Compare reflected entities with the current database schema and display the detected schema differences, including missing or unexpected tables and columns, metadata mismatches, and primary key differences.
   - [ ] `migrate`: Apply pending migrations to the database, updating the schema from a previous version to the version expected by the application.
     - [x] Define an immutable migration artifact containing an ordered ID, name, checksum, forward steps, and explicitly authored rollback steps.
-    - [ ] Discover migration artifacts and validate deterministic ordering, duplicate IDs, missing files, and edited checksums.
+    - [x] Discover migration artifacts and validate deterministic ordering, duplicate IDs, missing files, and edited checksums.
     - [ ] Persist migration history in a Worm-owned database table instead of relying on the in-memory `MigrationHistory` container.
     - [ ] Implement a database-specific migration lock to prevent concurrent migration processes.
     - [ ] Compile migration steps into dialect-specific DDL and define transactional boundaries for each supported database.

@@ -20,7 +20,9 @@ This means Worm can tell that a table, column, primary key, or selected column m
 
 `MigrationArtifact` is an immutable in-memory value with format version 1, a 14-digit sortable identifier, a name, a target database, a SHA-256 checksum, at least one forward statement, and optional rollback statements. Each statement records its description, exact SQL, and risk classification. Rollback is represented as `null` when unavailable; an empty rollback list is invalid so an irreversible migration cannot be confused with a migration whose rollback was accidentally omitted.
 
-The CLI migration codec uses files such as `20260922143000_create-users.worm.json`. Loading is strict: unknown fields, unsupported versions or databases, malformed statements, empty required values, and checksum divergence are rejected. Saving uses the CLI's generated-file publishing path and never overwrites an existing artifact. Migration discovery and cross-file ordering validation are not implemented yet.
+The CLI migration codec uses files such as `20260922143000_create-users.worm.json`. Loading is strict: unknown fields, unsupported versions or databases, malformed statements, empty required values, and checksum divergence are rejected. Saving uses the CLI's generated-file publishing path and never overwrites an existing artifact.
+
+`MigrationCatalog` discovers `*.worm.json` artifacts directly inside a supplied directory, validates that each filename matches `<id>_<name>.worm.json`, and orders entries by ID independently of filesystem iteration order. Discovery is deliberately non-recursive, ignores unrelated files, rejects matching symlinks and non-regular paths, and rejects duplicate IDs. Comparing the catalog with historical `MigrationReference` values reports applied migrations whose local artifact is missing or whose current SHA-256 checksum differs from the recorded checksum; additional local artifacts are pending migrations and are not inconsistencies.
 
 ```json
 {
@@ -71,4 +73,4 @@ Worm treats migration generation as a review step, not an execution step. Missin
 
 ## What remains before executable migrations
 
-Before Worm can safely apply migration SQL, it still needs artifact discovery and ordering, persistent database history, database-specific locking, complete dialect-aware DDL generation, table rebuild planning for SQLite, destructive-change confirmation, failure recovery policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as diagnostics and reviewable inputs only.
+Before Worm can safely apply migration SQL, it still needs persistent database history, database-specific locking, complete dialect-aware DDL generation, table rebuild planning for SQLite, destructive-change confirmation, failure recovery policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as diagnostics and reviewable inputs only.
