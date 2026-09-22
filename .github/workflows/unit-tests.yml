@@ -178,6 +178,7 @@ jobs:
         run: >
           cmake --build build --config Debug --parallel --target
           WormSqliteDriverContractTests
+          WormSqliteSchemaInspectorTests
           WormPostgresDriverContractTests
           WormMySqlDriverContractTests
 

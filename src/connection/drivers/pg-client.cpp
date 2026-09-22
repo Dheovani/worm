@@ -7,6 +7,7 @@
 #include <utils/helpers.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <type_traits>
@@ -17,6 +18,7 @@ namespace
 {
   constexpr pqxx::oid byteaTypeOid = 17;
   constexpr pqxx::oid numericTypeOid = 1700;
+  constexpr std::byte emptyBinarySentinel{};
 
   std::string quoteConnectionValue(std::string_view value)
   {
@@ -70,7 +72,10 @@ namespace
           } else if constexpr (std::is_same_v<Value, worm::core::Decimal>) {
             values.append(value.value());
           } else if constexpr (std::is_same_v<Value, worm::core::Binary>) {
-            values.append(pqxx::bytes_view{value.value()});
+            const auto& binary = value.value();
+            // libpq interprets a null data pointer as SQL NULL even when the binary length is zero.
+            const std::byte* data = binary.empty() ? &emptyBinarySentinel : binary.data();
+            values.append(pqxx::bytes_view{data, binary.size()});
           } else {
             values.append(value);
           }

@@ -127,12 +127,10 @@ int main()
     const worm::core::SqlBuilder& explicitSqlBuilder =
       worm::DependencyInjector<worm::core::SqlBuilder>::get(explicitType);
     const worm::core::QueryBuilder queryBuilder = worm::DependencyInjector<worm::core::QueryBuilder>::get(explicitType);
-    const auto client = worm::DependencyInjector<worm::connection::Client>::get(config, explicitType);
 
     if (dynamic_cast<const worm::core::SqliteDialect*>(&dialect) == nullptr ||
         dynamic_cast<const worm::core::SqliteBuilder*>(&sqlBuilder) == nullptr ||
         dynamic_cast<const worm::core::SqliteBuilder*>(&explicitSqlBuilder) == nullptr ||
-        client->type() != worm::connection::DatabaseType::SQLite ||
         queryBuilder
             .create(
               worm::core::TableMetadata{worm::core::Table{"users"},
@@ -144,11 +142,25 @@ int main()
       result = 1;
     }
 
+#if defined(WORM_HAS_SQLITE_DRIVER)
+    const auto client = worm::DependencyInjector<worm::connection::Client>::get(config, explicitType);
+    if (client->type() != worm::connection::DatabaseType::SQLite) {
+      std::cerr << "Client dependency injection returned an invalid database type.\n";
+      result = 1;
+    }
+
     auto inspector = worm::DependencyInjector<worm::connection::SchemaInspector>::get(config, type);
     if (!inspector.inspect().tables.empty()) {
       std::cerr << "SchemaInspector dependency injection returned an invalid in-memory schema.\n";
       result = 1;
     }
+#else
+    try {
+      static_cast<void>(worm::DependencyInjector<worm::connection::Client>::get(config, explicitType));
+      std::cerr << "Client dependency injection created a disabled SQLite driver.\n";
+      result = 1;
+    } catch (const worm::UnsupportedDatabaseException&) {}
+#endif
 
     setEnvironment("DATABASE_TYPE", "mssql");
     const worm::core::Dialect& sqlServerDialect = worm::DependencyInjector<worm::core::Dialect>::get();
