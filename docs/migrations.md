@@ -1,6 +1,6 @@
 # Migrations
 
-Worm currently supports the safe planning part of migrations: it can represent schema metadata, compare reflected entity metadata with an existing schema snapshot, create a reviewable migration plan, and keep migration history records with checksums, application state, failure state, and rollback timestamps. It does not execute generated migrations automatically, and the current migration plan intentionally keeps SQL statements optional because several differences require dialect-specific decisions that Worm should not guess.
+Worm currently supports the safe planning and artifact representation parts of migrations: it can represent schema metadata, compare reflected entity metadata with an existing schema snapshot, create a reviewable migration plan, represent an immutable migration artifact, and keep migration history records with application state, failure state, and rollback timestamps. It does not execute generated migrations automatically, and the current migration plan intentionally keeps SQL statements optional because several differences require dialect-specific decisions that Worm should not guess.
 
 ## Current migration flow
 
@@ -10,9 +10,41 @@ The implemented flow is deliberately conservative:
 2. Worm compares a `PersistableEntity` with that snapshot through `compareEntityWithSchema<T>()`.
 3. Worm maps differences to a `MigrationPlan` through `generateMigrationPlan(...)`.
 4. Every generated step is reviewable. Ambiguous or destructive steps are marked as requiring manual review.
-5. `MigrationHistory` can record a migration id, checksum, state, application time, rollback time, and failure reason.
+5. A reviewed plan can be represented as a versioned `MigrationArtifact` containing the exact forward SQL and optional, explicitly authored rollback SQL.
+6. Migration artifacts can be serialized to canonical JSON, saved without overwriting an existing file, loaded, and checked against a SHA-256 content checksum.
+7. `MigrationHistory` can record a migration id, checksum, state, application time, rollback time, and failure reason, but it is not yet persisted in the database.
 
 This means Worm can tell that a table, column, primary key, or selected column metadata is missing or incompatible, but it does not yet decide the complete SQL type, default expression, constraint naming strategy, or destructive action policy for every database.
+
+## Migration artifacts
+
+`MigrationArtifact` is an immutable in-memory value with format version 1, a 14-digit sortable identifier, a name, a target database, a SHA-256 checksum, at least one forward statement, and optional rollback statements. Each statement records its description, exact SQL, and risk classification. Rollback is represented as `null` when unavailable; an empty rollback list is invalid so an irreversible migration cannot be confused with a migration whose rollback was accidentally omitted.
+
+The CLI migration codec uses files such as `20260922143000_create-users.worm.json`. Loading is strict: unknown fields, unsupported versions or databases, malformed statements, empty required values, and checksum divergence are rejected. Saving uses the CLI's generated-file publishing path and never overwrites an existing artifact. Migration discovery and cross-file ordering validation are not implemented yet.
+
+```json
+{
+  "checksum": "sha256:...",
+  "database": "postgresql",
+  "down": [
+    {
+      "description": "Drop users table",
+      "risk": "destructive",
+      "sql": "DROP TABLE users"
+    }
+  ],
+  "id": "20260922143000",
+  "name": "create-users",
+  "up": [
+    {
+      "description": "Create users table",
+      "risk": "safe",
+      "sql": "CREATE TABLE users (id bigint PRIMARY KEY)"
+    }
+  ],
+  "version": 1
+}
+```
 
 ## Cross-database limitations
 
@@ -39,4 +71,4 @@ Worm treats migration generation as a review step, not an execution step. Missin
 
 ## What remains before executable migrations
 
-Before Worm can safely emit executable migration SQL, it needs dialect-specific type mapping, default-value representation, constraint naming rules, table rebuild planning for SQLite, destructive-change confirmation, and integration tests that validate generated DDL against real database engines. Until those pieces exist, migration plans should be treated as diagnostics and review artifacts only.
+Before Worm can safely apply migration SQL, it still needs artifact discovery and ordering, persistent database history, database-specific locking, complete dialect-aware DDL generation, table rebuild planning for SQLite, destructive-change confirmation, failure recovery policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as diagnostics and reviewable inputs only.

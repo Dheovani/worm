@@ -3,6 +3,7 @@ add_library(
   STATIC
     src/database/diff.cpp
     src/database/inspect.cpp
+    src/database/migration-file.cpp
     src/database/n-plus-one.cpp
     src/generator/check.cpp
     src/generator/pull.cpp

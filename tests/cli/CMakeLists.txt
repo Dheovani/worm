@@ -14,6 +14,7 @@ function(add_worm_cli_test target source test_name)
 endfunction()
 
 add_worm_cli_test(WormCliManifestTests manifest-tests.cpp Worm.Cli.Manifest)
+add_worm_cli_test(WormCliMigrationFileTests migration-file-tests.cpp Worm.Cli.MigrationFile)
 add_worm_cli_test(WormCliEntityManifestTests entity-manifest-tests.cpp Worm.Cli.EntityManifest)
 add_worm_cli_test(WormCliFileTests file-tests.cpp Worm.Cli.File)
 add_worm_cli_test(WormCliCheckTests check-tests.cpp Worm.Cli.Check)

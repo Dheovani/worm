@@ -1,5 +1,6 @@
 add_library(
   WormCore
+  model/migration-artifact.cpp
   model/migration.cpp
   model/migration-history.cpp
   model/schema.cpp
