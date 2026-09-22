@@ -114,8 +114,12 @@ int main()
     } catch (const worm::InvalidArgException&) {}
     setEnvironment("CONNECTION_TIMEOUT_MS", "1500");
 
-    auto logger = worm::DependencyInjector<worm::Logger>::get<Value, 12>();
-    logger.debug("Dependency injection logger smoke test");
+    const worm::Logger& injectedLogger = worm::DependencyInjector<worm::Logger>::get();
+    if (&injectedLogger != &worm::logger) {
+      std::cerr << "Logger dependency injection did not return the shared logger.\n";
+      result = 1;
+    }
+    injectedLogger.debug("Dependency injection logger smoke test");
 
     const worm::core::Dialect& dialect = worm::DependencyInjector<worm::core::Dialect>::get();
     const worm::core::SqlBuilder& sqlBuilder = worm::DependencyInjector<worm::core::SqlBuilder>::get();

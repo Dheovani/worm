@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace worm::cli::database
+namespace worm::cli::migration
 {
   [[nodiscard]]
   std::string serializeMigrationArtifact(const core::MigrationArtifact& artifact);
@@ -18,4 +18,4 @@ namespace worm::cli::database
   core::MigrationArtifact loadMigrationArtifact(const std::filesystem::path& path);
 
   void saveMigrationArtifact(const std::filesystem::path& path, const core::MigrationArtifact& artifact);
-} // namespace worm::cli::database
+} // namespace worm::cli::migration

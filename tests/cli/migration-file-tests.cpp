@@ -1,4 +1,4 @@
-#include <database/migration-file.hpp>
+#include <helpers/migration/migration-file.hpp>
 
 #include <core/model/migration-artifact.hpp>
 #include <errors/migration-exception.hpp>
@@ -73,10 +73,10 @@ int main()
       {"Drop account status", "DROP TYPE account_status", MigrationRisk::Destructive},
     });
 
-  const std::string serialized = worm::cli::database::serializeMigrationArtifact(artifact);
+  const std::string serialized = worm::cli::migration::serializeMigrationArtifact(artifact);
   const worm::core::MigrationArtifact parsed =
-    worm::cli::database::parseMigrationArtifact(serialized, "in-memory migration");
-  if (parsed != artifact || worm::cli::database::serializeMigrationArtifact(parsed) != serialized ||
+    worm::cli::migration::parseMigrationArtifact(serialized, "in-memory migration");
+  if (parsed != artifact || worm::cli::migration::serializeMigrationArtifact(parsed) != serialized ||
       serialized.find("\"down\": [") == std::string::npos ||
       serialized.find("\"risk\": \"destructive\"") == std::string::npos) {
     std::cerr << "Migration artifact did not survive canonical JSON serialization.\n";
@@ -85,9 +85,9 @@ int main()
 
   const TemporaryDirectory temporary;
   const std::filesystem::path path = temporary.path() / "20260922143000_create-users.worm.json";
-  worm::cli::database::saveMigrationArtifact(path, artifact);
-  if (worm::cli::database::loadMigrationArtifact(path) != artifact ||
-      !rejects([&] { worm::cli::database::saveMigrationArtifact(path, artifact); })) {
+  worm::cli::migration::saveMigrationArtifact(path, artifact);
+  if (worm::cli::migration::loadMigrationArtifact(path) != artifact ||
+      !rejects([&] { worm::cli::migration::saveMigrationArtifact(path, artifact); })) {
     std::cerr << "Migration artifact file was not written, loaded, or protected from overwrite.\n";
     return 1;
   }
@@ -162,12 +162,12 @@ int main()
     })json",
   };
 
-  if (!rejects([&] { static_cast<void>(worm::cli::database::parseMigrationArtifact(tampered)); })) {
+  if (!rejects([&] { static_cast<void>(worm::cli::migration::parseMigrationArtifact(tampered)); })) {
     std::cerr << "Migration artifact parser accepted modified contents with a stale checksum.\n";
     return 1;
   }
   for (const std::string& contents : invalidArtifacts) {
-    if (!rejects([&] { static_cast<void>(worm::cli::database::parseMigrationArtifact(contents)); })) {
+    if (!rejects([&] { static_cast<void>(worm::cli::migration::parseMigrationArtifact(contents)); })) {
       std::cerr << "Migration artifact parser accepted malformed or unsupported JSON.\n";
       return 1;
     }

@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-namespace worm::cli::database
+namespace worm::cli::migration
 {
   struct MigrationFile
   {
@@ -65,4 +65,4 @@ namespace worm::cli::database
   CatalogDifferences compareCatalog(const MigrationCatalog& catalog, std::span<const MigrationReference> references);
 
   void validateMigrationCatalog(const MigrationCatalog& catalog, std::span<const MigrationReference> references = {});
-} // namespace worm::cli::database
+} // namespace worm::cli::migration

@@ -15,7 +15,7 @@
 
 #include <errors/migration-exception.hpp>
 
-namespace worm::cli::database
+namespace worm::cli::migration
 {
   namespace
   {
@@ -214,4 +214,4 @@ namespace worm::cli::database
       difference.expectedChecksum,
       difference.actualChecksum);
   }
-} // namespace worm::cli::database
+} // namespace worm::cli::migration

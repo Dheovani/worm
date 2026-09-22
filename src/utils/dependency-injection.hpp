@@ -15,7 +15,6 @@
 
 #include <chrono>
 #include <concepts>
-#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -42,11 +41,10 @@ namespace worm
   template <>
   struct DependencyInjector<Logger>
   {
-    template <typename Class, std::size_t Index>
     [[nodiscard]]
-    static Logger get()
+    static const Logger& get() noexcept
     {
-      return {typeid(Class).name(), static_cast<int>(Index)};
+      return logger;
     }
   };
 

@@ -17,7 +17,7 @@
 #include <errors/migration-exception.hpp>
 #include <helpers/file.hpp>
 
-namespace worm::cli::database
+namespace worm::cli::migration
 {
   namespace
   {
@@ -212,4 +212,4 @@ namespace worm::cli::database
   {
     writeGeneratedFile(path, serializeMigrationArtifact(artifact));
   }
-} // namespace worm::cli::database
+} // namespace worm::cli::migration
