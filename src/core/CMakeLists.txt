@@ -16,6 +16,7 @@ add_library(
   query/statement.cpp
   output/paginator.cpp
   output/result-set.cpp
+  persistence/migration-history-repository.cpp
   persistence/session.cpp
 )
 add_library(Worm::Core ALIAS WormCore)

@@ -77,6 +77,9 @@ namespace worm::core
   std::string calculateMigrationArtifactChecksum(const MigrationArtifact& artifact);
 
   [[nodiscard]]
+  bool isMigrationArtifactChecksum(std::string_view checksum) noexcept;
+
+  [[nodiscard]]
   bool hasValidMigrationArtifactChecksum(const MigrationArtifact& artifact);
 
   void validateMigrationArtifact(const MigrationArtifact& artifact);

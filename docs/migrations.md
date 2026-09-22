@@ -12,7 +12,7 @@ The implemented flow is deliberately conservative:
 4. Every generated step is reviewable. Ambiguous or destructive steps are marked as requiring manual review.
 5. A reviewed plan can be represented as a versioned `MigrationArtifact` containing the exact forward SQL and optional, explicitly authored rollback SQL.
 6. Migration artifacts can be serialized to canonical JSON, saved without overwriting an existing file, loaded, and checked against a SHA-256 content checksum.
-7. `MigrationHistory` can record a migration id, checksum, state, application time, rollback time, and failure reason, but it is not yet persisted in the database.
+7. `MigrationHistory` represents migration records in memory, while `Repository<MigrationHistory>` creates or validates the Worm-owned `_worm_migrations` table and persists the artifact ID, name, SHA-256 checksum, state, application time, rollback time, and failure reason.
 
 This means Worm can tell that a table, column, primary key, or selected column metadata is missing or incompatible, but it does not yet decide the complete SQL type, default expression, constraint naming strategy, or destructive action policy for every database.
 
@@ -23,6 +23,10 @@ This means Worm can tell that a table, column, primary key, or selected column m
 The CLI migration codec uses files such as `20260922143000_create-users.worm.json`. Loading is strict: unknown fields, unsupported versions or databases, malformed statements, empty required values, and checksum divergence are rejected. Saving uses the CLI's generated-file publishing path and never overwrites an existing artifact.
 
 `MigrationCatalog` discovers `*.worm.json` artifacts directly inside a supplied directory, validates that each filename matches `<id>_<name>.worm.json`, and orders entries by ID independently of filesystem iteration order. Discovery is deliberately non-recursive, ignores unrelated files, rejects matching symlinks and non-regular paths, and rejects duplicate IDs. Comparing the catalog with historical `MigrationReference` values reports applied migrations whose local artifact is missing or whose current SHA-256 checksum differs from the recorded checksum; additional local artifacts are pending migrations and are not inconsistencies.
+
+## Persistent history
+
+`Repository<MigrationHistory>` keeps migration execution state in `_worm_migrations` in the configured database schema. Initialization creates the table when it is absent and refuses to use an existing table whose required columns or primary key are incompatible. State transitions use parameterized statements, require exactly one affected record, and store timestamps as signed epoch milliseconds so that the representation is consistent across supported drivers. The in-memory `MigrationHistory` remains the domain representation loaded from that durable table; it is not an alternative source of truth for executable migrations.
 
 ```json
 {
@@ -73,4 +77,4 @@ Worm treats migration generation as a review step, not an execution step. Missin
 
 ## What remains before executable migrations
 
-Before Worm can safely apply migration SQL, it still needs persistent database history, database-specific locking, complete dialect-aware DDL generation, table rebuild planning for SQLite, destructive-change confirmation, failure recovery policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as diagnostics and reviewable inputs only.
+Before Worm can safely apply migration SQL, it still needs database-specific locking, complete dialect-aware DDL generation, table rebuild planning for SQLite, destructive-change confirmation, failure recovery policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as diagnostics and reviewable inputs only.

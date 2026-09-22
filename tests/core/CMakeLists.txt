@@ -35,6 +35,11 @@ add_worm_core_test(WormPaginatorTests output/paginator-tests.cpp Worm.Core.Pagin
 add_worm_core_test(WormHydrationTests output/hydration-tests.cpp Worm.Core.Hydration)
 add_worm_core_test(WormRegistryTests persistence/registry-tests.cpp Worm.Core.Registry)
 add_worm_core_test(WormRepositoryTests persistence/repository-tests.cpp Worm.Core.Repository)
+add_worm_core_test(
+  WormMigrationHistoryRepositoryTests
+  persistence/migration-history-repository-tests.cpp
+  Worm.Core.MigrationHistoryRepository
+)
 add_worm_core_test(WormCacheTests persistence/cache-tests.cpp Worm.Core.Cache)
 add_worm_core_test(WormSessionTests persistence/session-tests.cpp Worm.Core.Session)
 

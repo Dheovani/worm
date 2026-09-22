@@ -1,56 +1,25 @@
 #include <core/model/migration-history.hpp>
 
-#include <type_traits>
+#include <errors/migration-exception.hpp>
+
+#include <unordered_set>
 #include <utility>
 
 namespace worm::core
 {
-  namespace
+  MigrationHistory::MigrationHistory(std::vector<MigrationRecord> records)
+    : records_(std::move(records))
   {
-    [[nodiscard]]
-    constexpr Hash combineHash(Hash seed, Hash value) noexcept
-    {
-      constexpr Hash hashConstant = 0x9e3779b97f4a7c15ULL;
-      return seed ^ (value + hashConstant + (seed << 6U) + (seed >> 2U));
-    }
-
-    template <typename Enum>
-    [[nodiscard]]
-    constexpr Hash enumHash(Enum value) noexcept
-    {
-      return static_cast<Hash>(static_cast<std::underlying_type_t<Enum>>(value));
-    }
-
-    [[nodiscard]]
-    Hash stepChecksum(const MigrationStep& step) noexcept
-    {
-      Hash value = enumHash(step.kind);
-      value = combineHash(value, enumHash(step.risk));
-      value = combineHash(value, enumHash(step.difference.kind));
-      value = combineHash(value, hashCode(step.difference.schema));
-      value = combineHash(value, hashCode(step.difference.table));
-      value = combineHash(value, hashCode(step.difference.column));
-      value = combineHash(value, hashCode(step.difference.expected));
-      value = combineHash(value, hashCode(step.difference.actual));
-      value = combineHash(value, hashCode(step.description));
-
-      if (step.statement.has_value()) {
-        value = combineHash(value, StatementHash{}(step.statement.value()));
+    std::unordered_set<std::string_view> ids;
+    ids.reserve(records_.size());
+    for (const MigrationRecord& record : records_) {
+      if (record.id.empty() || record.name.empty() || !isMigrationArtifactChecksum(record.checksum)) {
+        throw MigrationException("Migration history records require a non-empty id, name, and SHA-256 checksum.");
       }
-
-      return value;
+      if (!ids.insert(record.id).second) {
+        throw MigrationException("Migration history contains duplicate id '{}'.", record.id);
+      }
     }
-  } // namespace
-
-  Hash migrationChecksum(const MigrationPlan& plan) noexcept
-  {
-    Hash value = 0;
-
-    for (const MigrationStep& step : plan.steps()) {
-      value = combineHash(value, stepChecksum(step));
-    }
-
-    return value;
   }
 
   const std::vector<MigrationRecord>& MigrationHistory::records() const noexcept
@@ -85,25 +54,27 @@ namespace worm::core
     return nullptr;
   }
 
-  bool MigrationHistory::addPending(std::string id, const MigrationPlan& plan)
+  bool MigrationHistory::addPending(const MigrationArtifact& artifact)
   {
-    if (id.empty() || find(id) != nullptr) {
+    validateMigrationArtifact(artifact);
+    if (find(artifact.id()) != nullptr) {
       return false;
     }
 
     records_.push_back(
       {
-        .id = std::move(id),
-        .checksum = migrationChecksum(plan),
+        .id = artifact.id(),
+        .name = artifact.name(),
+        .checksum = artifact.checksum(),
       });
 
     return true;
   }
 
-  bool MigrationHistory::matchesChecksum(std::string_view id, const MigrationPlan& plan) const noexcept
+  bool MigrationHistory::matchesChecksum(std::string_view id, const MigrationArtifact& artifact) const noexcept
   {
     const MigrationRecord* record = find(id);
-    return record != nullptr && record->checksum == migrationChecksum(plan);
+    return record != nullptr && record->checksum == artifact.checksum();
   }
 
   bool MigrationHistory::markApplied(std::string_view id, std::chrono::system_clock::time_point appliedAt)

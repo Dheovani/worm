@@ -1,7 +1,6 @@
 #pragma once
 
-#include <core/model/migration.hpp>
-#include <utils/hash.hpp>
+#include <core/model/migration-artifact.hpp>
 
 #include <chrono>
 #include <optional>
@@ -22,19 +21,19 @@ namespace worm::core
   struct MigrationRecord
   {
     std::string id;
-    Hash checksum{};
+    std::string name;
+    std::string checksum;
     MigrationState state{MigrationState::Pending};
     std::optional<std::chrono::system_clock::time_point> appliedAt = std::nullopt;
     std::optional<std::chrono::system_clock::time_point> rolledBackAt = std::nullopt;
     std::string failureReason;
   };
 
-  [[nodiscard]]
-  Hash migrationChecksum(const MigrationPlan& plan) noexcept;
-
   class MigrationHistory
   {
   public:
+    explicit MigrationHistory(std::vector<MigrationRecord> records = {});
+
     [[nodiscard]]
     const std::vector<MigrationRecord>& records() const noexcept;
 
@@ -48,10 +47,10 @@ namespace worm::core
     MigrationRecord* find(std::string_view id) noexcept;
 
     [[nodiscard]]
-    bool addPending(std::string id, const MigrationPlan& plan);
+    bool addPending(const MigrationArtifact& artifact);
 
     [[nodiscard]]
-    bool matchesChecksum(std::string_view id, const MigrationPlan& plan) const noexcept;
+    bool matchesChecksum(std::string_view id, const MigrationArtifact& artifact) const noexcept;
 
     [[nodiscard]]
     bool markApplied(std::string_view id, std::chrono::system_clock::time_point appliedAt);

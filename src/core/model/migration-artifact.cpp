@@ -2,6 +2,7 @@
 
 #include <errors/migration-exception.hpp>
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cctype>
@@ -414,6 +415,17 @@ namespace worm::core
       addChecksumStatements(hash, *artifact.rollback());
     }
     return digestString(hash.finish());
+  }
+
+  bool isMigrationArtifactChecksum(std::string_view checksum) noexcept
+  {
+    constexpr std::string_view prefix = "sha256:";
+    if (checksum.size() != prefix.size() + 64 || !checksum.starts_with(prefix)) {
+      return false;
+    }
+    return std::ranges::all_of(checksum.substr(prefix.size()), [](unsigned char character) {
+      return std::isdigit(character) != 0 || (character >= 'a' && character <= 'f');
+    });
   }
 
   bool hasValidMigrationArtifactChecksum(const MigrationArtifact& artifact)

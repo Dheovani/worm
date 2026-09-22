@@ -3,7 +3,6 @@
 #include "migration-file.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <cstddef>
 #include <filesystem>
 #include <string>
@@ -33,28 +32,12 @@ namespace worm::cli::migration
       return artifact.id() + "_" + artifact.name() + std::string{migrationFileSuffix};
     }
 
-    [[nodiscard]]
-    bool validChecksum(std::string_view checksum) noexcept
-    {
-      constexpr std::string_view prefix = "sha256:";
-      if (checksum.size() != prefix.size() + 64 || !checksum.starts_with(prefix)) {
-        return false;
-      }
-
-      for (const unsigned char character : checksum.substr(prefix.size())) {
-        if (std::isdigit(character) == 0 && (character < 'a' || character > 'f')) {
-          return false;
-        }
-      }
-      return true;
-    }
-
     void validateReferenceIds(std::span<const MigrationReference> references)
     {
       std::unordered_set<std::string_view> ids;
       ids.reserve(references.size());
       for (const MigrationReference& reference : references) {
-        if (reference.id.empty() || !validChecksum(reference.checksum)) {
+        if (reference.id.empty() || !core::isMigrationArtifactChecksum(reference.checksum)) {
           throw MigrationException("Migration history references require a non-empty id and a SHA-256 checksum.");
         }
         if (!ids.insert(reference.id).second) {
