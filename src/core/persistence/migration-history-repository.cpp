@@ -61,9 +61,10 @@ namespace worm::core
     [[nodiscard]]
     TableMetadata historyTableMetadata(std::string_view schema)
     {
-      const Table table = schema.empty()
-        ? Table{Repository<MigrationHistory>::tableName()}
-        : Table{Schema{schema}, Repository<MigrationHistory>::tableName()};
+      Table table{Repository<MigrationHistory>::tableName()};
+      if (!schema.empty()) {
+        table = Table{Schema{schema}, Repository<MigrationHistory>::tableName()};
+      }
       const Column id = historyColumn(table, "id");
       const Column name = historyColumn(table, "name");
       const Column checksum = historyColumn(table, "checksum");

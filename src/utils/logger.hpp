@@ -53,9 +53,7 @@ namespace worm
     class Message
     {
     public:
-      constexpr Message(
-        const char* text,
-        std::source_location location = std::source_location::current()) noexcept
+      constexpr Message(const char* text, std::source_location location = std::source_location::current()) noexcept
         : text_(text),
           location_(location)
       {}
@@ -81,9 +79,7 @@ namespace worm
     {
     public:
       template <typename Type>
-      StreamValue(
-        const Type& value,
-        std::source_location location = std::source_location::current())
+      StreamValue(const Type& value, std::source_location location = std::source_location::current())
         : location_(location)
       {
         std::ostringstream stream;
@@ -149,20 +145,14 @@ namespace worm
       logAt(LogLevel::Error, message.location(), message.text(), std::forward<Args>(args)...);
     }
 
-    void error(
-      const std::exception& exception,
-      std::source_location location = std::source_location::current()) const
+    void error(const std::exception& exception, std::source_location location = std::source_location::current()) const
     {
       logAt(LogLevel::Error, location, "%s", exception.what());
     }
 
   private:
     template <typename... Args>
-    void logAt(
-      LogLevel level,
-      const std::source_location& location,
-      const char* message,
-      Args&&... args) const
+    void logAt(LogLevel level, const std::source_location& location, const char* message, Args&&... args) const
     {
       const std::string formattedMessage = format(message, std::forward<Args>(args)...);
       const std::string_view className = getClassName(location.file_name());
@@ -198,11 +188,7 @@ namespace worm
         return message;
 
       std::string result(static_cast<std::size_t>(size), '\0');
-      std::snprintf(
-        result.data(),
-        result.size() + 1,
-        message,
-        std::forward<Args>(args)...);
+      std::snprintf(result.data(), result.size() + 1, message, std::forward<Args>(args)...);
 
       return result;
     }

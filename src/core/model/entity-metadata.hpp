@@ -125,10 +125,13 @@ namespace worm::core
       } else if constexpr (std::is_enum_v<Value>) {
         return inferredColumnType<std::underlying_type_t<Value>>();
       } else if constexpr (std::integral<Value>) {
-        constexpr ColumnTypeKind kind = sizeof(Value) <= sizeof(std::int16_t)
-          ? ColumnTypeKind::Int16 : sizeof(Value) <= sizeof(std::int32_t)
-            ? ColumnTypeKind::Int32 : ColumnTypeKind::Int64;
-        return {.kind = kind, .unsignedValue = std::is_unsigned_v<Value>};
+        if constexpr (sizeof(Value) <= sizeof(std::int16_t)) {
+          return {.kind = ColumnTypeKind::Int16, .unsignedValue = std::is_unsigned_v<Value>};
+        } else if constexpr (sizeof(Value) <= sizeof(std::int32_t)) {
+          return {.kind = ColumnTypeKind::Int32, .unsignedValue = std::is_unsigned_v<Value>};
+        } else {
+          return {.kind = ColumnTypeKind::Int64, .unsignedValue = std::is_unsigned_v<Value>};
+        }
       } else if constexpr (std::same_as<Value, float> || std::same_as<Value, double>) {
         return {.kind = sizeof(Value) <= sizeof(float) ? ColumnTypeKind::Float32 : ColumnTypeKind::Float64};
       } else if constexpr (std::same_as<Value, Decimal>) {

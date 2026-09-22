@@ -79,15 +79,16 @@ namespace worm::cli
 
       entity.table.columns.reserve(metadata.columns().size());
       for (const core::ColumnMetadata& column : metadata.columns()) {
-        entity.table.columns.push_back({
-          .name = std::string{column.columnName},
-          .type = column.type(),
-          .defaultExpression =
-            column.defaultExpression.empty() ? std::nullopt : std::optional<std::string>{column.defaultExpression},
-          .nullable = column.nullable,
-          .generated = column.generated,
-          .unique = column.unique,
-        });
+        entity.table.columns.push_back(
+          {
+            .name = std::string{column.columnName},
+            .type = column.type(),
+            .defaultExpression =
+              column.defaultExpression.empty() ? std::nullopt : std::optional<std::string>{column.defaultExpression},
+            .nullable = column.nullable,
+            .generated = column.generated,
+            .unique = column.unique,
+          });
       }
 
       for (const core::Column& column : metadata.primaryKey()->columns()) {

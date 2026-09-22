@@ -43,5 +43,8 @@ PointerAlignment: Left
 ReferenceAlignment: Left
 AllowShortBlocksOnASingleLine: Empty
 AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
+PenaltyBreakAssignment: 1000000
+PenaltyReturnTypeOnItsOwnLine: 1000000
 SortIncludes: CaseSensitive
