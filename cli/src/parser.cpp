@@ -42,6 +42,8 @@ namespace worm::cli
     inline constexpr std::string_view nPlusOneCommand = "n-plus-one";
     inline constexpr std::string_view inspectCommand = "inspect";
     inline constexpr std::string_view diffCommand = "diff";
+    inline constexpr std::string_view migrateCommand = "migrate";
+    inline constexpr std::string_view validateMigrationAction = "validate";
 
     inline constexpr std::string_view entityCommand = "--entity";
     inline constexpr std::string_view tableCommand = "--table";
@@ -52,6 +54,7 @@ namespace worm::cli
     inline constexpr std::string_view queryCommand = "--query";
     inline constexpr std::string_view fileCommand = "--file";
     inline constexpr std::string_view maxExecutionsCommand = "--max-executions";
+    inline constexpr std::string_view directoryCommand = "--directory";
 
     [[nodiscard]]
     constexpr std::optional<GlobalOptions> parseGlobalOption(std::string_view opt) noexcept
@@ -101,6 +104,18 @@ namespace worm::cli
         return Inspect;
       if (cmd == diffCommand)
         return Diff;
+      if (cmd == migrateCommand)
+        return Migrate;
+
+      return std::nullopt;
+    }
+
+    [[nodiscard]]
+    constexpr std::optional<MigrationAction> parseMigrationAction(std::string_view action) noexcept
+    {
+      if (action == validateMigrationAction) {
+        return MigrationAction::Validate;
+      }
 
       return std::nullopt;
     }
@@ -128,6 +143,8 @@ namespace worm::cli
         return File;
       if (opt == maxExecutionsCommand)
         return MaxExecutions;
+      if (opt == directoryCommand)
+        return Directory;
 
       return std::nullopt;
     }
@@ -255,6 +272,9 @@ namespace worm::cli
       case MaxExecutions:
         assignUnique(arguments.maxExecutions, std::move(value).value(), token);
         return;
+      case Directory:
+        assignUnique(arguments.directory, std::move(value).value(), token);
+        return;
       }
     }
   } // namespace
@@ -286,6 +306,7 @@ namespace worm::cli
     GlobalArguments global;
     CommandArguments commandArguments;
     std::optional<Commands> command;
+    std::optional<MigrationAction> migrationAction;
 
     for (std::size_t i = 0; i < args.size(); ++i) {
       const std::string_view token = args[i];
@@ -319,6 +340,13 @@ namespace worm::cli
         throw CommandOverflowException("More than one command was specified. Unexpected command '{}'.", token);
       }
 
+      if (*command == Commands::Migrate && !migrationAction.has_value()) {
+        if (const auto action = parseMigrationAction(token)) {
+          migrationAction = *action;
+          continue;
+        }
+      }
+
       if (parseGlobalOption(token).has_value()) {
         throw OptionPositionException("Global option '{}' must appear before the command.", token);
       }
@@ -341,6 +369,11 @@ namespace worm::cli
       throw EmptyCommandException("No command specified.");
     }
 
-    return Invocation{.global = std::move(global), .command = *command, .arguments = std::move(commandArguments)};
+    return Invocation{
+      .global = std::move(global),
+      .command = *command,
+      .migrationAction = migrationAction,
+      .arguments = std::move(commandArguments),
+    };
   }
 } // namespace worm::cli

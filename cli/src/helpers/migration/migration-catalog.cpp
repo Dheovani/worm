@@ -191,6 +191,7 @@ namespace worm::cli::migration
     if (difference.kind == MigrationCatalogDifferenceKind::MissingArtifact) {
       throw MigrationException("Applied migration '{}' is missing from the local migration directory.", difference.id);
     }
+
     throw MigrationException(
       "Applied migration '{}' has checksum '{}', but the local artifact has checksum '{}'.",
       difference.id,
