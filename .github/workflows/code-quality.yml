@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Install clang-format
         run: |
@@ -27,8 +29,24 @@ jobs:
           sudo apt-get install -y clang-format-22
 
       - name: Check formatting
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
-          mapfile -t files < <(git ls-files -- 'src' 'tests' 'cli' | grep -E '\.(cpp|hpp)$')
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA=$(git rev-list --max-parents=0 "$HEAD_SHA")
+          fi
+
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" -- src tests cli |
+              grep -E '\.(cpp|hpp)$' || true
+          )
+
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No changed C++ files to check."
+            exit 0
+          fi
+
           clang-format-22 --dry-run --Werror "${files[@]}"
 
   static-analysis:
