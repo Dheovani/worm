@@ -33,9 +33,7 @@ namespace worm::core
         return true;
       }
 
-      const auto validFirst = [](unsigned char character) {
-        return std::isalpha(character) != 0 || character == '_';
-      };
+      const auto validFirst = [](unsigned char character) { return std::isalpha(character) != 0 || character == '_'; };
 
       const auto validRemaining = [](unsigned char character) {
         return std::isalnum(character) != 0 || character == '_';
@@ -134,11 +132,8 @@ namespace worm::core
     [[nodiscard]]
     const Parameter& requiredValue(const ResultRow& row, std::string_view name)
     {
-      const auto column = std::ranges::find_if(
-        row.columns,
-        [name](const ResultColumn& candidate) {
-          return candidate.name == name;
-        });
+      const auto column =
+        std::ranges::find_if(row.columns, [name](const ResultColumn& candidate) { return candidate.name == name; });
 
       if (column == row.columns.end()) {
         throw MigrationException("Migration history row is missing required column '{}'.", name);
