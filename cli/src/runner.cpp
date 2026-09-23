@@ -6,6 +6,7 @@
 
 #include "database/diff.hpp"
 #include "database/inspect.hpp"
+#include "database/migrate.hpp"
 #include "database/n-plus-one.hpp"
 #include "errors/invalid-cli-argument-exception.hpp"
 #include "generator/check.hpp"
@@ -92,6 +93,7 @@ namespace worm::cli
               << "  pull                  Generate missing C++ entities from database tables\n"
               << "  diff                  Display a migration-oriented schema difference report\n"
               << "  inspect               Print the complete supported database structure\n"
+              << "  migrate validate      Validate local migration artifacts without changing the database\n"
               << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
               << '\n'
               << "Global options:\n"
@@ -119,6 +121,7 @@ namespace worm::cli
               << "  --query <sql>         Analyze one observed SELECT query\n"
               << "  --file <path>         Analyze semicolon-separated SELECT queries from a file\n"
               << "  --max-executions <n>  Allow a query pattern to execute n times before reporting it\n"
+              << "  --directory <path>    Migration artifact directory (default: migrations)\n"
               << '\n'
               << "Examples:\n"
               << "  worm check\n"
@@ -127,6 +130,7 @@ namespace worm::cli
               << "  worm pull\n"
               << "  worm diff\n"
               << "  worm --driver sqlite --database application.db inspect\n"
+              << "  worm migrate validate --directory migrations\n"
               << "  worm pull --apply\n"
               << "  worm push --entity User\n"
               << "  worm pull --table users\n"
@@ -237,6 +241,9 @@ namespace worm::cli
       break;
     case Commands::Diff:
       report = database::diff(invocation);
+      break;
+    case Commands::Migrate:
+      report = database::migrate(invocation);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

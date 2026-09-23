@@ -1,8 +1,8 @@
 # Worm CLI
 
-`worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, and running opt-in query diagnostics.
+`worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, validating migration artifacts, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate validate`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate validate` verifies local migration artifacts without connecting to or changing the database. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -270,6 +270,25 @@ worm --manifest build/worm-schema.json --format json diff
 The current report classifies missing and unexpected tables or columns, canonical type and modifier differences, nullability, generated state, uniqueness, declared default expressions, and primary-key columns. A detected difference returns the same nonzero drift exit status used by `check`; an empty diff succeeds. The command never generates SQL and never applies changes.
 
 Indexes and foreign keys are displayed by `inspect`, but they do not yet participate in `diff` because the current database snapshot stores their introspected representations as driver-formatted text instead of structured metadata. They must be promoted to structured snapshot types before migration generation can compare them reliably.
+
+## The `migrate validate` command
+
+`migrate validate` checks migration artifacts stored in a local directory without connecting to the database or executing SQL. It validates artifact filenames, deterministic ID ordering, duplicate IDs, required fields, supported database names, statement structure, and embedded SHA-256 checksums. The report summarizes migration and forward-statement counts by risk and identifies how many migrations provide explicit rollback statements.
+
+```bash
+worm migrate validate
+worm migrate validate --directory database/migrations
+worm --format json migrate validate --directory database/migrations
+```
+
+The directory defaults to `migrations`. It may also be configured in `worm.toml`; an explicit `--directory` value takes precedence:
+
+```toml
+[migrations]
+directory = "database/migrations"
+```
+
+This subcommand validates only the local catalog. Comparing it with persisted migration history belongs to `migrate status`, while applying SQL belongs to the base `migrate` command; neither operation is implied by `migrate validate`.
 
 ## The `check` command
 

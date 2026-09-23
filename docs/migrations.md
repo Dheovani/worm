@@ -1,6 +1,6 @@
 # Migrations
 
-Worm currently supports the safe planning and artifact representation parts of migrations: it can represent schema metadata, compare reflected entity metadata with an existing schema snapshot, create a reviewable migration plan, represent an immutable migration artifact, and keep migration history records with application state, failure state, and rollback timestamps. It does not execute generated migrations automatically, and the current migration plan intentionally keeps SQL statements optional because several differences require dialect-specific decisions that Worm should not guess.
+Worm currently supports the safe planning, artifact representation, local validation, and persistent-history parts of migrations: it can represent schema metadata, compare reflected entity metadata with an existing schema snapshot, create a reviewable migration plan, represent an immutable migration artifact, validate a local artifact catalog, and keep migration history records with application state, failure state, and rollback timestamps. It does not execute generated migrations automatically, and the current migration plan intentionally keeps SQL statements optional because several differences require dialect-specific decisions that Worm should not guess.
 
 ## Current migration flow
 
@@ -13,6 +13,7 @@ The implemented flow is deliberately conservative:
 5. A reviewed plan can be represented as a versioned `MigrationArtifact` containing the exact forward SQL and optional, explicitly authored rollback SQL.
 6. Migration artifacts can be serialized to canonical JSON, saved without overwriting an existing file, loaded, and checked against a SHA-256 content checksum.
 7. `MigrationHistory` represents migration records in memory, while `Repository<MigrationHistory>` creates or validates the Worm-owned `_worm_migrations` table and persists the artifact ID, name, SHA-256 checksum, state, application time, rollback time, and failure reason.
+8. `worm migrate validate --directory migrations` validates the local catalog ordering, filenames, artifact structure, and embedded checksums without connecting to the database or executing SQL. The directory defaults to `migrations` and can also be configured as `directory` under `[migrations]` in `worm.toml`.
 
 This means Worm can tell that a table, column, primary key, or selected column metadata is missing or incompatible, but it does not yet decide the complete SQL type, default expression, constraint naming strategy, or destructive action policy for every database.
 
