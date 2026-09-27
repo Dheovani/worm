@@ -5,6 +5,7 @@
 #include <core/model/migration-history.hpp>
 #include <core/model/schema-snapshot.hpp>
 #include <core/output/result-set.hpp>
+#include <core/persistence/migration-execution.hpp>
 #include <core/persistence/migration-lock.hpp>
 #include <core/query/expression.hpp>
 #include <core/query/query-builder.hpp>
@@ -41,6 +42,11 @@ namespace worm::core
 
     void markFailed(std::string_view id, std::string_view reason) const;
 
+    void apply(
+      const MigrationExecutionPlan& plan,
+      MigrationConfirmation confirmation = MigrationConfirmation::None,
+      std::chrono::milliseconds lockTimeout = std::chrono::seconds{30}) const;
+
     [[nodiscard]]
     MigrationLock acquireLock(std::chrono::milliseconds timeout = std::chrono::seconds{30}) const;
 
@@ -56,6 +62,8 @@ namespace worm::core
 
     [[nodiscard]]
     ResultSet execute(const Statement& statement) const;
+
+    void executeSteps(const MigrationExecutionPlan& plan) const;
 
     void updateState(
       std::string_view id,

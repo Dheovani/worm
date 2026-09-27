@@ -68,7 +68,8 @@ int main()
 
   const worm::core::MigrationExecutionPlan forward =
     worm::core::compileMigrationExecutionPlan(pgArtifact, worm::core::PgBuilder{});
-  if (forward.migrationId() != pgArtifact.id() || forward.direction() != worm::core::MigrationDirection::Forward ||
+  if (forward.migrationId() != pgArtifact.id() || forward.migrationChecksum() != pgArtifact.checksum() ||
+      forward.direction() != worm::core::MigrationDirection::Forward ||
       forward.transactionMode() != worm::core::MigrationTransactionMode::PerMigration || forward.steps().size() != 2 ||
       forward.steps()[0].statement.sql != "create table users (id bigint primary key)" ||
       !forward.steps()[0].statement.parameters.empty() ||

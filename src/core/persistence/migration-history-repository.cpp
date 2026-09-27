@@ -4,6 +4,8 @@
 #include <core/query/filter.hpp>
 #include <core/query/predicate.hpp>
 
+#include <connection/transaction.hpp>
+
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/migration-exception.hpp>
 #include <errors/query-execution-exception.hpp>
@@ -304,6 +306,90 @@ namespace worm::core
       "failed");
   }
 
+  void Repository<MigrationHistory>::apply(
+    const MigrationExecutionPlan& plan,
+    MigrationConfirmation confirmation,
+    std::chrono::milliseconds lockTimeout) const
+  {
+    if (plan.direction() != MigrationDirection::Forward) {
+      throw MigrationException("Migration '{}' is not a forward execution plan.", plan.migrationId());
+    }
+
+    authorizeMigrationExecution(plan, confirmation);
+    std::string failureReason;
+    bool migrationApplied = false;
+
+    {
+      MigrationLock lock = acquireLock(lockTimeout);
+      const MigrationHistory history = load();
+      const MigrationRecord* record = history.find(plan.migrationId());
+      if (record == nullptr) {
+        throw MigrationException("Migration '{}' is not registered in migration history.", plan.migrationId());
+      }
+      if (record->checksum != plan.migrationChecksum()) {
+        throw MigrationException("Migration '{}' checksum differs from migration history.", plan.migrationId());
+      }
+      if (record->state != MigrationState::Pending) {
+        throw MigrationException("Migration '{}' is not pending and cannot be applied.", plan.migrationId());
+      }
+
+      try {
+        switch (plan.transactionMode()) {
+        case MigrationTransactionMode::PerMigration: {
+          connection::Transaction transaction = dbClient_->beginTransaction();
+          executeSteps(plan);
+          markApplied(plan.migrationId(), std::chrono::system_clock::now());
+          transaction.commit();
+          migrationApplied = true;
+          lock.release();
+          break;
+        }
+        case MigrationTransactionMode::LockOwned:
+          executeSteps(plan);
+          markApplied(plan.migrationId(), std::chrono::system_clock::now());
+          lock.release();
+          migrationApplied = true;
+          break;
+        case MigrationTransactionMode::None:
+          executeSteps(plan);
+          markApplied(plan.migrationId(), std::chrono::system_clock::now());
+          migrationApplied = true;
+          lock.release();
+          break;
+        default:
+          throw MigrationException("Migration '{}' has an unsupported transaction mode.", plan.migrationId());
+        }
+      } catch (const std::exception& error) {
+        failureReason = error.what();
+      } catch (...) {
+        failureReason = "Unknown migration execution failure.";
+      }
+    }
+
+    if (failureReason.empty()) {
+      return;
+    }
+
+    if (migrationApplied) {
+      throw MigrationException(
+        "Migration '{}' was applied, but finalizing its migration lock failed: {}",
+        plan.migrationId(),
+        failureReason);
+    }
+
+    try {
+      markFailed(plan.migrationId(), failureReason);
+    } catch (const std::exception& historyError) {
+      throw MigrationException(
+        "Migration '{}' failed: {}. Recording the failure also failed: {}",
+        plan.migrationId(),
+        failureReason,
+        historyError.what());
+    }
+
+    throw MigrationException("Migration '{}' failed: {}", plan.migrationId(), failureReason);
+  }
+
   MigrationLock Repository<MigrationHistory>::acquireLock(std::chrono::milliseconds timeout) const
   {
     const std::string scope = schema_.empty() ? std::string{"default"} : schema_;
@@ -329,6 +415,23 @@ namespace worm::core
     throw;
   } catch (const std::exception& error) {
     throw QueryExecutionException(error.what());
+  }
+
+  void Repository<MigrationHistory>::executeSteps(const MigrationExecutionPlan& plan) const
+  {
+    for (std::size_t index = 0; index < plan.steps().size(); ++index) {
+      const MigrationExecutionStep& step = plan.steps()[index];
+      try {
+        static_cast<void>(execute(step.statement));
+      } catch (const std::exception& error) {
+        throw MigrationException(
+          "Migration '{}' failed at step {} ('{}'): {}",
+          plan.migrationId(),
+          index + 1,
+          step.description,
+          error.what());
+      }
+    }
   }
 
   void Repository<MigrationHistory>::updateState(

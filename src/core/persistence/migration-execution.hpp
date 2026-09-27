@@ -56,6 +56,9 @@ namespace worm::core
     const std::string& migrationId() const noexcept;
 
     [[nodiscard]]
+    const std::string& migrationChecksum() const noexcept;
+
+    [[nodiscard]]
     MigrationDirection direction() const noexcept;
 
     [[nodiscard]]
@@ -75,11 +78,13 @@ namespace worm::core
 
     MigrationExecutionPlan(
       std::string migrationId,
+      std::string migrationChecksum,
       MigrationDirection direction,
       MigrationTransactionMode transactionMode,
       std::vector<MigrationExecutionStep> steps);
 
     std::string migrationId_;
+    std::string migrationChecksum_;
     MigrationDirection direction_;
     MigrationTransactionMode transactionMode_;
     std::vector<MigrationExecutionStep> steps_;

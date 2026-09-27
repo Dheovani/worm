@@ -77,10 +77,12 @@ namespace worm::core
 
   MigrationExecutionPlan::MigrationExecutionPlan(
     std::string migrationId,
+    std::string migrationChecksum,
     MigrationDirection direction,
     MigrationTransactionMode transactionMode,
     std::vector<MigrationExecutionStep> steps)
     : migrationId_(std::move(migrationId)),
+      migrationChecksum_(std::move(migrationChecksum)),
       direction_(direction),
       transactionMode_(transactionMode),
       steps_(std::move(steps))
@@ -89,6 +91,11 @@ namespace worm::core
   const std::string& MigrationExecutionPlan::migrationId() const noexcept
   {
     return migrationId_;
+  }
+
+  const std::string& MigrationExecutionPlan::migrationChecksum() const noexcept
+  {
+    return migrationChecksum_;
   }
 
   MigrationDirection MigrationExecutionPlan::direction() const noexcept
@@ -156,7 +163,13 @@ namespace worm::core
         });
     }
 
-    return {artifact.id(), direction, sqlBuilder.migrationTransactionMode(), std::move(steps)};
+    return {
+      artifact.id(),
+      artifact.checksum(),
+      direction,
+      sqlBuilder.migrationTransactionMode(),
+      std::move(steps),
+    };
   }
 
   void authorizeMigrationExecution(const MigrationExecutionPlan& plan, MigrationConfirmation confirmation)

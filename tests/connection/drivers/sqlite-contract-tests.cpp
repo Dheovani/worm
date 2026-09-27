@@ -78,6 +78,7 @@ try {
     std::make_shared<worm::connection::SqliteClient>(config),
     sqlBuilder,
     "main");
+  worm::tests::runMigrationExecutionContract(client, sqlBuilder, "main");
 
   return 0;
 } catch (const std::exception& error) {

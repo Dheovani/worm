@@ -1,6 +1,6 @@
 # Migrations
 
-Worm currently supports the safe planning, dialect-specific DDL compilation, artifact representation, local validation, persistent-history, locking, and execution-planning parts of migrations: it can represent schema metadata, compare reflected entity metadata with an existing schema snapshot, create a reviewable migration plan, compile supported differences through the selected SQL builder, represent an immutable migration artifact, validate a local artifact catalog, keep migration history records, and compile reviewed artifact statements into a dialect-bound execution plan. It does not execute generated migrations automatically.
+Worm currently supports safe planning, dialect-specific DDL compilation, artifact representation, local validation, persistent history, locking, execution planning, and explicit application through `Repository<MigrationHistory>`: it can compare reflected metadata with a schema snapshot, create a reviewable plan, compile supported differences through the selected SQL builder, validate immutable migration artifacts, and execute a previously registered plan under the database-specific lock and transaction policy. The CLI does not yet expose migration application.
 
 ## Current migration flow
 
@@ -16,7 +16,8 @@ The implemented flow is deliberately conservative:
 8. `worm migrate validate --directory migrations` validates the local catalog ordering, filenames, artifact structure, and embedded checksums without connecting to the database or executing SQL. The directory defaults to `migrations` and can also be configured as `directory` under `[migrations]` in `worm.toml`.
 9. `compileMigrationExecutionPlan(...)` validates the artifact again, rejects a target database that differs from the selected `SqlBuilder`, preserves the reviewed statement order and risk classification, and selects the database's transaction boundary.
 10. `compileMigrationDdl(...)` combines a `MigrationPlan`, expected `SchemaMetadata`, actual `SchemaSnapshot`, and selected `SqlBuilder` into ordered, parameter-free DDL statements. It rejects stale plans and transformations that require metadata Worm does not possess.
-11. `MigrationExecutionPlan::policy()` derives the required confirmation and failure-recovery behavior from the reviewed statements and transaction mode. `authorizeMigrationExecution(...)` must accept that risk before a future executor may run the plan.
+11. `MigrationExecutionPlan::policy()` derives the required confirmation and failure-recovery behavior from the reviewed statements and transaction mode. `authorizeMigrationExecution(...)` must accept that risk before the plan may run.
+12. `Repository<MigrationHistory>::apply(...)` acquires the migration lock, verifies that the registered pending record has the same checksum as the execution plan, executes the statements under the selected transaction boundary, and records either successful application or failure.
 
 ## Migration locking
 
@@ -26,7 +27,7 @@ PostgreSQL uses a session advisory lock derived from the migration lock name and
 
 ## Execution plans and transaction boundaries
 
-`compileMigrationExecutionPlan(...)` is the boundary between an immutable, reviewed `MigrationArtifact` and future database execution. It compiles either the forward statements or the explicitly authored rollback statements into parameter-free `Statement` values. Compilation rejects checksum divergence, a database mismatch, and rollback requests for irreversible artifacts. It does not reinterpret or translate SQL from one database to another: the artifact's `database` field and the selected `SqlBuilder` must agree.
+`compileMigrationExecutionPlan(...)` is the boundary between an immutable, reviewed `MigrationArtifact` and database execution. It preserves the artifact checksum and compiles either the forward statements or the explicitly authored rollback statements into parameter-free `Statement` values. Compilation rejects checksum divergence, a database mismatch, and rollback requests for irreversible artifacts. It does not reinterpret or translate SQL from one database to another: the artifact's `database` field and the selected `SqlBuilder` must agree.
 
 PostgreSQL and SQL Server use one transaction per migration. Their session-owned migration locks remain active around that transaction. MySQL uses no encompassing transaction because its DDL may commit implicitly, so failure recovery must account for partially applied migrations. SQLite's migration lock owns the exclusive transaction itself; starting another transaction inside that scope is rejected, successful release commits it, and scope-exit cleanup rolls it back. These modes are represented by `MigrationTransactionMode::PerMigration`, `None`, and `LockOwned` respectively so the eventual executor does not infer behavior from database names.
 
@@ -36,7 +37,7 @@ The execution policy has three confirmation levels. A plan containing only safe 
 
 Failure recovery follows the transaction boundary instead of assuming that all databases provide transactional DDL. `PerMigration` plans require rollback of the encompassing transaction. `LockOwned` plans require abandoning the lock-owned transaction so its scope cleanup rolls back the migration. Plans with no transaction boundary use `ManualReconciliation`, because one or more earlier statements may already have committed. `MigrationExecutionPolicy::mayBePartiallyApplied()` exposes that distinction to callers.
 
-Worm must never continue automatically from the statement following a failure and must stop applying later migrations in the catalog. For transaction-backed plans, a future executor may retry the complete migration only after rollback succeeds. For `ManualReconciliation`, Worm must record the failure and refuse automatic retry until the database state has been inspected and reconciled explicitly; replaying the full plan or guessing a resume position could repeat already committed DDL.
+Worm never continues automatically from the statement following a failure. `Repository<MigrationHistory>::apply(...)` records the migration as failed after transaction or lock-scope cleanup and rejects later attempts because the record is no longer pending. Transaction-backed failures remove their schema changes before the failure record is written. With `ManualReconciliation`, earlier statements may remain committed, so the failed state requires explicit database inspection and reconciliation; replaying the full plan or guessing a resume position could repeat already committed DDL.
 
 ## DDL compilation
 
@@ -109,4 +110,4 @@ Worm treats migration generation as a review step, not an execution step. Missin
 
 ## What remains before executable migrations
 
-Before Worm can safely apply migration SQL, it still needs explicit table-rebuild artifacts for SQLite transformations, an executor that enforces the defined confirmation and failure policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as reviewable inputs rather than permission to mutate a database automatically.
+The shared driver contract now covers history initialization, migration locking, generated dialect DDL, successful application, failure persistence, transactional rollback, MySQL partial application, checksum divergence, and rejection of automatic retries. PostgreSQL, MySQL, and SQLite execute that contract when their integration services are available; SQL Server still lacks equivalent service-backed integration coverage. Remaining work includes explicit SQLite table-rebuild artifacts and exposing application, status, creation, and rollback through the CLI.

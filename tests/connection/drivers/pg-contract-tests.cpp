@@ -38,6 +38,9 @@ namespace
     pqxx::work transaction{connection};
     transaction.exec("DROP TABLE IF EXISTS worm_driver_contract");
     transaction.exec("DROP TABLE IF EXISTS worm_schema_contract");
+    transaction.exec("DROP TABLE IF EXISTS worm_migration_contract");
+    transaction.exec("DROP TABLE IF EXISTS worm_migration_failure");
+    transaction.exec("DROP TABLE IF EXISTS _worm_migrations");
     transaction.exec("DROP TYPE IF EXISTS worm_contract_status");
     transaction.exec("CREATE TYPE worm_contract_status AS ENUM ('active','on''hold')");
     transaction.exec(
@@ -79,6 +82,7 @@ try {
     std::make_shared<worm::connection::PgClient>(config),
     sqlBuilder,
     "public");
+  worm::tests::runMigrationExecutionContract(client, sqlBuilder, "public");
 
   const worm::connection::SchemaInspector inspector{*client};
   const auto schema = inspector.inspect();
