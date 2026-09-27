@@ -2,10 +2,79 @@
 
 #include <errors/migration-exception.hpp>
 
+#include <string_view>
 #include <utility>
 
 namespace worm::core
 {
+  namespace
+  {
+    [[nodiscard]]
+    MigrationConfirmation confirmationFor(MigrationRisk risk) noexcept
+    {
+      switch (risk) {
+      case MigrationRisk::Safe:
+        return MigrationConfirmation::None;
+      case MigrationRisk::Ambiguous:
+        return MigrationConfirmation::Ambiguous;
+      case MigrationRisk::Destructive:
+        return MigrationConfirmation::Destructive;
+      }
+
+      return MigrationConfirmation::Destructive;
+    }
+
+    [[nodiscard]]
+    int confirmationRank(MigrationConfirmation confirmation) noexcept
+    {
+      switch (confirmation) {
+      case MigrationConfirmation::None:
+        return 0;
+      case MigrationConfirmation::Ambiguous:
+        return 1;
+      case MigrationConfirmation::Destructive:
+        return 2;
+      }
+
+      return -1;
+    }
+
+    [[nodiscard]]
+    std::string_view confirmationName(MigrationConfirmation confirmation) noexcept
+    {
+      switch (confirmation) {
+      case MigrationConfirmation::None:
+        return "none";
+      case MigrationConfirmation::Ambiguous:
+        return "ambiguous";
+      case MigrationConfirmation::Destructive:
+        return "destructive";
+      }
+
+      return "unknown";
+    }
+
+    [[nodiscard]]
+    MigrationFailureRecovery failureRecoveryFor(MigrationTransactionMode mode) noexcept
+    {
+      switch (mode) {
+      case MigrationTransactionMode::PerMigration:
+        return MigrationFailureRecovery::RollbackTransaction;
+      case MigrationTransactionMode::LockOwned:
+        return MigrationFailureRecovery::RollbackLockScope;
+      case MigrationTransactionMode::None:
+        return MigrationFailureRecovery::ManualReconciliation;
+      }
+
+      return MigrationFailureRecovery::ManualReconciliation;
+    }
+  } // namespace
+
+  bool MigrationExecutionPolicy::mayBePartiallyApplied() const noexcept
+  {
+    return failureRecovery == MigrationFailureRecovery::ManualReconciliation;
+  }
+
   MigrationExecutionPlan::MigrationExecutionPlan(
     std::string migrationId,
     MigrationDirection direction,
@@ -35,6 +104,22 @@ namespace worm::core
   const std::vector<MigrationExecutionStep>& MigrationExecutionPlan::steps() const noexcept
   {
     return steps_;
+  }
+
+  MigrationExecutionPolicy MigrationExecutionPlan::policy() const noexcept
+  {
+    MigrationConfirmation requiredConfirmation = MigrationConfirmation::None;
+    for (const MigrationExecutionStep& step : steps_) {
+      const MigrationConfirmation stepConfirmation = confirmationFor(step.risk);
+      if (confirmationRank(stepConfirmation) > confirmationRank(requiredConfirmation)) {
+        requiredConfirmation = stepConfirmation;
+      }
+    }
+
+    return {
+      .requiredConfirmation = requiredConfirmation,
+      .failureRecovery = failureRecoveryFor(transactionMode_),
+    };
   }
 
   MigrationExecutionPlan compileMigrationExecutionPlan(
@@ -72,5 +157,17 @@ namespace worm::core
     }
 
     return {artifact.id(), direction, sqlBuilder.migrationTransactionMode(), std::move(steps)};
+  }
+
+  void authorizeMigrationExecution(const MigrationExecutionPlan& plan, MigrationConfirmation confirmation)
+  {
+    const MigrationConfirmation required = plan.policy().requiredConfirmation;
+    if (confirmationRank(confirmation) < confirmationRank(required)) {
+      throw MigrationException(
+        "Migration '{}' requires '{}' confirmation, but execution was authorized only through '{}'.",
+        plan.migrationId(),
+        confirmationName(required),
+        confirmationName(confirmation));
+    }
   }
 } // namespace worm::core

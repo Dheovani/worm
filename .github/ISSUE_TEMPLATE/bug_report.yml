@@ -1,0 +1,116 @@
+name: Bug Report
+description: Report a reproducible problem in worm
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve worm.
+
+        Before submitting, please make sure the issue has not already been reported
+        and provide enough information for the problem to be reproduced.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the problem clearly and concisely.
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: Describe the expected result.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest reproducible example possible.
+      placeholder: |
+        1. Configure...
+        2. Run...
+        3. Observe...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      description: Which database backend is affected?
+      options:
+        - PostgreSQL
+        - MySQL
+        - Microsoft SQL Server
+        - SQLite
+        - Multiple databases
+        - Not database-specific
+    validations:
+      required: true
+
+  - type: input
+    id: worm-version
+    attributes:
+      label: worm version
+      description: Version, tag, commit SHA, or branch where the issue occurs.
+      placeholder: "v0.1.0 / main / commit SHA"
+    validations:
+      required: true
+
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler
+      description: Compiler and version used to build worm.
+      placeholder: "GCC 15.2 / Clang 21 / MSVC 19.xx"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Operating system and version.
+      placeholder: "Ubuntu 26.04 / Windows 11 / macOS 26"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or code
+      description: Include the relevant CLI command or C++ code, if applicable.
+      render: shell
+      placeholder: worm migrate ...
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output / logs
+      description: Include relevant errors, stack traces, SQL output, or logs.
+      render: text
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other information that may help diagnose the problem.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues before opening this report.
+          required: true
+        - label: I provided enough information to reproduce the problem.
+          required: true

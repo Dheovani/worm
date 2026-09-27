@@ -15,6 +15,31 @@ namespace worm::core
     Rollback
   };
 
+  enum class MigrationConfirmation
+  {
+    None,
+    Ambiguous,
+    Destructive
+  };
+
+  enum class MigrationFailureRecovery
+  {
+    RollbackTransaction,
+    RollbackLockScope,
+    ManualReconciliation
+  };
+
+  struct MigrationExecutionPolicy
+  {
+    MigrationConfirmation requiredConfirmation;
+    MigrationFailureRecovery failureRecovery;
+
+    [[nodiscard]]
+    bool mayBePartiallyApplied() const noexcept;
+
+    friend bool operator==(const MigrationExecutionPolicy&, const MigrationExecutionPolicy&) = default;
+  };
+
   struct MigrationExecutionStep
   {
     std::string description;
@@ -39,6 +64,9 @@ namespace worm::core
     [[nodiscard]]
     const std::vector<MigrationExecutionStep>& steps() const noexcept;
 
+    [[nodiscard]]
+    MigrationExecutionPolicy policy() const noexcept;
+
   private:
     friend MigrationExecutionPlan compileMigrationExecutionPlan(
       const MigrationArtifact& artifact,
@@ -62,4 +90,8 @@ namespace worm::core
     const MigrationArtifact& artifact,
     const SqlBuilder& sqlBuilder,
     MigrationDirection direction = MigrationDirection::Forward);
+
+  void authorizeMigrationExecution(
+    const MigrationExecutionPlan& plan,
+    MigrationConfirmation confirmation = MigrationConfirmation::None);
 } // namespace worm::core
