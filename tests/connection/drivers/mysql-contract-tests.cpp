@@ -90,6 +90,11 @@ try {
   const worm::core::MySqlBuilder sqlBuilder;
 
   worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::MySQL);
+  worm::tests::runMigrationLockContract(
+    client,
+    std::make_shared<worm::connection::MySqlClient>(config),
+    sqlBuilder,
+    databaseName);
 
   const worm::connection::SchemaInspector inspector{*client};
   const auto schema = inspector.inspect();

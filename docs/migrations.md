@@ -15,6 +15,12 @@ The implemented flow is deliberately conservative:
 7. `MigrationHistory` represents migration records in memory, while `Repository<MigrationHistory>` creates or validates the Worm-owned `_worm_migrations` table and persists the artifact ID, name, SHA-256 checksum, state, application time, rollback time, and failure reason.
 8. `worm migrate validate --directory migrations` validates the local catalog ordering, filenames, artifact structure, and embedded checksums without connecting to the database or executing SQL. The directory defaults to `migrations` and can also be configured as `directory` under `[migrations]` in `worm.toml`.
 
+## Migration locking
+
+`Repository<MigrationHistory>::acquireLock(timeout)` acquires the lock associated with the configured migration-history schema and returns a move-only `MigrationLock`. The default timeout is 30 seconds. Calling `release()` completes the protected scope and releases the lock; if the object leaves scope while still active, its destructor performs the failure cleanup without throwing. A client cannot own two migration locks, start a regular transaction while a migration lock is active, or acquire a migration lock while a regular transaction is active. Lock operations preserve the client's thread-affinity rules.
+
+PostgreSQL uses a session advisory lock derived from the migration lock name and retries non-blocking acquisition until the timeout. MySQL uses `GET_LOCK` and `RELEASE_LOCK`. SQL Server uses a session-owned exclusive `sp_getapplock`. SQLite has no advisory-lock facility, so it holds `BEGIN EXCLUSIVE` on the migration connection: explicit release commits the protected SQLite migration scope, while destruction of an unreleased lock rolls it back. MySQL may round a non-integral timeout up to the next whole second because `GET_LOCK` accepts seconds.
+
 This means Worm can tell that a table, column, primary key, or selected column metadata is missing or incompatible, but it does not yet decide the complete SQL type, default expression, constraint naming strategy, or destructive action policy for every database.
 
 ## Migration artifacts
@@ -78,4 +84,4 @@ Worm treats migration generation as a review step, not an execution step. Missin
 
 ## What remains before executable migrations
 
-Before Worm can safely apply migration SQL, it still needs database-specific locking, complete dialect-aware DDL generation, table rebuild planning for SQLite, destructive-change confirmation, failure recovery policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as diagnostics and reviewable inputs only.
+Before Worm can safely apply migration SQL, it still needs complete dialect-aware DDL generation, table rebuild planning for SQLite, destructive-change confirmation, failure recovery policies, and integration tests against real database engines. Until those pieces exist, migration plans and artifacts should be treated as diagnostics and reviewable inputs only.

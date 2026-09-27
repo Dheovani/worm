@@ -2,6 +2,7 @@
 
 #include <errors/database-connection-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
+#include <errors/migration-lock-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/transaction-exception.hpp>
 #include <utils/helpers.hpp>
@@ -10,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <variant>
 #include <vector>
@@ -84,6 +86,16 @@ namespace
     }
 
     return values;
+  }
+
+  bool pgBoolean(const worm::core::ResultSet& result)
+  {
+    if (result.rowCount() != 1 || result.rows().front().columnCount() != 1) {
+      return false;
+    }
+
+    const auto* value = std::get_if<std::string>(&result.rows().front().columns.front().value);
+    return value != nullptr && (*value == "t" || *value == "true" || *value == "1");
   }
 } // namespace
 
@@ -191,6 +203,43 @@ namespace worm::connection
       innerTransaction_.reset();
     } catch (const std::exception& error) {
       throw worm::QueryExecutionException(error.what());
+    }
+  }
+
+  void PgClient::acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    const core::Statement statement{
+      "SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired",
+      {std::string{name}},
+    };
+
+    do {
+      if (pgBoolean(executeImpl(statement))) {
+        return;
+      }
+
+      if (std::chrono::steady_clock::now() >= deadline) {
+        break;
+      }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds{25});
+    } while (true);
+
+    throw MigrationLockException("Timed out while acquiring PostgreSQL migration lock '{}'.", name);
+  }
+
+  void PgClient::releaseMigrationLockImpl(std::string_view name, bool completed)
+  {
+    static_cast<void>(completed);
+    const core::ResultSet result = executeImpl(
+      {
+        "SELECT pg_advisory_unlock(hashtextextended($1, 0)) AS released",
+        {std::string{name}},
+      });
+
+    if (!pgBoolean(result)) {
+      throw MigrationLockException("PostgreSQL connection does not own migration lock '{}'.", name);
     }
   }
 } // namespace worm::connection

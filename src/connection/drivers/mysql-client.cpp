@@ -1,6 +1,7 @@
 #include <connection/drivers/mysql-client.hpp>
 #include <errors/database-connection-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
+#include <errors/migration-lock-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 
 #include <algorithm>
@@ -170,6 +171,16 @@ namespace
     }
 
     return static_cast<unsigned int>(seconds.count());
+  }
+
+  bool mysqlLockResult(const worm::core::ResultSet& result)
+  {
+    if (result.rowCount() != 1 || result.rows().front().columnCount() != 1) {
+      return false;
+    }
+
+    const auto* value = std::get_if<std::int64_t>(&result.rows().front().columns.front().value);
+    return value != nullptr && *value == 1;
   }
 } // namespace
 
@@ -404,6 +415,33 @@ namespace worm::connection
   {
     if (mysql_query(connection_.get(), "ROLLBACK")) {
       throw QueryExecutionException(mysql_error(connection_.get()));
+    }
+  }
+
+  void MySqlClient::acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout)
+  {
+    const core::ResultSet result = executeImpl(
+      {
+        "SELECT GET_LOCK(?, ?) AS acquired",
+        {std::string{name}, static_cast<std::int64_t>(mysqlTimeoutSeconds(timeout))},
+      });
+
+    if (!mysqlLockResult(result)) {
+      throw MigrationLockException("Timed out while acquiring MySQL migration lock '{}'.", name);
+    }
+  }
+
+  void MySqlClient::releaseMigrationLockImpl(std::string_view name, bool completed)
+  {
+    static_cast<void>(completed);
+    const core::ResultSet result = executeImpl(
+      {
+        "SELECT RELEASE_LOCK(?) AS released",
+        {std::string{name}},
+      });
+
+    if (!mysqlLockResult(result)) {
+      throw MigrationLockException("MySQL connection does not own migration lock '{}'.", name);
     }
   }
 } // namespace worm::connection

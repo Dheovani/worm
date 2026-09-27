@@ -8,6 +8,7 @@
 #include <errors/migration-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/worm-exception.hpp>
+#include <utils/hash.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -301,6 +302,16 @@ namespace worm::core
         {"failure_reason", std::string{reason}},
       },
       "failed");
+  }
+
+  MigrationLock Repository<MigrationHistory>::acquireLock(std::chrono::milliseconds timeout) const
+  {
+    const std::string scope = schema_.empty() ? std::string{"default"} : schema_;
+    std::string lockName = "worm:migrations:" + scope;
+    if (lockName.size() > 64) {
+      lockName = "worm:migrations:" + std::to_string(hashCode(scope));
+    }
+    return MigrationLock{dbClient_, lockName, timeout};
   }
 
   std::string Repository<MigrationHistory>::qualifiedTableName() const

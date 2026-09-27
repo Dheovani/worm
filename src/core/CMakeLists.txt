@@ -16,6 +16,7 @@ add_library(
   query/statement.cpp
   output/paginator.cpp
   output/result-set.cpp
+  persistence/migration-lock.cpp
   persistence/migration-history-repository.cpp
   persistence/session.cpp
 )

@@ -5,6 +5,7 @@
 #include <core/model/migration-history.hpp>
 #include <core/model/schema-snapshot.hpp>
 #include <core/output/result-set.hpp>
+#include <core/persistence/migration-lock.hpp>
 #include <core/query/expression.hpp>
 #include <core/query/query-builder.hpp>
 #include <core/query/statement.hpp>
@@ -39,6 +40,9 @@ namespace worm::core
     void markRolledBack(std::string_view id, std::chrono::system_clock::time_point rolledBackAt) const;
 
     void markFailed(std::string_view id, std::string_view reason) const;
+
+    [[nodiscard]]
+    MigrationLock acquireLock(std::chrono::milliseconds timeout = std::chrono::seconds{30}) const;
 
     [[nodiscard]]
     static constexpr std::string_view tableName() noexcept

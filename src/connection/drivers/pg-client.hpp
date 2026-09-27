@@ -4,8 +4,10 @@
 #include <connection/configuration.hpp>
 #include <pqxx/pqxx>
 
+#include <chrono>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace worm::connection
 {
@@ -29,6 +31,8 @@ namespace worm::connection
     void beginTransactionImpl() override;
     void rollbackTransactionImpl() override;
     void commitTransactionImpl() override;
+    void acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout) override;
+    void releaseMigrationLockImpl(std::string_view name, bool completed) override;
 
     [[nodiscard]]
     core::ResultSet executeImpl(const core::Statement& statement) override;

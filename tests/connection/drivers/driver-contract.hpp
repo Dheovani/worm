@@ -2,11 +2,14 @@
 
 #include <connection/client.hpp>
 #include <connection/transaction.hpp>
+#include <core/persistence/migration-history-repository.hpp>
 #include <core/persistence/repository.hpp>
 #include <core/query/sql-builder.hpp>
+#include <errors/migration-lock-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <reflection/field.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -165,5 +168,30 @@ namespace worm::tests
     }
 
     requireContract(normalizedError, "Driver did not normalize a database error as QueryExecutionException.");
+  }
+
+  template <typename Client, core::SqlBuilderI Builder>
+  void runMigrationLockContract(
+    const std::shared_ptr<Client>& owner,
+    const std::shared_ptr<Client>& competitor,
+    const Builder& sqlBuilder,
+    std::string schema)
+  {
+    const core::QueryBuilder queryBuilder{sqlBuilder};
+    const core::Repository<core::MigrationHistory> ownerRepository{owner, queryBuilder, schema};
+    const core::Repository<core::MigrationHistory> competitorRepository{competitor, queryBuilder, std::move(schema)};
+
+    core::MigrationLock ownerLock = ownerRepository.acquireLock(std::chrono::milliseconds{0});
+    bool contentionRejected = false;
+    try {
+      static_cast<void>(competitorRepository.acquireLock(std::chrono::milliseconds{0}));
+    } catch (const MigrationLockException&) {
+      contentionRejected = true;
+    }
+    requireContract(contentionRejected, "Driver allowed two connections to own the same migration lock.");
+
+    ownerLock.release();
+    core::MigrationLock competitorLock = competitorRepository.acquireLock(std::chrono::milliseconds{1000});
+    requireContract(competitorLock.active(), "Driver did not make a released migration lock available again.");
   }
 } // namespace worm::tests

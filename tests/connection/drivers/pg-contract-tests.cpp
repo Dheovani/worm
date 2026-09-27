@@ -74,6 +74,11 @@ try {
   const worm::core::PgBuilder sqlBuilder;
 
   worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::PostgreSQL);
+  worm::tests::runMigrationLockContract(
+    client,
+    std::make_shared<worm::connection::PgClient>(config),
+    sqlBuilder,
+    "public");
 
   const worm::connection::SchemaInspector inspector{*client};
   const auto schema = inspector.inspect();

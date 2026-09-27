@@ -73,6 +73,11 @@ try {
   const worm::core::SqliteBuilder sqlBuilder;
 
   worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::SQLite);
+  worm::tests::runMigrationLockContract(
+    client,
+    std::make_shared<worm::connection::SqliteClient>(config),
+    sqlBuilder,
+    "main");
 
   return 0;
 } catch (const std::exception& error) {

@@ -40,6 +40,7 @@ add_worm_core_test(
   persistence/migration-history-repository-tests.cpp
   Worm.Core.MigrationHistoryRepository
 )
+add_worm_core_test(WormMigrationLockTests persistence/migration-lock-tests.cpp Worm.Core.MigrationLock)
 add_worm_core_test(WormCacheTests persistence/cache-tests.cpp Worm.Core.Cache)
 add_worm_core_test(WormSessionTests persistence/session-tests.cpp Worm.Core.Session)
 
