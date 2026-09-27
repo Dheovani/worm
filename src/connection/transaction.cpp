@@ -19,7 +19,7 @@ namespace worm::connection
     if (transactionActive_) {
       throw worm::TransactionException("A transaction is already active for this client.");
     }
-    if (!migrationLockName_.empty()) {
+    if (!migrationLockName_.empty() && migrationLockOwnsTransactionImpl()) {
       throw worm::TransactionException("A transaction cannot start while a migration lock is active.");
     }
 

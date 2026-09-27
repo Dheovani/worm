@@ -73,6 +73,9 @@ namespace worm::connection
     virtual void acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout);
     virtual void releaseMigrationLockImpl(std::string_view name, bool completed);
 
+    [[nodiscard]]
+    virtual bool migrationLockOwnsTransactionImpl() const noexcept;
+
   private:
     [[nodiscard]]
     core::ResultSet execute(const core::Statement& statement)

@@ -22,6 +22,11 @@ namespace worm::connection
     throw MigrationLockException("Database driver does not support releasing migration lock '{}'.", name);
   }
 
+  bool Client::migrationLockOwnsTransactionImpl() const noexcept
+  {
+    return false;
+  }
+
   void Client::acquireMigrationLock(std::string_view name, std::chrono::milliseconds timeout)
   {
     ensureThreadAffinity();

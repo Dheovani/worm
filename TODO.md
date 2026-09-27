@@ -130,7 +130,7 @@ This milestone should end with a complete example that creates, persists, querie
     - [x] Discover migration artifacts and validate deterministic ordering, duplicate IDs, missing files, and edited checksums.
     - [x] Persist migration history in a Worm-owned database table instead of relying on the in-memory `MigrationHistory` container.
     - [x] Implement a database-specific migration lock to prevent concurrent migration processes.
-    - [ ] Compile migration steps into dialect-specific DDL and define transactional boundaries for each supported database.
+    - [x] Compile migration steps into dialect-specific DDL and define transactional boundaries for each supported database.
     - [ ] Define confirmation, failure recovery, and partially applied migration policies for ambiguous and destructive operations.
     - [ ] Add integration contracts for migration history, locking, successful application, failure recovery, and dialect-specific DDL.
     - [ ] `migrate create`: Create a reviewable migration artifact from the current `diff` without applying it.

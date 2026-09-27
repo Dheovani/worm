@@ -31,6 +31,13 @@ namespace worm::core
     Destructive
   };
 
+  enum class MigrationTransactionMode
+  {
+    PerMigration,
+    None,
+    LockOwned
+  };
+
   struct MigrationStep
   {
     MigrationStepKind kind;

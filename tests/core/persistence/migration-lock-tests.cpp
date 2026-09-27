@@ -27,6 +27,7 @@ namespace
     std::size_t releases{};
     bool rejectAcquisition{false};
     bool lastReleaseCompleted{false};
+    bool lockOwnsTransaction{true};
 
     [[nodiscard]]
     worm::connection::DatabaseType type() const noexcept override
@@ -61,6 +62,12 @@ namespace
       }
       lastReleaseCompleted = completed;
       ++releases;
+    }
+
+    [[nodiscard]]
+    bool migrationLockOwnsTransactionImpl() const noexcept override
+    {
+      return lockOwnsTransaction;
     }
   };
 } // namespace
@@ -152,6 +159,13 @@ int main()
   } catch (const worm::MigrationLockException&) {
     contentionRejected = true;
   }
+
+  client->rejectAcquisition = false;
+  client->lockOwnsTransaction = false;
+  worm::core::MigrationLock advisoryLock = repository.acquireLock();
+  auto transaction = client->beginTransaction();
+  transaction.rollback();
+  advisoryLock.release();
 
   if (!repeatedReleaseRejected || !negativeTimeoutRejected || !boundedName || !lockDuringTransactionRejected ||
       !contentionRejected) {

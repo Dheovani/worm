@@ -27,6 +27,7 @@ add_worm_core_test(WormSqlBuilderTests query/sql-builder-tests.cpp Worm.Core.Sql
 add_worm_core_test(WormSourceTests query/source-tests.cpp Worm.Core.Source)
 add_worm_core_test(WormQueryBuilderTests query/query-builder-tests.cpp Worm.Core.QueryBuilder)
 add_worm_core_test(WormFilterTests query/filter-tests.cpp Worm.Core.Filter)
+add_worm_core_test(WormMigrationDdlTests query/migration-ddl-tests.cpp Worm.Core.MigrationDdl)
 add_worm_core_test(WormGroupingTests query/grouping-tests.cpp Worm.Core.Grouping)
 add_worm_core_test(WormOrderingTests query/ordering-tests.cpp Worm.Core.Ordering)
 add_worm_core_test(WormPaginationTests query/pagination-tests.cpp Worm.Core.Pagination)
@@ -41,6 +42,7 @@ add_worm_core_test(
   Worm.Core.MigrationHistoryRepository
 )
 add_worm_core_test(WormMigrationLockTests persistence/migration-lock-tests.cpp Worm.Core.MigrationLock)
+add_worm_core_test(WormMigrationExecutionTests persistence/migration-execution-tests.cpp Worm.Core.MigrationExecution)
 add_worm_core_test(WormCacheTests persistence/cache-tests.cpp Worm.Core.Cache)
 add_worm_core_test(WormSessionTests persistence/session-tests.cpp Worm.Core.Session)
 

@@ -271,4 +271,9 @@ namespace worm::connection
     static_cast<void>(name);
     executeTransactionCommand(completed ? "COMMIT" : "ROLLBACK");
   }
+
+  bool SqliteClient::migrationLockOwnsTransactionImpl() const noexcept
+  {
+    return true;
+  }
 } // namespace worm::connection

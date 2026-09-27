@@ -42,6 +42,9 @@ namespace worm::connection
     void releaseMigrationLockImpl(std::string_view name, bool completed) override;
 
     [[nodiscard]]
+    bool migrationLockOwnsTransactionImpl() const noexcept override;
+
+    [[nodiscard]]
     core::ResultSet executeImpl(const core::Statement& statement) override;
   };
 

@@ -10,12 +10,14 @@ add_library(
   query/criteria.cpp
   query/dialect.cpp
   query/filter.cpp
+  query/migration-ddl.cpp
   query/predicate.cpp
   query/query-builder.cpp
   query/sql-builder.cpp
   query/statement.cpp
   output/paginator.cpp
   output/result-set.cpp
+  persistence/migration-execution.cpp
   persistence/migration-lock.cpp
   persistence/migration-history-repository.cpp
   persistence/session.cpp
