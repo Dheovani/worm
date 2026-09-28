@@ -6,6 +6,7 @@
 
 #include "database/diff.hpp"
 #include "database/inspect.hpp"
+#include "database/migrate.hpp"
 #include "database/n-plus-one.hpp"
 #include "errors/invalid-cli-argument-exception.hpp"
 #include "generator/check.hpp"
@@ -92,6 +93,7 @@ namespace worm::cli
               << "  pull                  Generate missing C++ entities from database tables\n"
               << "  diff                  Display a migration-oriented schema difference report\n"
               << "  inspect               Print the complete supported database structure\n"
+              << "  migrate               Manage migration artifacts and database migration state\n"
               << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
               << '\n'
               << "Global options:\n"
@@ -114,11 +116,16 @@ namespace worm::cli
               << "  --table <name>        Select a table (repeatable)\n"
               << "  --output <path>       Output directory for pull or SQL file for push\n"
               << "  --namespace <name>    Namespace for generated entities\n"
-              << "  --name <name>         Explicit generated entity name\n"
-              << "  --apply               Apply the generated plan\n"
+              << "  --name <name>         Explicit generated entity or migration name\n"
+              << "  --apply               Apply pending migrations or a generated push plan\n"
               << "  --query <sql>         Analyze one observed SELECT query\n"
               << "  --file <path>         Analyze semicolon-separated SELECT queries from a file\n"
               << "  --max-executions <n>  Allow a query pattern to execute n times before reporting it\n"
+              << "  --directory <path>    Migration artifact directory (default: migrations)\n"
+              << "  --create              Create a reviewed migration artifact from the current schema diff\n"
+              << "  --validate            Validate local migration artifacts without changing the database\n"
+              << "  --status              Compare local migration artifacts with persistent migration history\n"
+              << "  --rollback            Revert the latest applied migration using its explicit rollback steps\n"
               << '\n'
               << "Examples:\n"
               << "  worm check\n"
@@ -127,6 +134,12 @@ namespace worm::cli
               << "  worm pull\n"
               << "  worm diff\n"
               << "  worm --driver sqlite --database application.db inspect\n"
+              << "  worm --manifest worm-schema.json --driver sqlite --database application.db migrate --create "
+                 "--name create-users\n"
+              << "  worm migrate --validate --directory migrations\n"
+              << "  worm --driver sqlite --database application.db migrate --apply\n"
+              << "  worm --driver sqlite --database application.db migrate --status\n"
+              << "  worm --driver sqlite --database application.db migrate --rollback\n"
               << "  worm pull --apply\n"
               << "  worm push --entity User\n"
               << "  worm pull --table users\n"
@@ -237,6 +250,9 @@ namespace worm::cli
       break;
     case Commands::Diff:
       report = database::diff(invocation);
+      break;
+    case Commands::Migrate:
+      report = database::migrate(invocation, &std::clog);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

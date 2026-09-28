@@ -1,12 +1,21 @@
 #pragma once
 
 #include <connection/client.hpp>
+#include <connection/schema-inspector.hpp>
 #include <connection/transaction.hpp>
+#include <core/model/schema-diff.hpp>
+#include <core/model/schema-metadata.hpp>
+#include <core/persistence/migration-execution.hpp>
+#include <core/persistence/migration-history-repository.hpp>
 #include <core/persistence/repository.hpp>
+#include <core/query/migration-ddl.hpp>
 #include <core/query/sql-builder.hpp>
+#include <errors/migration-exception.hpp>
+#include <errors/migration-lock-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <reflection/field.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -165,5 +174,215 @@ namespace worm::tests
     }
 
     requireContract(normalizedError, "Driver did not normalize a database error as QueryExecutionException.");
+  }
+
+  template <typename Client, core::SqlBuilderI Builder>
+  void runMigrationLockContract(
+    const std::shared_ptr<Client>& owner,
+    const std::shared_ptr<Client>& competitor,
+    const Builder& sqlBuilder,
+    std::string schema)
+  {
+    const core::QueryBuilder queryBuilder{sqlBuilder};
+    const core::Repository<core::MigrationHistory> ownerRepository{owner, queryBuilder, schema};
+    const core::Repository<core::MigrationHistory> competitorRepository{competitor, queryBuilder, std::move(schema)};
+
+    core::MigrationLock ownerLock = ownerRepository.acquireLock(std::chrono::milliseconds{0});
+    bool contentionRejected = false;
+    try {
+      static_cast<void>(competitorRepository.acquireLock(std::chrono::milliseconds{0}));
+    } catch (const MigrationLockException&) {
+      contentionRejected = true;
+    }
+    requireContract(contentionRejected, "Driver allowed two connections to own the same migration lock.");
+
+    ownerLock.release();
+    core::MigrationLock competitorLock = competitorRepository.acquireLock(std::chrono::milliseconds{1000});
+    requireContract(competitorLock.active(), "Driver did not make a released migration lock available again.");
+  }
+
+  template <typename Client, core::SqlBuilderI Builder>
+  void runMigrationExecutionContract(
+    const std::shared_ptr<Client>& client,
+    const Builder& sqlBuilder,
+    std::string schema)
+  {
+    const core::QueryBuilder queryBuilder{sqlBuilder};
+    const core::Repository<core::MigrationHistory> repository{client, queryBuilder, schema};
+    const connection::SchemaInspector inspector{*client};
+    repository.initialize(inspector.inspect());
+
+    const core::Table table{core::Schema{schema}, "worm_migration_contract"};
+    const core::Column id{"id", table};
+    const core::SchemaMetadata expected{
+      core::Schema{schema},
+      {
+        core::TableMetadata{
+          table,
+          {core::ColumnMetadata{id, {.kind = core::ColumnTypeKind::Int64}}},
+          core::PrimaryKey{"pk_worm_migration_contract", {id}},
+        },
+      },
+    };
+    const core::SchemaSnapshot emptySchema;
+    const core::MigrationDdlPlan ddl = core::compileMigrationDdl(
+      core::generateMigrationPlan(core::compareSchemas(expected, emptySchema)),
+      expected,
+      emptySchema,
+      sqlBuilder);
+
+    std::vector<core::MigrationStatement> statements;
+    for (const core::MigrationDdlStep& step : ddl.steps()) {
+      for (const core::Statement& statement : step.statements) {
+        statements.push_back(
+          {
+            .description = step.description,
+            .sql = statement.sql,
+            .risk = step.risk,
+          });
+      }
+    }
+
+    const core::MigrationStep rollbackStep{
+      .kind = core::MigrationStepKind::DropTable,
+      .risk = core::MigrationRisk::Destructive,
+      .difference =
+        {
+          .kind = core::SchemaDifferenceKind::UnexpectedTable,
+          .schema = schema,
+          .table = std::string{table.name()},
+        },
+      .description = "Drop migration contract table",
+    };
+    const core::SchemaSnapshot rollbackSchema{
+      .tables =
+        {
+          {
+            .schema = schema,
+            .name = std::string{table.name()},
+            .columns = {{.name = "id", .type = {.kind = core::ColumnTypeKind::Int64}, .nullable = false}},
+            .primaryKey = {"id"},
+          },
+        },
+    };
+    std::vector<core::MigrationStatement> rollbackStatements;
+    for (const core::Statement& statement : sqlBuilder.compileMigrationStep(rollbackStep, expected, rollbackSchema)) {
+      rollbackStatements.push_back(
+        {
+          .description = rollbackStep.description,
+          .sql = statement.sql,
+          .risk = rollbackStep.risk,
+        });
+    }
+
+    const core::MigrationArtifact artifact = core::makeMigrationArtifact(
+      "20260928000100",
+      "create-migration-contract",
+      std::string{sqlBuilder.databaseName()},
+      std::move(statements),
+      std::move(rollbackStatements));
+    repository.addPending(artifact);
+    const core::MigrationExecutionPlan plan = core::compileMigrationExecutionPlan(artifact, sqlBuilder);
+
+    const core::MigrationArtifact editedArtifact = core::makeMigrationArtifact(
+      artifact.id(),
+      "edited-migration-contract",
+      std::string{sqlBuilder.databaseName()},
+      {
+        {
+          .description = "Edited migration",
+          .sql = "select 1",
+        },
+      });
+    bool editedArtifactRejected = false;
+    try {
+      repository.apply(core::compileMigrationExecutionPlan(editedArtifact, sqlBuilder));
+    } catch (const MigrationException&) {
+      editedArtifactRejected = true;
+    }
+    requireContract(editedArtifactRejected, "Migration executor accepted an artifact edited after registration.");
+
+    repository.apply(plan, core::MigrationConfirmation::Ambiguous);
+
+    const core::MigrationHistory appliedHistory = repository.load();
+    const core::MigrationRecord* applied = appliedHistory.find(artifact.id());
+    requireContract(
+      applied != nullptr && applied->state == core::MigrationState::Applied,
+      "Migration executor did not persist successful application history.");
+    requireContract(
+      inspector.inspect().findTable(schema, table.name()) != nullptr,
+      "Migration executor did not apply the dialect-specific CREATE TABLE statement.");
+
+    const core::MigrationExecutionPlan rollbackPlan =
+      core::compileMigrationExecutionPlan(artifact, sqlBuilder, core::MigrationDirection::Rollback);
+    repository.rollback(rollbackPlan, core::MigrationConfirmation::Destructive);
+    const core::MigrationHistory rolledBackHistory = repository.load();
+    const core::MigrationRecord* rolledBack = rolledBackHistory.find(artifact.id());
+    requireContract(
+      rolledBack != nullptr && rolledBack->state == core::MigrationState::RolledBack,
+      "Migration executor did not persist successful rollback history.");
+    requireContract(
+      inspector.inspect().findTable(schema, table.name()) == nullptr,
+      "Migration executor did not execute the explicitly authored rollback statements.");
+
+    bool repeatedRollbackRejected = false;
+    try {
+      repository.rollback(rollbackPlan, core::MigrationConfirmation::Destructive);
+    } catch (const MigrationException&) {
+      repeatedRollbackRejected = true;
+    }
+    requireContract(repeatedRollbackRejected, "Migration executor rolled back a migration more than once.");
+
+    const core::Table failureTable{core::Schema{schema}, "worm_migration_failure"};
+    const core::Column failureId{"id", failureTable};
+    const core::TableMetadata failureMetadata{
+      failureTable,
+      {core::ColumnMetadata{failureId, {.kind = core::ColumnTypeKind::Int64}}},
+      core::PrimaryKey{"pk_worm_migration_failure", {failureId}},
+    };
+    const std::string createFailureTable = sqlBuilder.create(failureMetadata).front().sql;
+    const core::MigrationArtifact failingArtifact = core::makeMigrationArtifact(
+      "20260928000200",
+      "fail-after-create",
+      std::string{sqlBuilder.databaseName()},
+      {
+        {
+          .description = "Create failure contract table",
+          .sql = createFailureTable,
+        },
+        {
+          .description = "Attempt duplicate table creation",
+          .sql = createFailureTable,
+        },
+      });
+    repository.addPending(failingArtifact);
+    const core::MigrationExecutionPlan failingPlan = core::compileMigrationExecutionPlan(failingArtifact, sqlBuilder);
+
+    bool failureNormalized = false;
+    try {
+      repository.apply(failingPlan);
+    } catch (const MigrationException&) {
+      failureNormalized = true;
+    }
+    requireContract(failureNormalized, "Migration executor did not normalize a failed statement.");
+
+    const core::MigrationHistory failedHistory = repository.load();
+    const core::MigrationRecord* failed = failedHistory.find(failingArtifact.id());
+    requireContract(
+      failed != nullptr && failed->state == core::MigrationState::Failed && !failed->failureReason.empty(),
+      "Migration executor did not persist failure history.");
+
+    const bool failureTableExists = inspector.inspect().findTable(schema, failureTable.name()) != nullptr;
+    requireContract(
+      failureTableExists == failingPlan.policy().mayBePartiallyApplied(),
+      "Migration failure did not follow the dialect transaction policy.");
+
+    bool failedRetryRejected = false;
+    try {
+      repository.apply(failingPlan);
+    } catch (const MigrationException&) {
+      failedRetryRejected = true;
+    }
+    requireContract(failedRetryRejected, "Migration executor retried a failed migration automatically.");
   }
 } // namespace worm::tests

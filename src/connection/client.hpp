@@ -6,16 +6,20 @@
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <map>
 #include <string>
+#include <string_view>
 #include <thread>
 
 namespace worm::core
 {
   template <typename T>
   class Repository;
-}
+
+  class MigrationLock;
+} // namespace worm::core
 
 namespace worm::connection
 {
@@ -44,6 +48,7 @@ namespace worm::connection
 
     friend class Transaction;
     friend class SchemaInspector;
+    friend class core::MigrationLock;
 
   public:
     virtual ~Client() = default;
@@ -65,6 +70,11 @@ namespace worm::connection
     virtual void beginTransactionImpl() = 0;
     virtual void rollbackTransactionImpl() = 0;
     virtual void commitTransactionImpl() = 0;
+    virtual void acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout);
+    virtual void releaseMigrationLockImpl(std::string_view name, bool completed);
+
+    [[nodiscard]]
+    virtual bool migrationLockOwnsTransactionImpl() const noexcept;
 
   private:
     [[nodiscard]]
@@ -72,7 +82,8 @@ namespace worm::connection
     {
       ensureThreadAffinity();
 
-      const bool cacheable = cacheResults_ && !transactionActive_ && core::isSelect(statement.sql);
+      const bool cacheable =
+        cacheResults_ && !transactionActive_ && migrationLockName_.empty() && core::isSelect(statement.sql);
       if (cacheable) {
         if (const auto cachedResult = cachedResults_.get(statement)) {
           return cachedResult->get();
@@ -92,6 +103,8 @@ namespace worm::connection
     void startTransaction();
     void commitActiveTransaction();
     void rollbackActiveTransaction();
+    void acquireMigrationLock(std::string_view name, std::chrono::milliseconds timeout);
+    void releaseMigrationLock(bool completed);
     void ensureThreadAffinity() const;
 
     [[nodiscard]]
@@ -101,6 +114,7 @@ namespace worm::connection
     const std::thread::id ownerThread_ = std::this_thread::get_id();
     const bool cacheResults_ = false;
     bool transactionActive_ = false;
+    std::string migrationLockName_;
   };
 
 } // namespace worm::connection

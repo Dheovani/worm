@@ -98,11 +98,11 @@ namespace worm::connection
       throwConnectionError();
     }
 
-    if (databaseConfig.timeoutConfig.queryTimeout.has_value() &&
-        sqlite3_busy_timeout(
-          connection_.get(),
-          sqliteTimeoutMilliseconds(*databaseConfig.timeoutConfig.queryTimeout)) != SQLITE_OK) {
-      throwConnectionError();
+    if (databaseConfig.timeoutConfig.queryTimeout.has_value()) {
+      busyTimeoutMilliseconds_ = sqliteTimeoutMilliseconds(*databaseConfig.timeoutConfig.queryTimeout);
+      if (sqlite3_busy_timeout(connection_.get(), busyTimeoutMilliseconds_) != SQLITE_OK) {
+        throwConnectionError();
+      }
     }
   }
 
@@ -241,5 +241,39 @@ namespace worm::connection
   void SqliteClient::rollbackTransactionImpl()
   {
     executeTransactionCommand("ROLLBACK");
+  }
+
+  void SqliteClient::acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout)
+  {
+    static_cast<void>(name);
+    const int lockTimeout = sqliteTimeoutMilliseconds(timeout);
+    if (sqlite3_busy_timeout(connection_.get(), lockTimeout) != SQLITE_OK) {
+      throwConnectionError();
+    }
+
+    try {
+      executeTransactionCommand("BEGIN EXCLUSIVE");
+    } catch (...) {
+      static_cast<void>(sqlite3_busy_timeout(connection_.get(), busyTimeoutMilliseconds_));
+      throw;
+    }
+
+    if (sqlite3_busy_timeout(connection_.get(), busyTimeoutMilliseconds_) != SQLITE_OK) {
+      try {
+        executeTransactionCommand("ROLLBACK");
+      } catch (...) {}
+      throwConnectionError();
+    }
+  }
+
+  void SqliteClient::releaseMigrationLockImpl(std::string_view name, bool completed)
+  {
+    static_cast<void>(name);
+    executeTransactionCommand(completed ? "COMMIT" : "ROLLBACK");
+  }
+
+  bool SqliteClient::migrationLockOwnsTransactionImpl() const noexcept
+  {
+    return true;
   }
 } // namespace worm::connection

@@ -103,8 +103,7 @@ namespace worm::core
           difference.actual = detail::boolValue(actualColumn->unique);
           differences.push_back(std::move(difference));
         }
-        if (!expectedColumn.defaultExpression.empty() &&
-            expectedColumn.defaultExpression != actualColumn->defaultExpression.value_or("")) {
+        if (expectedColumn.defaultExpression != actualColumn->defaultExpression.value_or("")) {
           SchemaDifference difference =
             differenceFor(SchemaDifferenceKind::DefaultExpressionMismatch, expected.table());
           difference.column = expectedColumn.columnName;

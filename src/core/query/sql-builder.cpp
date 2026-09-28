@@ -2,6 +2,7 @@
 
 #include <core/query/dialect.hpp>
 
+#include <errors/migration-exception.hpp>
 #include <errors/sql-build-exception.hpp>
 
 #include <algorithm>
@@ -510,8 +511,10 @@ namespace worm::core
     return {std::move(sql), std::move(parameters)};
   }
 
-  Statement
-  SqlBuilder::select(const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const
+  Statement SqlBuilder::select(
+    const std::vector<worm::core::Field>& fields,
+    const Source& source,
+    const Criteria& criteria) const
   {
     return select(
       fields,
@@ -524,8 +527,9 @@ namespace worm::core
       criteria.having());
   }
 
-  Statement
-  SqlBuilder::insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
+  Statement SqlBuilder::insert(
+    const Source& source,
+    const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
     if (columns.empty()) {
       throw worm::SqlBuildException("INSERT operation must receive at least one column.");
@@ -874,6 +878,238 @@ namespace worm::core
     return statements;
   }
 
+  std::string_view SqlBuilder::databaseName() const noexcept
+  {
+    return "postgresql";
+  }
+
+  MigrationTransactionMode SqlBuilder::migrationTransactionMode() const noexcept
+  {
+    return MigrationTransactionMode::PerMigration;
+  }
+
+  std::vector<Statement> SqlBuilder::compileMigrationStep(
+    const MigrationStep& step,
+    const SchemaMetadata& expected,
+    const SchemaSnapshot& actual) const
+  {
+    const Table table{Schema{step.difference.schema}, step.difference.table};
+    const TableMetadata* expectedTable = expected.findTable(table);
+    const SchemaTableSnapshot* actualTable = actual.findTable(step.difference.schema, step.difference.table);
+
+    const auto requireExpectedTable = [&]() -> const TableMetadata& {
+      if (expectedTable == nullptr) {
+        throw MigrationException(
+          "Migration step '{}' references table '{}.{}', which is absent from the expected schema.",
+          step.description,
+          step.difference.schema,
+          step.difference.table);
+      }
+      return *expectedTable;
+    };
+
+    const auto requireActualTable = [&]() -> const SchemaTableSnapshot& {
+      if (actualTable == nullptr) {
+        throw MigrationException(
+          "Migration step '{}' references table '{}.{}', which is absent from the actual schema snapshot.",
+          step.description,
+          step.difference.schema,
+          step.difference.table);
+      }
+      return *actualTable;
+    };
+
+    const auto requireExpectedColumn = [&]() -> const ColumnMetadata& {
+      const ColumnMetadata* column = requireExpectedTable().findColumn(step.difference.column);
+      if (column == nullptr) {
+        throw MigrationException(
+          "Migration step '{}' references column '{}', which is absent from the expected table '{}'.",
+          step.description,
+          step.difference.column,
+          step.difference.table);
+      }
+      return *column;
+    };
+
+    const auto requireActualColumn = [&]() -> const SchemaColumnSnapshot& {
+      const SchemaColumnSnapshot* column = requireActualTable().findColumn(step.difference.column);
+      if (column == nullptr) {
+        throw MigrationException(
+          "Migration step '{}' references column '{}', which is absent from the actual table '{}'.",
+          step.description,
+          step.difference.column,
+          step.difference.table);
+      }
+      return *column;
+    };
+
+    const std::string qualifiedTable = renderQualifiedTable(table);
+    const std::string quotedColumn = quoteIdentifier(step.difference.column);
+
+    switch (step.kind) {
+    case MigrationStepKind::CreateTable:
+      if (actualTable != nullptr) {
+        throw MigrationException("Migration step '{}' targets a table that already exists.", step.description);
+      }
+      return create(requireExpectedTable());
+    case MigrationStepKind::DropTable:
+      static_cast<void>(requireActualTable());
+      return {{"drop table " + qualifiedTable, {}}};
+    case MigrationStepKind::AddColumn: {
+      const ColumnMetadata& column = requireExpectedColumn();
+      const SchemaTableSnapshot& currentTable = requireActualTable();
+      if (currentTable.findColumn(step.difference.column) != nullptr) {
+        throw MigrationException("Migration step '{}' targets a column that already exists.", step.description);
+      }
+      std::vector<Statement> statements;
+      if (column.type().kind == ColumnTypeKind::Enum) {
+        if (const auto definition = renderEnumDefinition(column.type())) {
+          statements.push_back({*definition, {}});
+        }
+      }
+      statements.push_back({"alter table " + qualifiedTable + " add column " + renderColumnDefinition(column), {}});
+      return statements;
+    }
+    case MigrationStepKind::DropColumn:
+      static_cast<void>(requireActualColumn());
+      return {{"alter table " + qualifiedTable + " drop column " + quotedColumn, {}}};
+    case MigrationStepKind::AlterColumnType:
+      static_cast<void>(requireActualColumn());
+      return {{"alter table " + qualifiedTable + " alter column " + quotedColumn + " type " +
+                 renderColumnType(requireExpectedColumn().type()),
+        {}}};
+    case MigrationStepKind::AlterColumnNullability: {
+      static_cast<void>(requireActualColumn());
+      const ColumnMetadata& column = requireExpectedColumn();
+      return {{"alter table " + qualifiedTable + " alter column " + quotedColumn +
+                 (column.nullable ? " drop not null" : " set not null"),
+        {}}};
+    }
+    case MigrationStepKind::AlterGeneratedColumn:
+      throw MigrationException(
+        "Migration step '{}' cannot be compiled because generated metadata does not distinguish identity from "
+        "computed columns.",
+        step.description);
+    case MigrationStepKind::AlterUniqueConstraint:
+      throw MigrationException(
+        "Migration step '{}' cannot be compiled because column uniqueness does not provide the existing or desired "
+        "constraint name.",
+        step.description);
+    case MigrationStepKind::AlterColumnDefault: {
+      static_cast<void>(requireActualColumn());
+      const ColumnMetadata& column = requireExpectedColumn();
+      if (column.defaultExpression.empty()) {
+        return {{"alter table " + qualifiedTable + " alter column " + quotedColumn + " drop default", {}}};
+      }
+      if (!isSafeDdlExpression(column.defaultExpression)) {
+        throw SqlBuildException(
+          "Column '{}.{}' contains an unsafe default expression.",
+          step.difference.table,
+          step.difference.column);
+      }
+      return {{"alter table " + qualifiedTable + " alter column " + quotedColumn + " set default " +
+                 std::string{column.defaultExpression},
+        {}}};
+    }
+    case MigrationStepKind::AddPrimaryKey: {
+      static_cast<void>(requireActualTable());
+      const auto& primaryKey = requireExpectedTable().primaryKey();
+      if (!primaryKey.has_value() || primaryKey->empty()) {
+        throw MigrationException("Migration step '{}' has no expected primary key metadata.", step.description);
+      }
+      if (!actualTable->primaryKey.empty()) {
+        throw MigrationException(
+          "Migration step '{}' targets a table that already has a primary key.",
+          step.description);
+      }
+      std::string sql = "alter table " + qualifiedTable + " add ";
+      if (!primaryKey->name().empty()) {
+        sql += "constraint " + quoteIdentifier(primaryKey->name()) + " ";
+      }
+      sql += "primary key (" + renderPrimaryKeyColumns(*primaryKey) + ")";
+      return {{std::move(sql), {}}};
+    }
+    case MigrationStepKind::ChangePrimaryKey:
+      throw MigrationException(
+        "Migration step '{}' cannot be compiled because the actual primary-key constraint name is unavailable.",
+        step.description);
+    }
+
+    throw MigrationException("Migration step '{}' has an unsupported kind.", step.description);
+  }
+
+  std::string SqlBuilder::renderQualifiedTable(const Table& table) const
+  {
+    if (table.empty()) {
+      throw SqlBuildException("DDL operation requires a table name.");
+    }
+
+    if (table.schema().empty()) {
+      return quoteIdentifier(table.name());
+    }
+
+    return quoteIdentifier(table.schema().name()) + "." + quoteIdentifier(table.name());
+  }
+
+  std::string SqlBuilder::renderColumnDefinition(const ColumnMetadata& column, bool inlineGeneratedPrimaryKey) const
+  {
+    if (column.columnName.empty()) {
+      throw SqlBuildException("DDL column definition requires a column name.");
+    }
+
+    if (column.type().kind == ColumnTypeKind::Unknown) {
+      throw SqlBuildException("Column '{}' has no supported SQL type.", column.columnName);
+    }
+
+    std::string definition = quoteIdentifier(column.columnName) + " " + renderColumnType(column.type());
+    if (column.generated) {
+      definition += renderGeneratedColumn(column);
+    }
+
+    if (!column.defaultExpression.empty()) {
+      if (column.generated) {
+        throw SqlBuildException("Generated column '{}' cannot also declare a default.", column.columnName);
+      }
+
+      if (!isSafeDdlExpression(column.defaultExpression)) {
+        throw SqlBuildException("Column '{}' contains an unsafe default expression.", column.columnName);
+      }
+
+      definition += " default " + std::string{column.defaultExpression};
+    }
+
+    if (inlineGeneratedPrimaryKey) {
+      definition += " primary key autoincrement";
+    }
+
+    if (!column.nullable && !inlineGeneratedPrimaryKey) {
+      definition += " not null";
+    }
+
+    if (column.unique) {
+      definition += " unique";
+    }
+
+    return definition;
+  }
+
+  std::string SqlBuilder::renderPrimaryKeyColumns(const PrimaryKey& primaryKey) const
+  {
+    if (primaryKey.empty()) {
+      throw SqlBuildException("Primary key must contain at least one column.");
+    }
+
+    std::string columns;
+    for (const Column& column : primaryKey.columns()) {
+      if (!columns.empty()) {
+        columns += ",";
+      }
+      columns += quoteIdentifier(column.columnName);
+    }
+
+    return columns;
+  }
+
   std::string SqlBuilder::quoteIdentifier(std::string_view identifier) const
   {
     std::string result{"\""};
@@ -981,6 +1217,96 @@ namespace worm::core
     return result;
   }
 
+  std::string_view MySqlBuilder::databaseName() const noexcept
+  {
+    return "mysql";
+  }
+
+  MigrationTransactionMode MySqlBuilder::migrationTransactionMode() const noexcept
+  {
+    return MigrationTransactionMode::None;
+  }
+
+  std::vector<Statement> MySqlBuilder::compileMigrationStep(
+    const MigrationStep& step,
+    const SchemaMetadata& expected,
+    const SchemaSnapshot& actual) const
+  {
+    const Table table{Schema{step.difference.schema}, step.difference.table};
+    const TableMetadata* expectedTable = expected.findTable(table);
+    const SchemaTableSnapshot* actualTable = actual.findTable(step.difference.schema, step.difference.table);
+
+    const auto requireExpectedTable = [&]() -> const TableMetadata& {
+      if (expectedTable == nullptr) {
+        throw MigrationException("Migration step '{}' has no expected table metadata.", step.description);
+      }
+      return *expectedTable;
+    };
+
+    const auto requireExpectedColumn = [&]() -> const ColumnMetadata& {
+      const ColumnMetadata* column = requireExpectedTable().findColumn(step.difference.column);
+      if (column == nullptr) {
+        throw MigrationException("Migration step '{}' has no expected column metadata.", step.description);
+      }
+      if (actualTable == nullptr) {
+        throw MigrationException("Migration step '{}' has no actual table snapshot.", step.description);
+      }
+      if (actualTable->findColumn(step.difference.column) == nullptr) {
+        throw MigrationException("Migration step '{}' has no actual column snapshot.", step.description);
+      }
+      return *column;
+    };
+
+    switch (step.kind) {
+    case MigrationStepKind::AlterColumnType:
+    case MigrationStepKind::AlterColumnNullability:
+    case MigrationStepKind::AlterColumnDefault:
+      return {{"alter table " + renderQualifiedTable(table) + " modify column " +
+                 renderColumnDefinition(requireExpectedColumn()),
+        {}}};
+    case MigrationStepKind::AlterUniqueConstraint: {
+      const ColumnMetadata& column = requireExpectedColumn();
+      if (!column.unique) {
+        throw MigrationException(
+          "Migration step '{}' cannot remove uniqueness because the MySQL index name is unavailable.",
+          step.description);
+      }
+      return {{"alter table " + renderQualifiedTable(table) + " modify column " + renderColumnDefinition(column), {}}};
+    }
+    case MigrationStepKind::AlterGeneratedColumn:
+      throw MigrationException(
+        "Migration step '{}' cannot be compiled because generated metadata does not preserve the MySQL generation "
+        "expression.",
+        step.description);
+    case MigrationStepKind::AddPrimaryKey:
+    case MigrationStepKind::ChangePrimaryKey: {
+      if (actualTable == nullptr) {
+        throw MigrationException("Migration step '{}' has no actual table snapshot.", step.description);
+      }
+      const auto& primaryKey = requireExpectedTable().primaryKey();
+      if (!primaryKey.has_value() || primaryKey->empty()) {
+        throw MigrationException("Migration step '{}' has no expected primary key metadata.", step.description);
+      }
+      if (step.kind == MigrationStepKind::AddPrimaryKey && !actualTable->primaryKey.empty()) {
+        throw MigrationException(
+          "Migration step '{}' targets a table that already has a primary key.",
+          step.description);
+      }
+      if (step.kind == MigrationStepKind::ChangePrimaryKey && actualTable->primaryKey.empty()) {
+        throw MigrationException("Migration step '{}' cannot replace a missing primary key.", step.description);
+      }
+      std::string sql = "alter table " + renderQualifiedTable(table) + " ";
+      if (step.kind == MigrationStepKind::ChangePrimaryKey) {
+        sql += "drop primary key,";
+      }
+      sql += "add primary key (" + renderPrimaryKeyColumns(*primaryKey) + ")";
+      return {{std::move(sql), {}}};
+    }
+    default:
+      return SqlBuilder::compileMigrationStep(step, expected, actual);
+    }
+  }
+
   std::string MySqlBuilder::renderColumnType(const ColumnType& type) const
   {
     return MySqlDialect{}.renderColumnType(type);
@@ -1000,6 +1326,49 @@ namespace worm::core
   std::string SqliteBuilder::renderColumnType(const ColumnType& type) const
   {
     return SqliteDialect{}.renderColumnType(type);
+  }
+
+  std::string_view SqliteBuilder::databaseName() const noexcept
+  {
+    return "sqlite";
+  }
+
+  MigrationTransactionMode SqliteBuilder::migrationTransactionMode() const noexcept
+  {
+    return MigrationTransactionMode::LockOwned;
+  }
+
+  std::vector<Statement> SqliteBuilder::compileMigrationStep(
+    const MigrationStep& step,
+    const SchemaMetadata& expected,
+    const SchemaSnapshot& actual) const
+  {
+    switch (step.kind) {
+    case MigrationStepKind::AlterColumnType:
+    case MigrationStepKind::AlterColumnNullability:
+    case MigrationStepKind::AlterGeneratedColumn:
+    case MigrationStepKind::AlterUniqueConstraint:
+    case MigrationStepKind::AlterColumnDefault:
+    case MigrationStepKind::AddPrimaryKey:
+    case MigrationStepKind::ChangePrimaryKey:
+      throw MigrationException("SQLite migration step '{}' requires an explicit table-rebuild plan.", step.description);
+    case MigrationStepKind::AddColumn: {
+      const Table table{Schema{step.difference.schema}, step.difference.table};
+      const TableMetadata* metadata = expected.findTable(table);
+      const ColumnMetadata* column = metadata == nullptr ? nullptr : metadata->findColumn(step.difference.column);
+      if (column == nullptr) {
+        throw MigrationException("Migration step '{}' has no expected column metadata.", step.description);
+      }
+      if (column->generated || column->unique) {
+        throw MigrationException(
+          "SQLite migration step '{}' requires a table rebuild because ADD COLUMN cannot add this constraint.",
+          step.description);
+      }
+      return SqlBuilder::compileMigrationStep(step, expected, actual);
+    }
+    default:
+      return SqlBuilder::compileMigrationStep(step, expected, actual);
+    }
   }
 
   std::string SqliteBuilder::renderGeneratedColumn(const ColumnMetadata& column) const
@@ -1043,6 +1412,41 @@ namespace worm::core
     }
     result += ']';
     return result;
+  }
+
+  std::string_view SqlServerBuilder::databaseName() const noexcept
+  {
+    return "mssql";
+  }
+
+  std::vector<Statement> SqlServerBuilder::compileMigrationStep(
+    const MigrationStep& step,
+    const SchemaMetadata& expected,
+    const SchemaSnapshot& actual) const
+  {
+    switch (step.kind) {
+    case MigrationStepKind::AlterColumnType:
+    case MigrationStepKind::AlterColumnNullability: {
+      const Table table{Schema{step.difference.schema}, step.difference.table};
+      const TableMetadata* metadata = expected.findTable(table);
+      const ColumnMetadata* column = metadata == nullptr ? nullptr : metadata->findColumn(step.difference.column);
+      const SchemaTableSnapshot* actualTable = actual.findTable(step.difference.schema, step.difference.table);
+      if (column == nullptr || actualTable == nullptr || actualTable->findColumn(step.difference.column) == nullptr) {
+        throw MigrationException("Migration step '{}' lacks required column metadata.", step.description);
+      }
+      std::string definition = quoteIdentifier(column->columnName) + " " + renderColumnType(column->type());
+      definition += column->nullable ? " null" : " not null";
+      return {{"alter table " + renderQualifiedTable(table) + " alter column " + definition, {}}};
+    }
+    case MigrationStepKind::AlterGeneratedColumn:
+      throw MigrationException("SQL Server migration step '{}' cannot alter IDENTITY in place.", step.description);
+    case MigrationStepKind::AlterColumnDefault:
+      throw MigrationException(
+        "SQL Server migration step '{}' requires the existing default-constraint name.",
+        step.description);
+    default:
+      return SqlBuilder::compileMigrationStep(step, expected, actual);
+    }
   }
 
   std::string SqlServerBuilder::renderColumnType(const ColumnType& type) const

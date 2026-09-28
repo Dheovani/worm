@@ -4,6 +4,7 @@
 #include <core/query/validator.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <cstdlib>
 #include <filesystem>
@@ -284,6 +285,21 @@ namespace worm::cli
       }
     }
 
+    void parseMigrationValue(
+      Configuration& configuration,
+      std::string_view key,
+      std::string_view value,
+      const std::filesystem::path& path,
+      std::size_t line)
+    {
+      auto parsed = parseStringValue(value, path, line);
+      if (key == "directory") {
+        assignConfigurationValue(configuration.migrationDirectory, std::move(parsed), key, path, line);
+      } else {
+        throwConfigurationError(path, line, "unknown migrations key '{}'", key);
+      }
+    }
+
     [[nodiscard]]
     Configuration parseConfiguration(const std::filesystem::path& path)
     {
@@ -309,6 +325,8 @@ namespace worm::cli
             section = ConfigurationSection::Generator;
           } else if (line == "[database]") {
             section = ConfigurationSection::Database;
+          } else if (line == "[migrations]") {
+            section = ConfigurationSection::Migrations;
           } else {
             throwConfigurationError(path, lineNumber, "unknown section");
           }
@@ -332,8 +350,10 @@ namespace worm::cli
 
         if (section == ConfigurationSection::Generator) {
           parseGeneratorValue(configuration, key, value, path, lineNumber);
-        } else {
+        } else if (section == ConfigurationSection::Database) {
           parseDatabaseValue(configuration, key, value, path, lineNumber);
+        } else {
+          parseMigrationValue(configuration, key, value, path, lineNumber);
         }
       }
 
@@ -361,6 +381,10 @@ namespace worm::cli
       if (invocation.command == Commands::Pull) {
         assignMissing(invocation.arguments.output, configuration.output);
         assignMissing(invocation.arguments.namespaceName, configuration.namespaceName);
+      }
+
+      if (invocation.command == Commands::Migrate) {
+        assignMissing(invocation.arguments.directory, configuration.migrationDirectory);
       }
     }
 
@@ -701,6 +725,45 @@ namespace worm::cli
         throw InvalidCliArgumentException("N+1 options are only valid for the 'n-plus-one' command.");
       }
     }
+
+    void validateMigrateArguments(const Invocation& invocation)
+    {
+      const CommandArguments& args = invocation.arguments;
+      if (!invocation.migrationAction.has_value()) {
+        throw InvalidCliArgumentException(
+          "The 'migrate' command requires an action option. Currently supported: --apply, --create, --validate, "
+          "--status, --rollback.");
+      }
+
+      if (args.directory.has_value() && args.directory->empty()) {
+        throw InvalidCliArgumentException("Option '--directory' cannot be empty.");
+      }
+
+      if (*invocation.migrationAction == MigrationAction::Create) {
+        if (!args.name.has_value()) {
+          throw InvalidCliArgumentException("The 'migrate --create' action requires option '--name'.");
+        }
+
+        const bool isLowerCase = std::ranges::all_of(*args.name, [](unsigned char character) {
+          return std::islower(character) != 0 || std::isdigit(character) != 0 || character == '-';
+        });
+        if (args.name->empty() || args.name->front() == '-' || args.name->back() == '-' ||
+            args.name->find("--") != std::string::npos || !isLowerCase) {
+          throw InvalidCliArgumentException("Migration name '{}' must be a lowercase kebab-case slug.", *args.name);
+        }
+      } else if (args.name.has_value()) {
+        throw InvalidCliArgumentException("Option '--name' is only valid for 'migrate --create'.");
+      }
+
+      if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() || args.namespaceName.has_value() ||
+          args.apply || args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
+        if (*invocation.migrationAction == MigrationAction::Create) {
+          throw InvalidCliArgumentException(
+            "Only '--name' and '--directory' are valid for the 'migrate --create' action.");
+        }
+        throw InvalidCliArgumentException("Only '--directory' is valid for the selected 'migrate' action.");
+      }
+    }
   } // namespace
 
   bool isCppKeyword(std::string_view value) noexcept
@@ -716,6 +779,10 @@ namespace worm::cli
   void validate(const Invocation& invocation)
   {
     validateGlobalArguments(invocation.global);
+
+    if (invocation.command != Commands::Migrate && invocation.arguments.directory.has_value()) {
+      throw InvalidCliArgumentException("Option '--directory' is only valid for the 'migrate' command.");
+    }
 
     switch (invocation.command) {
     case Commands::Check:
@@ -735,6 +802,9 @@ namespace worm::cli
       break;
     case Commands::Diff:
       validateDiffArguments(invocation.arguments);
+      break;
+    case Commands::Migrate:
+      validateMigrateArguments(invocation);
       break;
     default:
       throw EmptyCommandException("No valid command given");

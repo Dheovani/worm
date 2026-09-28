@@ -28,7 +28,17 @@ namespace worm::cli
     Check,
     NPlusOne,
     Inspect,
-    Diff
+    Diff,
+    Migrate
+  };
+
+  enum class MigrationAction
+  {
+    Apply,
+    Create,
+    Validate,
+    Status,
+    Rollback
   };
 
   enum class CommandOptions
@@ -41,7 +51,8 @@ namespace worm::cli
     Apply,
     Query,
     File,
-    MaxExecutions
+    MaxExecutions,
+    Directory
   };
 
   struct GlobalArguments
@@ -72,6 +83,7 @@ namespace worm::cli
     std::optional<std::string> file;
     std::optional<std::string> query;
     std::optional<std::string> maxExecutions;
+    std::optional<std::string> directory;
 
     bool apply{false};
   };
@@ -80,6 +92,7 @@ namespace worm::cli
   {
     GlobalArguments global;
     Commands command;
+    std::optional<MigrationAction> migrationAction;
     CommandArguments arguments;
   };
 

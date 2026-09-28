@@ -2,6 +2,7 @@
 
 #include <errors/database-connection-exception.hpp>
 #include <errors/invalid-arg-exception.hpp>
+#include <errors/migration-lock-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <errors/transaction-exception.hpp>
 #include <utils/helpers.hpp>
@@ -10,13 +11,20 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <variant>
 #include <vector>
 
 namespace
 {
+  constexpr pqxx::oid boolTypeOid = 16;
   constexpr pqxx::oid byteaTypeOid = 17;
+  constexpr pqxx::oid int8TypeOid = 20;
+  constexpr pqxx::oid int2TypeOid = 21;
+  constexpr pqxx::oid int4TypeOid = 23;
+  constexpr pqxx::oid float4TypeOid = 700;
+  constexpr pqxx::oid float8TypeOid = 701;
   constexpr pqxx::oid numericTypeOid = 1700;
   constexpr std::byte emptyBinarySentinel{};
 
@@ -85,6 +93,47 @@ namespace
 
     return values;
   }
+
+  bool pgBoolean(const worm::core::ResultSet& result)
+  {
+    if (result.rowCount() != 1 || result.rows().front().columnCount() != 1) {
+      return false;
+    }
+
+    const worm::core::Parameter& value = result.rows().front().columns.front().value;
+    if (const auto* boolean = std::get_if<bool>(&value)) {
+      return *boolean;
+    }
+
+    const auto* text = std::get_if<std::string>(&value);
+    return text != nullptr && (*text == "t" || *text == "true" || *text == "1");
+  }
+
+  template <typename Field>
+  worm::core::Parameter pgValue(const Field& field)
+  {
+    if (field.is_null()) {
+      return nullptr;
+    }
+
+    switch (field.type()) {
+    case boolTypeOid:
+      return field.template as<bool>();
+    case int2TypeOid:
+    case int4TypeOid:
+    case int8TypeOid:
+      return field.template as<std::int64_t>();
+    case float4TypeOid:
+    case float8TypeOid:
+      return field.template as<double>();
+    case numericTypeOid:
+      return worm::core::Decimal{field.view()};
+    case byteaTypeOid:
+      return worm::core::Binary{field.template as<pqxx::bytes>()};
+    default:
+      return std::string{field.view()};
+    }
+  }
 } // namespace
 
 namespace worm::connection
@@ -131,19 +180,7 @@ namespace worm::connection
       for (pqxx::result::size_type j = 0; j < response[i].size(); j++) {
         const auto field = response[i][j];
         const std::string columnName = field.name();
-        core::Parameter columnValue = nullptr;
-
-        if (!field.is_null()) {
-          if (field.type() == numericTypeOid) {
-            columnValue = core::Decimal{field.view()};
-          } else if (field.type() == byteaTypeOid) {
-            columnValue = core::Binary{field.as<pqxx::bytes>()};
-          } else {
-            columnValue = std::string{field.view()};
-          }
-        }
-
-        columns.push_back({columnName, columnValue});
+        columns.push_back({columnName, pgValue(field)});
       }
 
       rows.push_back({columns});
@@ -191,6 +228,43 @@ namespace worm::connection
       innerTransaction_.reset();
     } catch (const std::exception& error) {
       throw worm::QueryExecutionException(error.what());
+    }
+  }
+
+  void PgClient::acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    const core::Statement statement{
+      "SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired",
+      {std::string{name}},
+    };
+
+    do {
+      if (pgBoolean(executeImpl(statement))) {
+        return;
+      }
+
+      if (std::chrono::steady_clock::now() >= deadline) {
+        break;
+      }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds{25});
+    } while (true);
+
+    throw MigrationLockException("Timed out while acquiring PostgreSQL migration lock '{}'.", name);
+  }
+
+  void PgClient::releaseMigrationLockImpl(std::string_view name, bool completed)
+  {
+    static_cast<void>(completed);
+    const core::ResultSet result = executeImpl(
+      {
+        "SELECT pg_advisory_unlock(hashtextextended($1, 0)) AS released",
+        {std::string{name}},
+      });
+
+    if (!pgBoolean(result)) {
+      throw MigrationLockException("PostgreSQL connection does not own migration lock '{}'.", name);
     }
   }
 } // namespace worm::connection

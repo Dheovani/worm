@@ -3,6 +3,7 @@ add_library(
   STATIC
     src/database/diff.cpp
     src/database/inspect.cpp
+    src/database/migrate.cpp
     src/database/n-plus-one.cpp
     src/generator/check.cpp
     src/generator/pull.cpp
@@ -12,6 +13,7 @@ add_library(
     src/helpers/manifest.cpp
     src/helpers/migration/migration-catalog.cpp
     src/helpers/migration/migration-file.cpp
+    src/helpers/migration/migration-progress.cpp
     src/parser.cpp
     src/runner.cpp
     src/validator.cpp

@@ -1,0 +1,139 @@
+name: Proposal
+description: Propose a significant design, API, architecture, or behavior change
+title: "[Proposal]: "
+labels:
+  - proposal
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for significant changes that may affect worm's
+        architecture, public API, CLI behavior, database abstractions,
+        migration model, or other core design decisions.
+
+        For small additions or isolated enhancements, prefer a feature request.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the proposed change.
+      placeholder: What do you want to change?
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem, limitation, or design issue does this proposal address?
+      placeholder: Explain the current limitation or motivation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Describe the proposed design or approach.
+      placeholder: |
+        Describe how the change should work and any relevant implementation details.
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Provide API, CLI, SQL, or usage examples if applicable.
+      placeholder: |
+        ```cpp
+        // Example API
+        ```
+
+        ```sh
+        # Example CLI
+        ```
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Area
+      description: Which part of worm is primarily affected?
+      options:
+        - Core
+        - CLI
+        - Reflection
+        - Schema metadata
+        - Migrations
+        - Diff / synchronization
+        - Database drivers
+        - Query execution
+        - Public API
+        - Build / tooling
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: databases
+    attributes:
+      label: Affected databases
+      description: Select all database backends affected by this proposal.
+      options:
+        - label: PostgreSQL
+        - label: MySQL
+        - label: Microsoft SQL Server
+        - label: SQLite
+        - label: Not database-specific
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe other approaches that were considered and why they may be less suitable.
+      placeholder: What other solutions could address the same problem?
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and breaking changes
+      description: |
+        Describe any impact on public APIs, CLI behavior, generated SQL,
+        migrations, existing projects, or backward compatibility.
+      placeholder: |
+        Does this require a breaking change?
+        Can it be introduced incrementally?
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and trade-offs
+      description: What disadvantages, complexity, or maintenance costs could this introduce?
+
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open questions
+      description: List any decisions that still need discussion before implementation.
+      placeholder: |
+        - Should this behavior be configurable?
+        - Should drivers implement this individually?
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add references, prior discussions, documentation, or other relevant information.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and proposals before submitting this.
+          required: true
+        - label: This change is significant enough to require design discussion before implementation.
+          required: true

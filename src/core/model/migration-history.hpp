@@ -47,6 +47,9 @@ namespace worm::core
     MigrationRecord* find(std::string_view id) noexcept;
 
     [[nodiscard]]
+    const MigrationRecord* latestApplied() const noexcept;
+
+    [[nodiscard]]
     bool addPending(const MigrationArtifact& artifact);
 
     [[nodiscard]]

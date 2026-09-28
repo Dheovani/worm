@@ -98,6 +98,12 @@ add_worm_error_test(
 )
 
 add_worm_error_test(
+  WormMigrationLockExceptionTests
+  migration-lock-exception-tests.cpp
+  Worm.Errors.MigrationLockException
+)
+
+add_worm_error_test(
   WormSqlBuildExceptionTests
   sql-build-exception-tests.cpp
   Worm.Errors.SqlBuildException

@@ -55,6 +55,9 @@ namespace
 
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_driver_contract");
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_schema_contract");
+    executeSql(connection.get(), "DROP TABLE IF EXISTS worm_migration_contract");
+    executeSql(connection.get(), "DROP TABLE IF EXISTS worm_migration_failure");
+    executeSql(connection.get(), "DROP TABLE IF EXISTS _worm_migrations");
     executeSql(
       connection.get(),
       "CREATE TABLE worm_driver_contract ("
@@ -90,6 +93,12 @@ try {
   const worm::core::MySqlBuilder sqlBuilder;
 
   worm::tests::runDriverContract(client, sqlBuilder, worm::connection::DatabaseType::MySQL);
+  worm::tests::runMigrationLockContract(
+    client,
+    std::make_shared<worm::connection::MySqlClient>(config),
+    sqlBuilder,
+    databaseName);
+  worm::tests::runMigrationExecutionContract(client, sqlBuilder, databaseName);
 
   const worm::connection::SchemaInspector inspector{*client};
   const auto schema = inspector.inspect();

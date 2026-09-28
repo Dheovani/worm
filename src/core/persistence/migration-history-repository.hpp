@@ -5,12 +5,15 @@
 #include <core/model/migration-history.hpp>
 #include <core/model/schema-snapshot.hpp>
 #include <core/output/result-set.hpp>
+#include <core/persistence/migration-execution.hpp>
+#include <core/persistence/migration-lock.hpp>
 #include <core/query/expression.hpp>
 #include <core/query/query-builder.hpp>
 #include <core/query/statement.hpp>
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,6 +21,18 @@
 
 namespace worm::core
 {
+  class MigrationQueryObserver
+  {
+  public:
+    virtual ~MigrationQueryObserver() = default;
+
+    virtual void queryExecuted(
+      std::string_view operation,
+      const Statement& statement,
+      const ResultSet& result,
+      std::optional<MigrationRisk> risk) noexcept = 0;
+  };
+
   template <>
   class Repository<MigrationHistory> final
   {
@@ -25,7 +40,8 @@ namespace worm::core
     explicit Repository(
       std::shared_ptr<connection::Client> dbClient,
       const QueryBuilder& queryBuilder,
-      std::string schema = {});
+      std::string schema = {},
+      MigrationQueryObserver* observer = nullptr);
 
     void initialize(const SchemaSnapshot& schemaSnapshot) const;
 
@@ -40,6 +56,19 @@ namespace worm::core
 
     void markFailed(std::string_view id, std::string_view reason) const;
 
+    void apply(
+      const MigrationExecutionPlan& plan,
+      MigrationConfirmation confirmation = MigrationConfirmation::None,
+      std::chrono::milliseconds lockTimeout = std::chrono::seconds{30}) const;
+
+    void rollback(
+      const MigrationExecutionPlan& plan,
+      MigrationConfirmation confirmation = MigrationConfirmation::None,
+      std::chrono::milliseconds lockTimeout = std::chrono::seconds{30}) const;
+
+    [[nodiscard]]
+    MigrationLock acquireLock(std::chrono::milliseconds timeout = std::chrono::seconds{30}) const;
+
     [[nodiscard]]
     static constexpr std::string_view tableName() noexcept
     {
@@ -51,7 +80,17 @@ namespace worm::core
     std::string qualifiedTableName() const;
 
     [[nodiscard]]
-    ResultSet execute(const Statement& statement) const;
+    ResultSet execute(
+      const Statement& statement,
+      std::string_view operation,
+      std::optional<MigrationRisk> risk = std::nullopt) const;
+
+    void executeSteps(const MigrationExecutionPlan& plan) const;
+
+    void executeMigration(
+      const MigrationExecutionPlan& plan,
+      MigrationConfirmation confirmation,
+      std::chrono::milliseconds lockTimeout) const;
 
     void updateState(
       std::string_view id,
@@ -61,5 +100,6 @@ namespace worm::core
     std::shared_ptr<connection::Client> dbClient_;
     const QueryBuilder queryBuilder_;
     std::string schema_;
+    MigrationQueryObserver* observer_;
   };
 } // namespace worm::core

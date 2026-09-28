@@ -557,4 +557,28 @@ namespace worm::connection
     return core::ResultSet{std::move(rows),
       affectedRows > 0 ? static_cast<std::uint64_t>(affectedRows) : std::uint64_t{0}};
   }
+
+  void MsSqlClient::acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout)
+  {
+    static_cast<void>(executeImpl(
+      {
+        "DECLARE @result int; "
+        "EXEC @result = sys.sp_getapplock @Resource = ?, @LockMode = N'Exclusive', @LockOwner = N'Session', "
+        "@LockTimeout = ?; "
+        "IF @result < 0 THROW 51000, 'Unable to acquire the Worm migration lock.', 1;",
+        {std::string{name}, static_cast<std::int64_t>(timeout.count())},
+      }));
+  }
+
+  void MsSqlClient::releaseMigrationLockImpl(std::string_view name, bool completed)
+  {
+    static_cast<void>(completed);
+    static_cast<void>(executeImpl(
+      {
+        "DECLARE @result int; "
+        "EXEC @result = sys.sp_releaseapplock @Resource = ?, @LockOwner = N'Session'; "
+        "IF @result < 0 THROW 51000, 'Unable to release the Worm migration lock.', 1;",
+        {std::string{name}},
+      }));
+  }
 } // namespace worm::connection

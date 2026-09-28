@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+#include <string>
 #include <string_view>
 
 #include "parser.hpp"
@@ -22,13 +24,15 @@ namespace worm::cli
     std::optional<std::string> database;
     std::optional<std::string> username;
     std::optional<std::string> passwordEnv;
+    std::optional<std::string> migrationDirectory;
   };
 
   enum class ConfigurationSection
   {
     None,
     Generator,
-    Database
+    Database,
+    Migrations
   };
 
   void resolve(Invocation& invocation);

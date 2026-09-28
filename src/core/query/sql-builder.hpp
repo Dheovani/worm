@@ -9,7 +9,9 @@
 #include <utility>
 #include <vector>
 
+#include <core/model/migration.hpp>
 #include <core/model/schema-metadata.hpp>
+#include <core/model/schema-snapshot.hpp>
 #include <core/query/clauses.hpp>
 #include <core/query/criteria.hpp>
 #include <core/query/expression.hpp>
@@ -48,8 +50,10 @@ namespace worm::core
       const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
-    Statement
-    select(const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const;
+    Statement select(
+      const std::vector<worm::core::Field>& fields,
+      const Source& source,
+      const Criteria& criteria) const;
 
     [[nodiscard]]
     virtual Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
@@ -93,6 +97,18 @@ namespace worm::core
     [[nodiscard]]
     virtual std::vector<Statement> create(const TableMetadata& table) const;
 
+    [[nodiscard]]
+    virtual std::vector<Statement> compileMigrationStep(
+      const MigrationStep& step,
+      const SchemaMetadata& expected,
+      const SchemaSnapshot& actual) const;
+
+    [[nodiscard]]
+    virtual std::string_view databaseName() const noexcept;
+
+    [[nodiscard]]
+    virtual MigrationTransactionMode migrationTransactionMode() const noexcept;
+
     virtual ~SqlBuilder() = default;
 
   protected:
@@ -109,8 +125,10 @@ namespace worm::core
     virtual std::string renderDeletePrefix(const Source& source) const;
 
     [[nodiscard]]
-    virtual Expression
-    renderPagination(const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const;
+    virtual Expression renderPagination(
+      const Pagination& pagination,
+      std::size_t firstParameterIndex,
+      bool hasOrdering) const;
 
     [[nodiscard]]
     virtual std::string quoteIdentifier(std::string_view identifier) const;
@@ -135,6 +153,15 @@ namespace worm::core
 
     [[nodiscard]]
     virtual std::optional<std::string> renderEnumDefinition(const ColumnType& type) const;
+
+    [[nodiscard]]
+    std::string renderQualifiedTable(const Table& table) const;
+
+    [[nodiscard]]
+    std::string renderColumnDefinition(const ColumnMetadata& column, bool inlineGeneratedPrimaryKey = false) const;
+
+    [[nodiscard]]
+    std::string renderPrimaryKeyColumns(const PrimaryKey& primaryKey) const;
 
   private:
     [[nodiscard]]
@@ -162,6 +189,19 @@ namespace worm::core
 
   class MySqlBuilder : public SqlBuilder
   {
+  public:
+    [[nodiscard]]
+    std::string_view databaseName() const noexcept override;
+
+    [[nodiscard]]
+    MigrationTransactionMode migrationTransactionMode() const noexcept override;
+
+    [[nodiscard]]
+    std::vector<Statement> compileMigrationStep(
+      const MigrationStep& step,
+      const SchemaMetadata& expected,
+      const SchemaSnapshot& actual) const override;
+
   protected:
     [[nodiscard]]
     std::string quoteIdentifier(std::string_view identifier) const override;
@@ -178,6 +218,19 @@ namespace worm::core
 
   class SqliteBuilder : public SqlBuilder
   {
+  public:
+    [[nodiscard]]
+    std::string_view databaseName() const noexcept override;
+
+    [[nodiscard]]
+    MigrationTransactionMode migrationTransactionMode() const noexcept override;
+
+    [[nodiscard]]
+    std::vector<Statement> compileMigrationStep(
+      const MigrationStep& step,
+      const SchemaMetadata& expected,
+      const SchemaSnapshot& actual) const override;
+
   protected:
     [[nodiscard]]
     std::string renderMutationSource(const Source& source) const override;
@@ -203,6 +256,16 @@ namespace worm::core
 
   class SqlServerBuilder : public SqlBuilder
   {
+  public:
+    [[nodiscard]]
+    std::string_view databaseName() const noexcept override;
+
+    [[nodiscard]]
+    std::vector<Statement> compileMigrationStep(
+      const MigrationStep& step,
+      const SchemaMetadata& expected,
+      const SchemaSnapshot& actual) const override;
+
   protected:
     [[nodiscard]]
     std::string renderMutationSource(const Source& source) const override;
@@ -223,8 +286,10 @@ namespace worm::core
     std::string renderGeneratedColumn(const ColumnMetadata& column) const override;
 
     [[nodiscard]]
-    Expression
-    renderPagination(const Pagination& pagination, std::size_t firstParameterIndex, bool hasOrdering) const override;
+    Expression renderPagination(
+      const Pagination& pagination,
+      std::size_t firstParameterIndex,
+      bool hasOrdering) const override;
   };
 
   template <typename T>
