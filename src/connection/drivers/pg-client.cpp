@@ -118,18 +118,18 @@ namespace
 
     switch (field.type()) {
     case boolTypeOid:
-      return field.as<bool>();
+      return field.template as<bool>();
     case int2TypeOid:
     case int4TypeOid:
     case int8TypeOid:
-      return field.as<std::int64_t>();
+      return field.template as<std::int64_t>();
     case float4TypeOid:
     case float8TypeOid:
-      return field.as<double>();
+      return field.template as<double>();
     case numericTypeOid:
       return worm::core::Decimal{field.view()};
     case byteaTypeOid:
-      return worm::core::Binary{field.as<pqxx::bytes>()};
+      return worm::core::Binary{field.template as<pqxx::bytes>()};
     default:
       return std::string{field.view()};
     }
