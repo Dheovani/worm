@@ -9,12 +9,34 @@
 
 #include <core/model/migration-artifact.hpp>
 #include <errors/invalid-cli-argument-exception.hpp>
+#include <errors/migration-exception.hpp>
 #include <helpers/connection.hpp>
 
 namespace worm::cli::database
 {
   namespace
   {
+    struct MigrationRuntime
+    {
+      explicit MigrationRuntime(const Invocation& invocation)
+        : type(databaseType(invocation)),
+          client(DependencyInjector<connection::Client>::get(connectionConfig(invocation, type), type)),
+          sqlBuilder(DependencyInjector<core::SqlBuilder>::get(type)),
+          queryBuilder(sqlBuilder),
+          schema(defaultSchema(type)),
+          repository(client, queryBuilder, schema),
+          databaseSchema(connection::SchemaInspector{*client}.inspect())
+      {}
+
+      const connection::DatabaseType type;
+      const std::shared_ptr<connection::Client> client;
+      const core::SqlBuilder& sqlBuilder;
+      const core::QueryBuilder queryBuilder;
+      const std::string schema;
+      const core::Repository<core::MigrationHistory> repository;
+      const core::SchemaSnapshot databaseSchema;
+    };
+
     [[nodiscard]]
     migration::MigrationCatalog migrationCatalog(const Invocation& invocation)
     {
@@ -39,20 +61,64 @@ namespace worm::cli::database
     ExecutionReport migrationStatusReport(const Invocation& invocation)
     {
       const migration::MigrationCatalog catalog = migrationCatalog(invocation);
-      const connection::DatabaseType type = databaseType(invocation);
-      const connection::ConnectionConfig config = connectionConfig(invocation, type);
-      const std::shared_ptr<connection::Client> client = DependencyInjector<connection::Client>::get(config, type);
-      const core::QueryBuilder queryBuilder = DependencyInjector<core::QueryBuilder>::get(type);
-      const std::string schema = defaultSchema(type);
-      const core::Repository<core::MigrationHistory> repository{client, queryBuilder, schema};
-      const core::SchemaSnapshot databaseSchema = connection::SchemaInspector{*client}.inspect();
+      const MigrationRuntime runtime{invocation};
 
-      if (!hasMigrationHistoryTable(databaseSchema, schema)) {
+      if (!hasMigrationHistoryTable(runtime.databaseSchema, runtime.schema)) {
         return migrationStatus(catalog, core::MigrationHistory{});
       }
 
-      repository.initialize(databaseSchema);
-      return migrationStatus(catalog, repository.load());
+      runtime.repository.initialize(runtime.databaseSchema);
+      return migrationStatus(catalog, runtime.repository.load());
+    }
+
+    [[nodiscard]]
+    ExecutionReport rollbackMigration(const Invocation& invocation)
+    {
+      const migration::MigrationCatalog catalog = migrationCatalog(invocation);
+      const MigrationRuntime runtime{invocation};
+      if (!hasMigrationHistoryTable(runtime.databaseSchema, runtime.schema)) {
+        throw MigrationException("Cannot roll back migrations because migration history does not exist.");
+      }
+
+      runtime.repository.initialize(runtime.databaseSchema);
+      const core::MigrationHistory history = runtime.repository.load();
+      const core::MigrationRecord* record = history.latestApplied();
+      auto metrics = std::make_shared<MigrationRollbackMetrics>();
+      if (record == nullptr) {
+        return {
+          .info = "There are no applied migrations to roll back.",
+          .status = ExecutionStatus::Success,
+          .metrics = std::move(metrics),
+        };
+      }
+
+      const migration::MigrationFile* file = catalog.find(record->id);
+      if (file == nullptr) {
+        throw MigrationException("Applied migration '{}' is missing from the local migration directory.", record->id);
+      }
+
+      if (file->artifact.checksum() != record->checksum) {
+        throw MigrationException(
+          "Applied migration '{}' has checksum '{}', but the local artifact has checksum '{}'.",
+          record->id,
+          record->checksum,
+          file->artifact.checksum());
+      }
+
+      const core::MigrationExecutionPlan plan = core::compileMigrationExecutionPlan(
+        file->artifact,
+        runtime.sqlBuilder,
+        core::MigrationDirection::Rollback);
+
+      runtime.repository.rollback(plan, core::MigrationConfirmation::Destructive);
+      metrics->migrations = 1;
+      metrics->rolledBackMigrations = 1;
+
+      return {
+        .info = "Migration rolled back successfully.",
+        .status = ExecutionStatus::Success,
+        .metrics = std::move(metrics),
+      };
     }
   } // namespace
 
@@ -90,6 +156,17 @@ namespace worm::cli::database
         << ",\"pendingMigrations\":" << pendingMigrations << ",\"failedMigrations\":" << failedMigrations
         << ",\"missingMigrations\":" << missingMigrations
         << ",\"checksumDivergentMigrations\":" << checksumDivergentMigrations << '}';
+  }
+
+  void MigrationRollbackMetrics::writeText(std::ostream& out) const
+  {
+    printMetric(out, "Migrations", migrations);
+    printMetric(out, "Rolled back migrations", rolledBackMigrations);
+  }
+
+  void MigrationRollbackMetrics::writeJson(std::ostream& out) const
+  {
+    out << "{\"migrations\":" << migrations << ",\"rolledBackMigrations\":" << rolledBackMigrations << '}';
   }
 
   ExecutionReport validateMigrations(const migration::MigrationCatalog& catalog)
@@ -194,6 +271,8 @@ namespace worm::cli::database
       return validateMigrations(migrationCatalog(invocation));
     case MigrationAction::Status:
       return migrationStatusReport(invocation);
+    case MigrationAction::Rollback:
+      return rollbackMigration(invocation);
     }
 
     throw InvalidCliArgumentException("Unsupported migration subcommand.");

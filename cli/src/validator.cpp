@@ -730,7 +730,7 @@ namespace worm::cli
       const CommandArguments& args = invocation.arguments;
       if (!invocation.migrationAction.has_value()) {
         throw InvalidCliArgumentException(
-          "The 'migrate' command requires a subcommand. Currently supported: validate, status.");
+          "The 'migrate' command requires a subcommand. Currently supported: validate, status, rollback.");
       }
 
       if (args.directory.has_value() && args.directory->empty()) {

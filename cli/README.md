@@ -2,7 +2,7 @@
 
 `worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, validating and inspecting migration state, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate validate`, `migrate status`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate validate` verifies local migration artifacts without connecting to or changing the database, while `migrate status` compares them with persistent migration history. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate validate`, `migrate status`, `migrate rollback`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate validate` verifies local migration artifacts without connecting to or changing the database, `migrate status` compares them with persistent migration history, and `migrate rollback` reverts the latest applied migration using only its explicitly authored rollback statements. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -301,6 +301,17 @@ worm --format json --driver mysql --database application migrate status
 ```
 
 The directory defaults to `migrations` and follows the same configuration and override rules as `migrate validate`. The command does not create the history table when it is absent; in that case every local artifact is reported as pending. An existing history table is validated before it is read. Missing artifacts or checksum divergence produce the drift exit status, while matching failed migrations produce the issues-detected exit status. Pending migrations alone do not make the command fail.
+
+## The `migrate rollback` command
+
+`migrate rollback` reverts exactly one migration: the applied migration with the greatest ordered migration ID. This preserves reverse schema order even when application timestamps are equal or unavailable. The command requires the matching local artifact and checksum, executes only the artifact's explicit `down` statements, and refuses irreversible, missing, edited, non-applied, or out-of-order migrations. Worm never derives rollback SQL from the forward statements.
+
+```bash
+worm --driver postgresql --database application migrate rollback
+worm --driver sqlite --database application.db migrate rollback --directory database/migrations
+```
+
+Invoking the rollback subcommand is the explicit authorization for destructive rollback steps. Execution uses the configured driver's migration lock and transaction policy. A successful rollback records the `rolled_back` state and timestamp in `_worm_migrations`; when no migration is currently applied, the command succeeds without changing the database. If the history table does not exist, the command fails instead of creating migration state during a rollback operation.
 
 ## The `check` command
 

@@ -54,6 +54,17 @@ namespace worm::core
     return nullptr;
   }
 
+  const MigrationRecord* MigrationHistory::latestApplied() const noexcept
+  {
+    const MigrationRecord* latest = nullptr;
+    for (const MigrationRecord& record : records_) {
+      if (record.state == MigrationState::Applied && (latest == nullptr || record.id > latest->id)) {
+        latest = &record;
+      }
+    }
+    return latest;
+  }
+
   bool MigrationHistory::addPending(const MigrationArtifact& artifact)
   {
     validateMigrationArtifact(artifact);

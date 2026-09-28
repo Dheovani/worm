@@ -59,6 +59,13 @@ int main()
     return 1;
   }
 
+  if (!history.addPending(emailArtifact) ||
+      !history.markApplied(emailArtifact.id(), appliedAt + std::chrono::seconds{1}) ||
+      history.latestApplied() == nullptr || history.latestApplied()->id != emailArtifact.id()) {
+    std::cerr << "Migration history did not identify the latest applied migration by ordered id.\n";
+    return 1;
+  }
+
   const worm::core::MigrationRecord* applied = history.find(nameArtifact.id());
   if (applied == nullptr || applied->state != worm::core::MigrationState::Applied || applied->appliedAt != appliedAt ||
       applied->rolledBackAt.has_value() || !applied->failureReason.empty()) {
@@ -88,6 +95,11 @@ int main()
   if (rolledBack == nullptr || rolledBack->state != worm::core::MigrationState::RolledBack ||
       rolledBack->appliedAt != appliedAt || rolledBack->rolledBackAt != rolledBackAt) {
     std::cerr << "Migration history did not preserve rollback metadata.\n";
+    return 1;
+  }
+
+  if (!history.markRolledBack(emailArtifact.id(), rolledBackAt) || history.latestApplied() != nullptr) {
+    std::cerr << "Migration history selected a migration that is no longer applied.\n";
     return 1;
   }
 

@@ -243,11 +243,44 @@ namespace worm::tests
       }
     }
 
+    const core::MigrationStep rollbackStep{
+      .kind = core::MigrationStepKind::DropTable,
+      .risk = core::MigrationRisk::Destructive,
+      .difference =
+        {
+          .kind = core::SchemaDifferenceKind::UnexpectedTable,
+          .schema = schema,
+          .table = std::string{table.name()},
+        },
+      .description = "Drop migration contract table",
+    };
+    const core::SchemaSnapshot rollbackSchema{
+      .tables =
+        {
+          {
+            .schema = schema,
+            .name = std::string{table.name()},
+            .columns = {{.name = "id", .type = {.kind = core::ColumnTypeKind::Int64}, .nullable = false}},
+            .primaryKey = {"id"},
+          },
+        },
+    };
+    std::vector<core::MigrationStatement> rollbackStatements;
+    for (const core::Statement& statement : sqlBuilder.compileMigrationStep(rollbackStep, expected, rollbackSchema)) {
+      rollbackStatements.push_back(
+        {
+          .description = rollbackStep.description,
+          .sql = statement.sql,
+          .risk = rollbackStep.risk,
+        });
+    }
+
     const core::MigrationArtifact artifact = core::makeMigrationArtifact(
       "20260928000100",
       "create-migration-contract",
       std::string{sqlBuilder.databaseName()},
-      std::move(statements));
+      std::move(statements),
+      std::move(rollbackStatements));
     repository.addPending(artifact);
     const core::MigrationExecutionPlan plan = core::compileMigrationExecutionPlan(artifact, sqlBuilder);
 
@@ -279,6 +312,28 @@ namespace worm::tests
     requireContract(
       inspector.inspect().findTable(schema, table.name()) != nullptr,
       "Migration executor did not apply the dialect-specific CREATE TABLE statement.");
+
+    const core::MigrationExecutionPlan rollbackPlan = core::compileMigrationExecutionPlan(
+      artifact,
+      sqlBuilder,
+      core::MigrationDirection::Rollback);
+    repository.rollback(rollbackPlan, core::MigrationConfirmation::Destructive);
+    const core::MigrationHistory rolledBackHistory = repository.load();
+    const core::MigrationRecord* rolledBack = rolledBackHistory.find(artifact.id());
+    requireContract(
+      rolledBack != nullptr && rolledBack->state == core::MigrationState::RolledBack,
+      "Migration executor did not persist successful rollback history.");
+    requireContract(
+      inspector.inspect().findTable(schema, table.name()) == nullptr,
+      "Migration executor did not execute the explicitly authored rollback statements.");
+
+    bool repeatedRollbackRejected = false;
+    try {
+      repository.rollback(rollbackPlan, core::MigrationConfirmation::Destructive);
+    } catch (const MigrationException&) {
+      repeatedRollbackRejected = true;
+    }
+    requireContract(repeatedRollbackRejected, "Migration executor rolled back a migration more than once.");
 
     const core::Table failureTable{core::Schema{schema}, "worm_migration_failure"};
     const core::Column failureId{"id", failureTable};

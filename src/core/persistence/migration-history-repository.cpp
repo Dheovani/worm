@@ -315,9 +315,31 @@ namespace worm::core
       throw MigrationException("Migration '{}' is not a forward execution plan.", plan.migrationId());
     }
 
+    executeMigration(plan, confirmation, lockTimeout);
+  }
+
+  void Repository<MigrationHistory>::rollback(
+    const MigrationExecutionPlan& plan,
+    MigrationConfirmation confirmation,
+    std::chrono::milliseconds lockTimeout) const
+  {
+    if (plan.direction() != MigrationDirection::Rollback) {
+      throw MigrationException("Migration '{}' is not a rollback execution plan.", plan.migrationId());
+    }
+
+    executeMigration(plan, confirmation, lockTimeout);
+  }
+
+  void Repository<MigrationHistory>::executeMigration(
+    const MigrationExecutionPlan& plan,
+    MigrationConfirmation confirmation,
+    std::chrono::milliseconds lockTimeout) const
+  {
+    const bool rollback = plan.direction() == MigrationDirection::Rollback;
+
     authorizeMigrationExecution(plan, confirmation);
     std::string failureReason;
-    bool migrationApplied = false;
+    bool migrationCompleted = false;
 
     {
       MigrationLock lock = acquireLock(lockTimeout);
@@ -326,34 +348,51 @@ namespace worm::core
       if (record == nullptr) {
         throw MigrationException("Migration '{}' is not registered in migration history.", plan.migrationId());
       }
+
       if (record->checksum != plan.migrationChecksum()) {
         throw MigrationException("Migration '{}' checksum differs from migration history.", plan.migrationId());
       }
-      if (record->state != MigrationState::Pending) {
-        throw MigrationException("Migration '{}' is not pending and cannot be applied.", plan.migrationId());
+
+      const MigrationState expectedState = rollback ? MigrationState::Applied : MigrationState::Pending;
+      if (record->state != expectedState) {
+        throw MigrationException(
+          "Migration '{}' is not {} and cannot be {}.",
+          plan.migrationId(),
+          rollback ? "applied" : "pending",
+          rollback ? "rolled back" : "applied");
+      }
+
+      if (rollback && history.latestApplied() != record) {
+        throw MigrationException("Migration '{}' is not the latest applied migration.", plan.migrationId());
       }
 
       try {
+        const auto executeAndComplete = [&] {
+          executeSteps(plan);
+          if (rollback) {
+            markRolledBack(plan.migrationId(), std::chrono::system_clock::now());
+          } else {
+            markApplied(plan.migrationId(), std::chrono::system_clock::now());
+          }
+        };
+
         switch (plan.transactionMode()) {
         case MigrationTransactionMode::PerMigration: {
           connection::Transaction transaction = dbClient_->beginTransaction();
-          executeSteps(plan);
-          markApplied(plan.migrationId(), std::chrono::system_clock::now());
+          executeAndComplete();
           transaction.commit();
-          migrationApplied = true;
+          migrationCompleted = true;
           lock.release();
           break;
         }
         case MigrationTransactionMode::LockOwned:
-          executeSteps(plan);
-          markApplied(plan.migrationId(), std::chrono::system_clock::now());
+          executeAndComplete();
           lock.release();
-          migrationApplied = true;
+          migrationCompleted = true;
           break;
         case MigrationTransactionMode::None:
-          executeSteps(plan);
-          markApplied(plan.migrationId(), std::chrono::system_clock::now());
-          migrationApplied = true;
+          executeAndComplete();
+          migrationCompleted = true;
           lock.release();
           break;
         default:
@@ -370,10 +409,11 @@ namespace worm::core
       return;
     }
 
-    if (migrationApplied) {
+    if (migrationCompleted) {
       throw MigrationException(
-        "Migration '{}' was applied, but finalizing its migration lock failed: {}",
+        "Migration '{}' was {}, but finalizing its migration lock failed: {}",
         plan.migrationId(),
+        rollback ? "rolled back" : "applied",
         failureReason);
     }
 

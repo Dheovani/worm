@@ -47,6 +47,11 @@ namespace worm::core
       MigrationConfirmation confirmation = MigrationConfirmation::None,
       std::chrono::milliseconds lockTimeout = std::chrono::seconds{30}) const;
 
+    void rollback(
+      const MigrationExecutionPlan& plan,
+      MigrationConfirmation confirmation = MigrationConfirmation::None,
+      std::chrono::milliseconds lockTimeout = std::chrono::seconds{30}) const;
+
     [[nodiscard]]
     MigrationLock acquireLock(std::chrono::milliseconds timeout = std::chrono::seconds{30}) const;
 
@@ -64,6 +69,11 @@ namespace worm::core
     ResultSet execute(const Statement& statement) const;
 
     void executeSteps(const MigrationExecutionPlan& plan) const;
+
+    void executeMigration(
+      const MigrationExecutionPlan& plan,
+      MigrationConfirmation confirmation,
+      std::chrono::milliseconds lockTimeout) const;
 
     void updateState(
       std::string_view id,

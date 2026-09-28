@@ -45,6 +45,7 @@ namespace worm::cli
     inline constexpr std::string_view migrateCommand = "migrate";
     inline constexpr std::string_view validateMigrationAction = "validate";
     inline constexpr std::string_view statusMigrationAction = "status";
+    inline constexpr std::string_view rollbackMigrationAction = "rollback";
 
     inline constexpr std::string_view entityCommand = "--entity";
     inline constexpr std::string_view tableCommand = "--table";
@@ -120,6 +121,8 @@ namespace worm::cli
         return Validate;
       if (action == statusMigrationAction)
         return Status;
+      if (action == rollbackMigrationAction)
+        return Rollback;
 
       return std::nullopt;
     }

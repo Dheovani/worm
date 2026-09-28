@@ -36,6 +36,15 @@ namespace worm::cli::database
     void writeJson(std::ostream& out) const override;
   };
 
+  struct MigrationRollbackMetrics final : ExecutionMetrics
+  {
+    std::size_t migrations{};
+    std::size_t rolledBackMigrations{};
+
+    void writeText(std::ostream& out) const override;
+    void writeJson(std::ostream& out) const override;
+  };
+
   [[nodiscard]]
   ExecutionReport validateMigrations(const migration::MigrationCatalog& catalog);
 
