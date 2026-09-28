@@ -247,8 +247,7 @@ int main()
       !rejectsArguments([] { static_cast<void>(worm::cli::parse({"migrate", "validate"})); }) ||
       !rejectsArguments([] { static_cast<void>(worm::cli::parse({"migrate", "--status", "--rollback"})); }) ||
       !rejectsArguments([] { static_cast<void>(worm::cli::parse({"migrate", "--validate", "--validate"})); }) ||
-      !rejectsArguments([] { static_cast<void>(worm::cli::parse({"check", "--status"})); }) ||
-      !rejectsArguments([] {
+      !rejectsArguments([] { static_cast<void>(worm::cli::parse({"check", "--status"})); }) || !rejectsArguments([] {
         const auto missingName = worm::cli::parse({"migrate", "--create"});
         worm::cli::validate(missingName);
       }) ||

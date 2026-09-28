@@ -18,7 +18,13 @@
 
 namespace
 {
+  constexpr pqxx::oid boolTypeOid = 16;
   constexpr pqxx::oid byteaTypeOid = 17;
+  constexpr pqxx::oid int8TypeOid = 20;
+  constexpr pqxx::oid int2TypeOid = 21;
+  constexpr pqxx::oid int4TypeOid = 23;
+  constexpr pqxx::oid float4TypeOid = 700;
+  constexpr pqxx::oid float8TypeOid = 701;
   constexpr pqxx::oid numericTypeOid = 1700;
   constexpr std::byte emptyBinarySentinel{};
 
@@ -94,8 +100,39 @@ namespace
       return false;
     }
 
-    const auto* value = std::get_if<std::string>(&result.rows().front().columns.front().value);
-    return value != nullptr && (*value == "t" || *value == "true" || *value == "1");
+    const worm::core::Parameter& value = result.rows().front().columns.front().value;
+    if (const auto* boolean = std::get_if<bool>(&value)) {
+      return *boolean;
+    }
+
+    const auto* text = std::get_if<std::string>(&value);
+    return text != nullptr && (*text == "t" || *text == "true" || *text == "1");
+  }
+
+  template <typename Field>
+  worm::core::Parameter pgValue(const Field& field)
+  {
+    if (field.is_null()) {
+      return nullptr;
+    }
+
+    switch (field.type()) {
+    case boolTypeOid:
+      return field.as<bool>();
+    case int2TypeOid:
+    case int4TypeOid:
+    case int8TypeOid:
+      return field.as<std::int64_t>();
+    case float4TypeOid:
+    case float8TypeOid:
+      return field.as<double>();
+    case numericTypeOid:
+      return worm::core::Decimal{field.view()};
+    case byteaTypeOid:
+      return worm::core::Binary{field.as<pqxx::bytes>()};
+    default:
+      return std::string{field.view()};
+    }
   }
 } // namespace
 
@@ -143,19 +180,7 @@ namespace worm::connection
       for (pqxx::result::size_type j = 0; j < response[i].size(); j++) {
         const auto field = response[i][j];
         const std::string columnName = field.name();
-        core::Parameter columnValue = nullptr;
-
-        if (!field.is_null()) {
-          if (field.type() == numericTypeOid) {
-            columnValue = core::Decimal{field.view()};
-          } else if (field.type() == byteaTypeOid) {
-            columnValue = core::Binary{field.as<pqxx::bytes>()};
-          } else {
-            columnValue = std::string{field.view()};
-          }
-        }
-
-        columns.push_back({columnName, columnValue});
+        columns.push_back({columnName, pgValue(field)});
       }
 
       rows.push_back({columns});

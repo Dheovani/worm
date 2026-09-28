@@ -69,9 +69,7 @@ namespace worm::cli::database
       return references;
     }
 
-    void validateApplicationOrder(
-      const migration::MigrationCatalog& catalog,
-      const core::MigrationHistory& history)
+    void validateApplicationOrder(const migration::MigrationCatalog& catalog, const core::MigrationHistory& history)
     {
       bool pendingFound = false;
       for (const migration::MigrationFile& file : catalog.migrations()) {
@@ -147,9 +145,8 @@ namespace worm::cli::database
       metrics->affectedRows = logger.affectedRows();
 
       return {
-        .info = metrics->appliedMigrations == 0
-          ? "No pending migrations were found."
-          : "Pending migrations were applied successfully.",
+        .info = metrics->appliedMigrations == 0 ? "No pending migrations were found."
+                                                : "Pending migrations were applied successfully.",
         .status = ExecutionStatus::Success,
         .metrics = std::move(metrics),
       };
@@ -232,11 +229,8 @@ namespace worm::cli::database
         };
       }
 
-      const core::MigrationDdlPlan ddl = core::compileMigrationDdl(
-        core::generateMigrationPlan(differences),
-        expected,
-        actual,
-        runtime.sqlBuilder);
+      const core::MigrationDdlPlan ddl =
+        core::compileMigrationDdl(core::generateMigrationPlan(differences), expected, actual, runtime.sqlBuilder);
       std::vector<core::MigrationStatement> statements;
       for (const core::MigrationDdlStep& step : ddl.steps()) {
         for (const core::Statement& statement : step.statements) {
@@ -287,11 +281,9 @@ namespace worm::cli::database
         return databaseSchema.findTable(schema, core::Repository<core::MigrationHistory>::tableName()) != nullptr;
       }
 
-      return std::ranges::any_of(
-        databaseSchema.tables,
-        [](const core::SchemaTableSnapshot& table) {
-          return table.name == core::Repository<core::MigrationHistory>::tableName();
-        });
+      return std::ranges::any_of(databaseSchema.tables, [](const core::SchemaTableSnapshot& table) {
+        return table.name == core::Repository<core::MigrationHistory>::tableName();
+      });
     }
 
     [[nodiscard]]
@@ -342,10 +334,8 @@ namespace worm::cli::database
           file->artifact.checksum());
       }
 
-      const core::MigrationExecutionPlan plan = core::compileMigrationExecutionPlan(
-        file->artifact,
-        runtime.sqlBuilder,
-        core::MigrationDirection::Rollback);
+      const core::MigrationExecutionPlan plan =
+        core::compileMigrationExecutionPlan(file->artifact, runtime.sqlBuilder, core::MigrationDirection::Rollback);
 
       runtime.repository.rollback(plan, core::MigrationConfirmation::Destructive);
       metrics->migrations = 1;
@@ -373,8 +363,8 @@ namespace worm::cli::database
   {
     out << "{\"differences\":" << differences << ",\"statements\":" << statements
         << ",\"safeStatements\":" << safeStatements << ",\"ambiguousStatements\":" << ambiguousStatements
-        << ",\"destructiveStatements\":" << destructiveStatements
-        << ",\"generatedArtifacts\":" << generatedArtifacts << '}';
+        << ",\"destructiveStatements\":" << destructiveStatements << ",\"generatedArtifacts\":" << generatedArtifacts
+        << '}';
   }
 
   void MigrationApplyMetrics::writeText(std::ostream& out) const
@@ -392,9 +382,8 @@ namespace worm::cli::database
   {
     out << "{\"migrations\":" << migrations << ",\"pendingMigrations\":" << pendingMigrations
         << ",\"appliedMigrations\":" << appliedMigrations
-        << ",\"alreadyAppliedMigrations\":" << alreadyAppliedMigrations
-        << ",\"queriesExecuted\":" << queriesExecuted << ",\"statementsExecuted\":" << statementsExecuted
-        << ",\"affectedRows\":" << affectedRows << '}';
+        << ",\"alreadyAppliedMigrations\":" << alreadyAppliedMigrations << ",\"queriesExecuted\":" << queriesExecuted
+        << ",\"statementsExecuted\":" << statementsExecuted << ",\"affectedRows\":" << affectedRows << '}';
   }
 
   void MigrationValidateMetrics::writeText(std::ostream& out) const

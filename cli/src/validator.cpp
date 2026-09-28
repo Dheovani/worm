@@ -749,17 +749,14 @@ namespace worm::cli
         });
         if (args.name->empty() || args.name->front() == '-' || args.name->back() == '-' ||
             args.name->find("--") != std::string::npos || !isLowerCase) {
-          throw InvalidCliArgumentException(
-            "Migration name '{}' must be a lowercase kebab-case slug.",
-            *args.name);
+          throw InvalidCliArgumentException("Migration name '{}' must be a lowercase kebab-case slug.", *args.name);
         }
       } else if (args.name.has_value()) {
         throw InvalidCliArgumentException("Option '--name' is only valid for 'migrate --create'.");
       }
 
-      if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() ||
-          args.namespaceName.has_value() || args.apply || args.query.has_value() ||
-          args.file.has_value() || args.maxExecutions.has_value()) {
+      if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() || args.namespaceName.has_value() ||
+          args.apply || args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
         if (*invocation.migrationAction == MigrationAction::Create) {
           throw InvalidCliArgumentException(
             "Only '--name' and '--directory' are valid for the 'migrate --create' action.");

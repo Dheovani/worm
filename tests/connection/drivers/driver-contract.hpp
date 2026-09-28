@@ -313,10 +313,8 @@ namespace worm::tests
       inspector.inspect().findTable(schema, table.name()) != nullptr,
       "Migration executor did not apply the dialect-specific CREATE TABLE statement.");
 
-    const core::MigrationExecutionPlan rollbackPlan = core::compileMigrationExecutionPlan(
-      artifact,
-      sqlBuilder,
-      core::MigrationDirection::Rollback);
+    const core::MigrationExecutionPlan rollbackPlan =
+      core::compileMigrationExecutionPlan(artifact, sqlBuilder, core::MigrationDirection::Rollback);
     repository.rollback(rollbackPlan, core::MigrationConfirmation::Destructive);
     const core::MigrationHistory rolledBackHistory = repository.load();
     const core::MigrationRecord* rolledBack = rolledBackHistory.find(artifact.id());

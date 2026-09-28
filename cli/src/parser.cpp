@@ -201,9 +201,7 @@ namespace worm::cli
         if (*destination == action) {
           throw DuplicateCommandException("Option '{}' was specified more than once.", option);
         }
-        throw CommandOverflowException(
-          "More than one migration action was specified. Unexpected option '{}'.",
-          option);
+        throw CommandOverflowException("More than one migration action was specified. Unexpected option '{}'.", option);
       }
 
       destination = action;

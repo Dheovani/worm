@@ -80,18 +80,15 @@ int main()
   const std::filesystem::path database = temporary.path() / "worm.sqlite";
   std::filesystem::create_directories(migrations);
 
-  const worm::core::MigrationArtifact first =
-    migrationArtifact("20260928000100", "create-first", "rollback_first");
-  const worm::core::MigrationArtifact second =
-    migrationArtifact("20260928000200", "create-second", "rollback_second");
+  const worm::core::MigrationArtifact first = migrationArtifact("20260928000100", "create-first", "rollback_first");
+  const worm::core::MigrationArtifact second = migrationArtifact("20260928000200", "create-second", "rollback_second");
   worm::cli::migration::saveMigrationArtifact(migrations / "20260928000100_create-first.worm.json", first);
   worm::cli::migration::saveMigrationArtifact(migrations / "20260928000200_create-second.worm.json", second);
 
   const worm::connection::ConnectionConfig config{.dbname = database.string()};
   const auto type = worm::connection::DatabaseType::SQLite;
-  const std::shared_ptr<worm::connection::Client> client = worm::DependencyInjector<worm::connection::Client>::get(
-    config,
-    type);
+  const std::shared_ptr<worm::connection::Client> client =
+    worm::DependencyInjector<worm::connection::Client>::get(config, type);
   const worm::core::SqlBuilder& sqlBuilder = worm::DependencyInjector<worm::core::SqlBuilder>::get(type);
   const worm::core::QueryBuilder queryBuilder{sqlBuilder};
   const worm::core::Repository<worm::core::MigrationHistory> repository{client, queryBuilder, "main"};
@@ -174,14 +171,7 @@ int main()
   }
 
   worm::cli::Invocation reapplyInvocation = worm::cli::parse(
-    {"--driver",
-      "sqlite",
-      "--database",
-      database.string(),
-      "migrate",
-      "--apply",
-      "--directory",
-      migrations.string()});
+    {"--driver", "sqlite", "--database", database.string(), "migrate", "--apply", "--directory", migrations.string()});
   worm::cli::validate(reapplyInvocation);
   const worm::cli::ExecutionReport reapplyReport = worm::cli::database::migrate(reapplyInvocation);
   const auto reapplyMetrics =
@@ -287,10 +277,9 @@ int main()
   const worm::core::MigrationArtifact& createdArtifact = createdCatalog.migrations().front().artifact;
   const worm::core::MigrationRecord* createdRecord = createHistory.find(createdArtifact.id());
   if (applyReport.status != worm::cli::ExecutionStatus::Success || applyMetrics == nullptr ||
-      applyMetrics->migrations != 1 || applyMetrics->pendingMigrations != 1 ||
-      applyMetrics->appliedMigrations != 1 || applyMetrics->alreadyAppliedMigrations != 0 ||
-      applyMetrics->statementsExecuted == 0 || createdRecord == nullptr ||
-      createdRecord->state != worm::core::MigrationState::Applied ||
+      applyMetrics->migrations != 1 || applyMetrics->pendingMigrations != 1 || applyMetrics->appliedMigrations != 1 ||
+      applyMetrics->alreadyAppliedMigrations != 0 || applyMetrics->statementsExecuted == 0 ||
+      createdRecord == nullptr || createdRecord->state != worm::core::MigrationState::Applied ||
       createInspector.inspect().findTable("main", "users") == nullptr ||
       progress.str().find("[migrate] Query completed:") == std::string::npos ||
       progress.str().find("SQL: create table") == std::string::npos ||

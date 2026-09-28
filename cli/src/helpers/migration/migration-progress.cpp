@@ -57,8 +57,7 @@ namespace worm::cli::migration
         *output_ << ",\"sql\":";
         ExecutionMetrics::writeJsonString(*output_, statement.sql);
         *output_ << ",\"parameterCount\":" << statement.parameters.size()
-                 << ",\"affectedRows\":" << result.affectedRows() << ",\"returnedRows\":" << result.rowCount()
-                 << "}\n";
+                 << ",\"affectedRows\":" << result.affectedRows() << ",\"returnedRows\":" << result.rowCount() << "}\n";
       } else {
         *output_ << "[migrate] Query completed: " << operation << '\n';
         if (risk.has_value()) {
