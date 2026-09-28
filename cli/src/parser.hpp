@@ -34,6 +34,7 @@ namespace worm::cli
 
   enum class MigrationAction
   {
+    Create,
     Validate,
     Status,
     Rollback

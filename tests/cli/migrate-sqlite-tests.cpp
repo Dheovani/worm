@@ -1,4 +1,7 @@
 #include <database/migrate.hpp>
+#include <helpers/file.hpp>
+#include <helpers/manifest.hpp>
+#include <helpers/migration/migration-catalog.hpp>
 #include <helpers/migration/migration-file.hpp>
 #include <parser.hpp>
 #include <validator.hpp>
@@ -167,6 +170,85 @@ int main()
   if (emptyRollback.status != worm::cli::ExecutionStatus::Success || emptyMetrics == nullptr ||
       emptyMetrics->migrations != 0 || emptyMetrics->rolledBackMigrations != 0) {
     std::cerr << "Migrate rollback did not handle an empty applied migration stack.\n";
+    return 1;
+  }
+
+  const std::filesystem::path manifestPath = temporary.path() / "worm-schema.json";
+  const std::filesystem::path createDirectory = temporary.path() / "created-migrations";
+  const worm::cli::SchemaManifest manifest{
+    .entities =
+      {
+        {
+          .name = "User",
+          .table =
+            {
+              .schema = "main",
+              .name = "users",
+              .columns =
+                {
+                  {
+                    .name = "id",
+                    .type = {.kind = worm::core::ColumnTypeKind::Int64},
+                    .nullable = false,
+                    .generated = true,
+                  },
+                },
+              .primaryKey = {"id"},
+            },
+        },
+      },
+  };
+  worm::cli::writeGeneratedFile(manifestPath, worm::cli::serializeManifest(manifest));
+
+  worm::cli::Invocation createInvocation = worm::cli::parse(
+    {"--manifest",
+      manifestPath.string(),
+      "--driver",
+      "sqlite",
+      "--database",
+      database.string(),
+      "migrate",
+      "create",
+      "--name",
+      "create-users",
+      "--directory",
+      createDirectory.string()});
+  worm::cli::validate(createInvocation);
+  const worm::cli::ExecutionReport createReport = worm::cli::database::migrate(createInvocation);
+  const auto createMetrics =
+    std::dynamic_pointer_cast<const worm::cli::database::MigrationCreateMetrics>(createReport.metrics);
+  const worm::cli::migration::MigrationCatalog createdCatalog =
+    worm::cli::migration::discoverMigrationArtifacts(createDirectory);
+  if (createReport.status != worm::cli::ExecutionStatus::Success || createMetrics == nullptr ||
+      createMetrics->differences != 1 || createMetrics->statements == 0 || createMetrics->generatedArtifacts != 1 ||
+      createdCatalog.migrations().size() != 1 ||
+      createdCatalog.migrations().front().artifact.name() != "create-users" ||
+      createdCatalog.migrations().front().artifact.database() != "sqlite" ||
+      createdCatalog.migrations().front().artifact.rollback().has_value() ||
+      inspector.inspect().findTable("main", "users") != nullptr) {
+    std::cerr << "Migrate create did not generate a forward-only artifact without changing the database.\n";
+    return 1;
+  }
+
+  std::ostringstream createJson;
+  createMetrics->writeJson(createJson);
+  if (createJson.str().find("\"generatedArtifacts\":1") == std::string::npos) {
+    std::cerr << "Migrate create did not render its generation metrics.\n";
+    return 1;
+  }
+
+  const worm::core::MigrationArtifact& createdArtifact = createdCatalog.migrations().front().artifact;
+  repository.addPending(createdArtifact);
+  repository.apply(
+    worm::core::compileMigrationExecutionPlan(createdArtifact, sqlBuilder),
+    worm::core::MigrationConfirmation::Ambiguous);
+  const worm::cli::ExecutionReport noDifferenceReport = worm::cli::database::migrate(createInvocation);
+  const auto noDifferenceMetrics =
+    std::dynamic_pointer_cast<const worm::cli::database::MigrationCreateMetrics>(noDifferenceReport.metrics);
+  if (noDifferenceReport.status != worm::cli::ExecutionStatus::Success || noDifferenceMetrics == nullptr ||
+      noDifferenceMetrics->differences != 0 || noDifferenceMetrics->generatedArtifacts != 0 ||
+      worm::cli::migration::discoverMigrationArtifacts(createDirectory).migrations().size() != 1) {
+    std::cerr << "Migrate create generated an artifact for a compatible schema or the Worm history table.\n";
     return 1;
   }
 

@@ -133,7 +133,7 @@ This milestone should end with a complete example that creates, persists, querie
     - [x] Compile migration steps into dialect-specific DDL and define transactional boundaries for each supported database.
     - [x] Define confirmation, failure recovery, and partially applied migration policies for ambiguous and destructive operations.
     - [x] Add integration contracts for migration history, locking, successful application, failure recovery, and dialect-specific DDL.
-    - [ ] `migrate create`: Create a reviewable migration artifact from the current `diff` without applying it.
+    - [x] `migrate create`: Create a reviewable migration artifact from the current `diff` without applying it.
     - [x] `migrate validate`: Validate local migration ordering, checksums, and artifact structure without changing the database.
     - [x] `migrate status`: Display applied, pending, failed, missing, and checksum-divergent migrations.
     - [x] `migrate rollback`: Execute only explicitly authored rollback steps; never infer destructive rollback SQL.

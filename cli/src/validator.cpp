@@ -4,6 +4,7 @@
 #include <core/query/validator.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <cstdlib>
 #include <filesystem>
@@ -730,16 +731,38 @@ namespace worm::cli
       const CommandArguments& args = invocation.arguments;
       if (!invocation.migrationAction.has_value()) {
         throw InvalidCliArgumentException(
-          "The 'migrate' command requires a subcommand. Currently supported: validate, status, rollback.");
+          "The 'migrate' command requires a subcommand. Currently supported: create, validate, status, rollback.");
       }
 
       if (args.directory.has_value() && args.directory->empty()) {
         throw InvalidCliArgumentException("Option '--directory' cannot be empty.");
       }
 
-      if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() || args.namespaceName.has_value() ||
-          args.name.has_value() || args.apply || args.query.has_value() || args.file.has_value() ||
-          args.maxExecutions.has_value()) {
+      if (*invocation.migrationAction == MigrationAction::Create) {
+        if (!args.name.has_value()) {
+          throw InvalidCliArgumentException("The 'migrate create' command requires option '--name'.");
+        }
+
+        const bool isLowerCase = std::ranges::all_of(*args.name, [](unsigned char character) {
+          return std::islower(character) != 0 || std::isdigit(character) != 0 || character == '-';
+        });
+        if (args.name->empty() || args.name->front() == '-' || args.name->back() == '-' ||
+            args.name->find("--") != std::string::npos || !isLowerCase) {
+          throw InvalidCliArgumentException(
+            "Migration name '{}' must be a lowercase kebab-case slug.",
+            *args.name);
+        }
+      } else if (args.name.has_value()) {
+        throw InvalidCliArgumentException("Option '--name' is only valid for 'migrate create'.");
+      }
+
+      if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() ||
+          args.namespaceName.has_value() || args.apply || args.query.has_value() ||
+          args.file.has_value() || args.maxExecutions.has_value()) {
+        if (*invocation.migrationAction == MigrationAction::Create) {
+          throw InvalidCliArgumentException(
+            "Only '--name' and '--directory' are valid for the 'migrate create' subcommand.");
+        }
         throw InvalidCliArgumentException("Only '--directory' is valid for the selected 'migrate' subcommand.");
       }
     }

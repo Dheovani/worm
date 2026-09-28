@@ -10,6 +10,19 @@
 
 namespace worm::cli::database
 {
+  struct MigrationCreateMetrics final : ExecutionMetrics
+  {
+    std::size_t differences{};
+    std::size_t statements{};
+    std::size_t safeStatements{};
+    std::size_t ambiguousStatements{};
+    std::size_t destructiveStatements{};
+    std::size_t generatedArtifacts{};
+
+    void writeText(std::ostream& out) const override;
+    void writeJson(std::ostream& out) const override;
+  };
+
   struct MigrationValidateMetrics final : ExecutionMetrics
   {
     std::size_t migrations{};

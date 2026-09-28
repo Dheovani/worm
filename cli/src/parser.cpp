@@ -43,6 +43,7 @@ namespace worm::cli
     inline constexpr std::string_view inspectCommand = "inspect";
     inline constexpr std::string_view diffCommand = "diff";
     inline constexpr std::string_view migrateCommand = "migrate";
+    inline constexpr std::string_view createMigrationAction = "create";
     inline constexpr std::string_view validateMigrationAction = "validate";
     inline constexpr std::string_view statusMigrationAction = "status";
     inline constexpr std::string_view rollbackMigrationAction = "rollback";
@@ -117,6 +118,8 @@ namespace worm::cli
     {
       using enum MigrationAction;
 
+      if (action == createMigrationAction)
+        return Create;
       if (action == validateMigrationAction)
         return Validate;
       if (action == statusMigrationAction)

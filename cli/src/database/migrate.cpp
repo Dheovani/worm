@@ -1,16 +1,28 @@
 #include "migrate.hpp"
 
+#include <core/model/migration.hpp>
+#include <core/model/schema-diff.hpp>
 #include <core/persistence/migration-history-repository.hpp>
+#include <core/query/migration-ddl.hpp>
 #include <utils/dependency-injection.hpp>
 
 #include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
+#include <system_error>
+#include <utility>
+#include <vector>
 
 #include <core/model/migration-artifact.hpp>
 #include <errors/invalid-cli-argument-exception.hpp>
 #include <errors/migration-exception.hpp>
 #include <helpers/connection.hpp>
+#include <helpers/manifest.hpp>
+#include <helpers/migration/migration-file.hpp>
 
 namespace worm::cli::database
 {
@@ -41,6 +53,131 @@ namespace worm::cli::database
     migration::MigrationCatalog migrationCatalog(const Invocation& invocation)
     {
       return migration::discoverMigrationArtifacts(invocation.arguments.directory.value_or("migrations"));
+    }
+
+    [[nodiscard]]
+    std::string currentMigrationId()
+    {
+      const auto timestamp = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+      const std::chrono::sys_days day = std::chrono::floor<std::chrono::days>(timestamp);
+      const std::chrono::year_month_day date{day};
+      const std::chrono::hh_mm_ss time{timestamp - day};
+
+      std::ostringstream id;
+      id << std::setfill('0') << std::setw(4) << static_cast<int>(date.year()) << std::setw(2)
+         << static_cast<unsigned int>(date.month()) << std::setw(2) << static_cast<unsigned int>(date.day())
+         << std::setw(2) << time.hours().count() << std::setw(2) << time.minutes().count() << std::setw(2)
+         << time.seconds().count();
+      return id.str();
+    }
+
+    [[nodiscard]]
+    core::SchemaSnapshot applicationSchema(const MigrationRuntime& runtime)
+    {
+      core::SchemaSnapshot schema = runtime.databaseSchema;
+      std::erase_if(schema.tables, [&](const core::SchemaTableSnapshot& table) {
+        return table.name == core::Repository<core::MigrationHistory>::tableName() &&
+               (runtime.schema.empty() || table.schema == runtime.schema);
+      });
+      return schema;
+    }
+
+    void validateNewMigrationId(const std::filesystem::path& directory, std::string_view id)
+    {
+      std::error_code error;
+      if (!std::filesystem::exists(directory, error)) {
+        if (error) {
+          throw MigrationException(
+            "Unable to inspect migration directory '{}': {}.",
+            directory.string(),
+            error.message());
+        }
+        return;
+      }
+
+      const migration::MigrationCatalog catalog = migration::discoverMigrationArtifacts(directory);
+      if (!catalog.empty() && catalog.migrations().back().artifact.id() >= id) {
+        throw MigrationException(
+          "Generated migration id '{}' must be greater than the latest local migration id '{}'.",
+          id,
+          catalog.migrations().back().artifact.id());
+      }
+    }
+
+    [[nodiscard]]
+    ExecutionReport createMigration(const Invocation& invocation)
+    {
+      if (!invocation.global.manifest.has_value()) {
+        throw InvalidCliArgumentException("The 'migrate create' command requires a schema manifest.");
+      }
+
+      if (!invocation.arguments.name.has_value()) {
+        throw InvalidCliArgumentException("The 'migrate create' command requires option '--name'.");
+      }
+
+      const MigrationRuntime runtime{invocation};
+      const std::string manifestSchema =
+        runtime.type == connection::DatabaseType::MySQL ? invocation.global.database.value_or("") : runtime.schema;
+      const SchemaManifest manifest = loadManifest(*invocation.global.manifest, manifestSchema);
+      const core::SchemaMetadata expected = schemaMetadata(manifest);
+      const core::SchemaSnapshot actual = applicationSchema(runtime);
+      const std::vector<core::SchemaDifference> differences = core::compareSchemas(expected, actual);
+      auto metrics = std::make_shared<MigrationCreateMetrics>();
+      metrics->differences = differences.size();
+      if (differences.empty()) {
+        return {
+          .info = "No schema differences were found. No migration artifact was created.",
+          .status = ExecutionStatus::Success,
+          .metrics = std::move(metrics),
+        };
+      }
+
+      const core::MigrationDdlPlan ddl = core::compileMigrationDdl(
+        core::generateMigrationPlan(differences),
+        expected,
+        actual,
+        runtime.sqlBuilder);
+      std::vector<core::MigrationStatement> statements;
+      for (const core::MigrationDdlStep& step : ddl.steps()) {
+        for (const core::Statement& statement : step.statements) {
+          statements.push_back(
+            {
+              .description = step.description,
+              .sql = statement.sql,
+              .risk = step.risk,
+            });
+          ++metrics->statements;
+          switch (step.risk) {
+          case core::MigrationRisk::Safe:
+            ++metrics->safeStatements;
+            break;
+          case core::MigrationRisk::Ambiguous:
+            ++metrics->ambiguousStatements;
+            break;
+          case core::MigrationRisk::Destructive:
+            ++metrics->destructiveStatements;
+            break;
+          }
+        }
+      }
+
+      const std::string id = currentMigrationId();
+      const std::filesystem::path directory = invocation.arguments.directory.value_or("migrations");
+      validateNewMigrationId(directory, id);
+      const core::MigrationArtifact artifact = core::makeMigrationArtifact(
+        id,
+        *invocation.arguments.name,
+        std::string{runtime.sqlBuilder.databaseName()},
+        std::move(statements));
+      const std::filesystem::path path = directory / (artifact.id() + "_" + artifact.name() + ".worm.json");
+      migration::saveMigrationArtifact(path, artifact);
+      metrics->generatedArtifacts = 1;
+
+      return {
+        .info = "Created migration artifact '" + path.generic_string() + "'. Review it before execution.",
+        .status = ExecutionStatus::Success,
+        .metrics = std::move(metrics),
+      };
     }
 
     [[nodiscard]]
@@ -121,6 +258,24 @@ namespace worm::cli::database
       };
     }
   } // namespace
+
+  void MigrationCreateMetrics::writeText(std::ostream& out) const
+  {
+    printMetric(out, "Differences", differences);
+    printMetric(out, "Statements", statements);
+    printMetric(out, "Safe statements", safeStatements);
+    printMetric(out, "Ambiguous statements", ambiguousStatements);
+    printMetric(out, "Destructive statements", destructiveStatements);
+    printMetric(out, "Generated artifacts", generatedArtifacts);
+  }
+
+  void MigrationCreateMetrics::writeJson(std::ostream& out) const
+  {
+    out << "{\"differences\":" << differences << ",\"statements\":" << statements
+        << ",\"safeStatements\":" << safeStatements << ",\"ambiguousStatements\":" << ambiguousStatements
+        << ",\"destructiveStatements\":" << destructiveStatements
+        << ",\"generatedArtifacts\":" << generatedArtifacts << '}';
+  }
 
   void MigrationValidateMetrics::writeText(std::ostream& out) const
   {
@@ -267,6 +422,8 @@ namespace worm::cli::database
     }
 
     switch (*invocation.migrationAction) {
+    case MigrationAction::Create:
+      return createMigration(invocation);
     case MigrationAction::Validate:
       return validateMigrations(migrationCatalog(invocation));
     case MigrationAction::Status:
