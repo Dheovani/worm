@@ -421,16 +421,16 @@ namespace worm::connection
   {
     const core::ResultSet result = executeImpl(
       core::Statement{"SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES "
-                      "WHERE GRANTEE = CONCAT('\'', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), '\'@\'', "
-                      "SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '\'') "
+                      "WHERE GRANTEE = CONCAT(QUOTE(SUBSTRING_INDEX(CURRENT_USER(), '@', 1)), '@', "
+                      "QUOTE(SUBSTRING_INDEX(CURRENT_USER(), '@', -1))) "
                       "UNION SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES "
                       "WHERE REPLACE(TABLE_SCHEMA, CHAR(92), '') = DATABASE() "
-                      "AND GRANTEE = CONCAT('\'', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), "
-                      "'\'@\'', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '\'') "
+                      "AND GRANTEE = CONCAT(QUOTE(SUBSTRING_INDEX(CURRENT_USER(), '@', 1)), '@', "
+                      "QUOTE(SUBSTRING_INDEX(CURRENT_USER(), '@', -1))) "
                       "UNION SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES "
                       "WHERE REPLACE(TABLE_SCHEMA, CHAR(92), '') = DATABASE() "
-                      "AND GRANTEE = CONCAT('\'', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), "
-                      "'\'@\'', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '\'')"});
+                      "AND GRANTEE = CONCAT(QUOTE(SUBSTRING_INDEX(CURRENT_USER(), '@', 1)), '@', "
+                      "QUOTE(SUBSTRING_INDEX(CURRENT_USER(), '@', -1)))"});
 
     std::set<std::string> grants;
     for (const core::ResultRow& row : result.rows()) {
