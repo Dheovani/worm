@@ -1,5 +1,6 @@
 #include "parser.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <iostream>
 #include <optional>
@@ -43,6 +44,7 @@ namespace worm::cli
     inline constexpr std::string_view inspectCommand = "inspect";
     inline constexpr std::string_view diffCommand = "diff";
     inline constexpr std::string_view migrateCommand = "migrate";
+    inline constexpr std::string_view doctorCommand = "doctor";
 
     inline constexpr std::string_view entityCommand = "--entity";
     inline constexpr std::string_view tableCommand = "--table";
@@ -58,6 +60,8 @@ namespace worm::cli
     inline constexpr std::string_view validateMigrationAction = "--validate";
     inline constexpr std::string_view statusMigrationAction = "--status";
     inline constexpr std::string_view rollbackMigrationAction = "--rollback";
+    inline constexpr std::string_view connectionDoctorCheck = "--connection";
+    inline constexpr std::string_view permissionsDoctorCheck = "--permissions";
 
     [[nodiscard]]
     constexpr std::optional<GlobalOptions> parseGlobalOption(std::string_view opt) noexcept
@@ -109,6 +113,8 @@ namespace worm::cli
         return Diff;
       if (cmd == migrateCommand)
         return Migrate;
+      if (cmd == doctorCommand)
+        return Doctor;
 
       return std::nullopt;
     }
@@ -126,6 +132,23 @@ namespace worm::cli
         return Status;
       if (action == rollbackMigrationAction)
         return Rollback;
+
+      return std::nullopt;
+    }
+
+    [[nodiscard]]
+    constexpr std::optional<DoctorCheck> parseDoctorCheck(std::string_view option) noexcept
+    {
+      if (option == configCommand)
+        return DoctorCheck::Configuration;
+      if (option == driverCommand)
+        return DoctorCheck::Driver;
+      if (option == connectionDoctorCheck)
+        return DoctorCheck::Connection;
+      if (option == versionFullCommand)
+        return DoctorCheck::Version;
+      if (option == permissionsDoctorCheck)
+        return DoctorCheck::Permissions;
 
       return std::nullopt;
     }
@@ -205,6 +228,14 @@ namespace worm::cli
       }
 
       destination = action;
+    }
+
+    void assignDoctorCheck(std::vector<DoctorCheck>& checks, DoctorCheck check, std::string_view option)
+    {
+      if (std::ranges::find(checks, check) != checks.end()) {
+        throw DuplicateCommandException("Option '{}' was specified more than once.", option);
+      }
+      checks.push_back(check);
     }
 
     void assignGlobalOption(
@@ -332,6 +363,7 @@ namespace worm::cli
     CommandArguments commandArguments;
     std::optional<Commands> command;
     std::optional<MigrationAction> migrationAction;
+    std::vector<DoctorCheck> doctorChecks;
 
     for (std::size_t i = 0; i < args.size(); ++i) {
       const std::string_view token = args[i];
@@ -367,6 +399,18 @@ namespace worm::cli
       if (const auto secondCommand = parseCommand(token)) {
         static_cast<void>(secondCommand);
         throw CommandOverflowException("More than one command was specified. Unexpected command '{}'.", token);
+      }
+
+      if (*command == Commands::Doctor) {
+        if (const auto doctorCheck = parseDoctorCheck(token)) {
+          assignDoctorCheck(doctorChecks, *doctorCheck, token);
+          continue;
+        }
+
+        if (token == verboseCommand) {
+          assignGlobalOption(global, GlobalOptions::Verbose, std::nullopt, token);
+          continue;
+        }
       }
 
       if (const auto action = parseMigrationAction(token)) {
@@ -408,6 +452,7 @@ namespace worm::cli
       .global = std::move(global),
       .command = *command,
       .migrationAction = migrationAction,
+      .doctorChecks = std::move(doctorChecks),
       .arguments = std::move(commandArguments),
     };
   }

@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "database/diff.hpp"
+#include "database/doctor.hpp"
 #include "database/inspect.hpp"
 #include "database/migrate.hpp"
 #include "database/n-plus-one.hpp"
@@ -95,6 +96,7 @@ namespace worm::cli
               << "  inspect               Print the complete supported database structure\n"
               << "  migrate               Manage migration artifacts and database migration state\n"
               << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
+              << "  doctor                Diagnose configuration, driver, connection, version, and permissions\n"
               << '\n'
               << "Global options:\n"
               << "  -c, --config <path>   Path to the Worm configuration file\n"
@@ -126,6 +128,8 @@ namespace worm::cli
               << "  --validate            Validate local migration artifacts without changing the database\n"
               << "  --status              Compare local migration artifacts with persistent migration history\n"
               << "  --rollback            Revert the latest applied migration using its explicit rollback steps\n"
+              << "  --connection          Run the doctor connection check\n"
+              << "  --permissions         Run the doctor permissions check\n"
               << '\n'
               << "Examples:\n"
               << "  worm check\n"
@@ -253,6 +257,9 @@ namespace worm::cli
       break;
     case Commands::Migrate:
       report = database::migrate(invocation, &std::clog);
+      break;
+    case Commands::Doctor:
+      report = database::examine(invocation);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

@@ -6,6 +6,8 @@
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
 
+#include <connection/diagnostics.hpp>
+
 #include <chrono>
 #include <cstdint>
 #include <map>
@@ -62,6 +64,17 @@ namespace worm::connection
     [[nodiscard]]
     Transaction beginTransaction();
 
+    void ping();
+
+    [[nodiscard]]
+    bool isConnected() noexcept;
+
+    [[nodiscard]]
+    DatabaseVersion databaseVersion();
+
+    [[nodiscard]]
+    DatabasePermissions databasePermissions();
+
   protected:
     explicit Client(bool cacheResults = false) noexcept
       : cacheResults_(cacheResults)
@@ -72,6 +85,12 @@ namespace worm::connection
     virtual void commitTransactionImpl() = 0;
     virtual void acquireMigrationLockImpl(std::string_view name, std::chrono::milliseconds timeout);
     virtual void releaseMigrationLockImpl(std::string_view name, bool completed);
+
+    [[nodiscard]]
+    virtual std::string databaseVersionImpl();
+
+    [[nodiscard]]
+    virtual DatabasePermissions databasePermissionsImpl();
 
     [[nodiscard]]
     virtual bool migrationLockOwnsTransactionImpl() const noexcept;

@@ -407,6 +407,56 @@ namespace worm::connection
     return DatabaseType::MSSQL;
   }
 
+  std::string MsSqlClient::databaseVersionImpl()
+  {
+    const core::ResultSet result =
+      executeImpl(core::Statement{"SELECT CAST(SERVERPROPERTY('ProductVersion') AS VARCHAR(128)) AS version"});
+    if (result.rowCount() != 1 || result.rows().front().columns.empty()) {
+      throw QueryExecutionException("SQL Server returned an invalid server version result.");
+    }
+
+    const auto* version = std::get_if<std::string>(&result.rows().front().columns.front().value);
+    if (version == nullptr) {
+      throw QueryExecutionException("SQL Server returned an incompatible server version value.");
+    }
+    return *version;
+  }
+
+  DatabasePermissions MsSqlClient::databasePermissionsImpl()
+  {
+    const core::ResultSet result = executeImpl(
+      core::Statement{"SELECT "
+                      "HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'SELECT'), "
+                      "HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'INSERT'), "
+                      "HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'UPDATE'), "
+                      "HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'DELETE'), "
+                      "HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'CREATE TABLE'), "
+                      "HAS_PERMS_BY_NAME(SCHEMA_NAME(), 'SCHEMA', 'ALTER'), "
+                      "HAS_PERMS_BY_NAME(SCHEMA_NAME(), 'SCHEMA', 'ALTER'), "
+                      "HAS_PERMS_BY_NAME(SCHEMA_NAME(), 'SCHEMA', 'ALTER')"});
+    if (result.rowCount() != 1 || result.rows().front().columnCount() != 8) {
+      throw QueryExecutionException("SQL Server returned an invalid permission result.");
+    }
+
+    const DatabasePermission operations[]{DatabasePermission::Select,
+      DatabasePermission::Insert,
+      DatabasePermission::Update,
+      DatabasePermission::Delete,
+      DatabasePermission::CreateTable,
+      DatabasePermission::AlterTable,
+      DatabasePermission::DropTable,
+      DatabasePermission::CreateIndex};
+    DatabasePermissions permissions;
+    permissions.reserve(8);
+    for (std::size_t index = 0; index < 8; ++index) {
+      const auto* granted = std::get_if<std::int64_t>(&result.rows().front().columns[index].value);
+      const DatabasePermissionStatus status =
+        granted != nullptr && *granted != 0 ? DatabasePermissionStatus::Granted : DatabasePermissionStatus::Denied;
+      permissions.push_back({operations[index], status, "Current SQL Server database and schema"});
+    }
+    return permissions;
+  }
+
   void MsSqlClient::beginTransactionImpl()
   {
     const SQLRETURN result =

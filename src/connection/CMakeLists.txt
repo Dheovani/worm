@@ -1,6 +1,8 @@
 set(
   WORM_CONNECTION_SOURCES
+  client.cpp
   configuration.cpp
+  diagnostics.cpp
   migration-lock.cpp
   schema-inspector.cpp
   transaction.cpp

@@ -80,6 +80,12 @@ namespace worm::tests
     connection::DatabaseType expectedDatabaseType)
   {
     requireContract(client->type() == expectedDatabaseType, "Driver returned the wrong database type.");
+    client->ping();
+    requireContract(client->isConnected(), "Driver did not complete the connectivity round trip.");
+    requireContract(!client->databaseVersion().value.empty(), "Driver did not report its database version.");
+    requireContract(
+      client->databasePermissions().size() == 8,
+      "Driver did not report every permission required by Worm.");
 
     const core::QueryBuilder queryBuilder{sqlBuilder};
     const core::Repository<DriverContractEntity> repository{client, queryBuilder};

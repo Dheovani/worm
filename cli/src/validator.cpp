@@ -764,6 +764,15 @@ namespace worm::cli
         throw InvalidCliArgumentException("Only '--directory' is valid for the selected 'migrate' action.");
       }
     }
+
+    void validateDoctorArguments(const CommandArguments& args)
+    {
+      if (!args.entities.empty() || !args.tables.empty() || args.output.has_value() || args.namespaceName.has_value() ||
+          args.name.has_value() || args.apply || args.query.has_value() || args.file.has_value() ||
+          args.maxExecutions.has_value() || args.directory.has_value()) {
+        throw InvalidCliArgumentException("Only doctor check filters and '--verbose' are valid for 'doctor'.");
+      }
+    }
   } // namespace
 
   bool isCppKeyword(std::string_view value) noexcept
@@ -805,6 +814,9 @@ namespace worm::cli
       break;
     case Commands::Migrate:
       validateMigrateArguments(invocation);
+      break;
+    case Commands::Doctor:
+      validateDoctorArguments(invocation.arguments);
       break;
     default:
       throw EmptyCommandException("No valid command given");

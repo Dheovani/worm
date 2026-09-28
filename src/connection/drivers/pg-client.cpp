@@ -134,6 +134,13 @@ namespace
       return std::string{field.view()};
     }
   }
+
+  worm::connection::DatabasePermissionStatus pgPermissionStatus(const worm::core::Parameter& value)
+  {
+    const auto* granted = std::get_if<bool>(&value);
+    return granted != nullptr && *granted ? worm::connection::DatabasePermissionStatus::Granted
+                                          : worm::connection::DatabasePermissionStatus::Denied;
+  }
 } // namespace
 
 namespace worm::connection
@@ -192,6 +199,61 @@ namespace worm::connection
   DatabaseType PgClient::type() const noexcept
   {
     return DatabaseType::PostgreSQL;
+  }
+
+  std::string PgClient::databaseVersionImpl()
+  {
+    const core::ResultSet result = executeImpl(core::Statement{"SHOW server_version"});
+    if (result.rowCount() != 1 || result.rows().front().columns.empty()) {
+      throw QueryExecutionException("PostgreSQL returned an invalid server version result.");
+    }
+
+    const auto* version = std::get_if<std::string>(&result.rows().front().columns.front().value);
+    if (version == nullptr) {
+      throw QueryExecutionException("PostgreSQL returned an incompatible server version value.");
+    }
+
+    return *version;
+  }
+
+  DatabasePermissions PgClient::databasePermissionsImpl()
+  {
+    const core::ResultSet result = executeImpl(
+      core::Statement{
+        "WITH worm_tables AS ("
+        "SELECT format('%I.%I', schemaname, tablename) AS table_name, tableowner "
+        "FROM pg_tables WHERE schemaname = current_schema()) "
+        "SELECT "
+        "COALESCE(bool_and(has_table_privilege(current_user, table_name, 'SELECT')), true), "
+        "COALESCE(bool_and(has_table_privilege(current_user, table_name, 'INSERT')), true), "
+        "COALESCE(bool_and(has_table_privilege(current_user, table_name, 'UPDATE')), true), "
+        "COALESCE(bool_and(has_table_privilege(current_user, table_name, 'DELETE')), true), "
+        "has_schema_privilege(current_user, current_schema(), 'CREATE'), "
+        "COALESCE(bool_and(tableowner = current_user OR pg_has_role(current_user, tableowner, 'MEMBER')), true), "
+        "COALESCE(bool_and(tableowner = current_user OR pg_has_role(current_user, tableowner, 'MEMBER')), true), "
+        "COALESCE(bool_and(tableowner = current_user OR pg_has_role(current_user, tableowner, 'MEMBER')), true) "
+        "FROM worm_tables"});
+
+    if (result.rowCount() != 1 || result.rows().front().columnCount() != 8) {
+      throw QueryExecutionException("PostgreSQL returned an invalid permission result.");
+    }
+
+    const core::ResultRow& row = result.rows().front();
+    const DatabasePermission operations[]{DatabasePermission::Select,
+      DatabasePermission::Insert,
+      DatabasePermission::Update,
+      DatabasePermission::Delete,
+      DatabasePermission::CreateTable,
+      DatabasePermission::AlterTable,
+      DatabasePermission::DropTable,
+      DatabasePermission::CreateIndex};
+    DatabasePermissions permissions;
+    permissions.reserve(row.columnCount());
+    for (std::size_t index = 0; index < row.columnCount(); ++index) {
+      permissions.push_back(
+        {operations[index], pgPermissionStatus(row.columns[index].value), "Current PostgreSQL schema"});
+    }
+    return permissions;
   }
 
   void PgClient::beginTransactionImpl()

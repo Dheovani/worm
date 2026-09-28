@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace worm::connection
 {
@@ -29,6 +30,12 @@ namespace worm::connection
 
   [[nodiscard]]
   std::unique_ptr<Client> makeClient(const ConnectionConfig& connectionData, DatabaseType type);
+
+  [[nodiscard]]
+  bool isDriverEnabled(DatabaseType type) noexcept;
+
+  [[nodiscard]]
+  std::string_view databaseTypeName(DatabaseType type) noexcept;
 
   [[nodiscard]]
   std::chrono::milliseconds timeoutMilliseconds(std::chrono::milliseconds timeout);
