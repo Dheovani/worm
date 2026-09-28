@@ -240,9 +240,8 @@ namespace worm::connection
       throw QueryExecutionException("SQLite could not determine whether the main database is writable.");
     }
 
-    const DatabasePermissionStatus writeStatus = readOnly == 0
-      ? DatabasePermissionStatus::Granted
-      : DatabasePermissionStatus::Denied;
+    const DatabasePermissionStatus writeStatus =
+      readOnly == 0 ? DatabasePermissionStatus::Granted : DatabasePermissionStatus::Denied;
 
     return {{DatabasePermission::Select, DatabasePermissionStatus::Granted, "SQLite database file is readable"},
       {DatabasePermission::Insert, writeStatus, "SQLite database file write mode"},

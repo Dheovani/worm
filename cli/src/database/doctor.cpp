@@ -20,8 +20,7 @@ namespace worm::cli::database
   {
     using Clock = std::chrono::steady_clock;
 
-    constexpr std::array allChecks{
-      DoctorCheck::Configuration,
+    constexpr std::array allChecks{DoctorCheck::Configuration,
       DoctorCheck::Driver,
       DoctorCheck::Connection,
       DoctorCheck::Version,
@@ -224,7 +223,7 @@ namespace worm::cli::database
           const connection::DatabaseVersion version = context.client->databaseVersion();
           const VersionPolicy policy = versionPolicy(*context.type);
           const bool belowMinimum = version.major < policy.minimumMajor ||
-            (version.major == policy.minimumMajor && version.minor < policy.minimumMinor);
+                                    (version.major == policy.minimumMajor && version.minor < policy.minimumMinor);
 
           if (belowMinimum) {
             return DoctorCheckResult{
@@ -485,10 +484,9 @@ namespace worm::cli::database
       .message = "Connection check requires valid configuration and an available driver.",
     };
 
-    const bool connectionNeeded =
-      selected(invocation, DoctorCheck::Connection) ||
-      selected(invocation, DoctorCheck::Version) ||
-      selected(invocation, DoctorCheck::Permissions);
+    const bool connectionNeeded = selected(invocation, DoctorCheck::Connection) ||
+                                  selected(invocation, DoctorCheck::Version) ||
+                                  selected(invocation, DoctorCheck::Permissions);
 
     if (driver.status == DoctorCheckStatus::Passed && connectionNeeded) {
       connection = connectionCheck(context, dependencies.clientFactory);
@@ -522,13 +520,11 @@ namespace worm::cli::database
       record(*metrics, result);
     }
 
-    const bool dependencyFailed =
-      configuration.status == DoctorCheckStatus::Failed ||
-      driver.status == DoctorCheckStatus::Failed ||
-      connection.status == DoctorCheckStatus::Failed;
-    const ExecutionStatus status = metrics->checksFailed == 0 && !dependencyFailed
-      ? ExecutionStatus::Success
-      : ExecutionStatus::Failed;
+    const bool dependencyFailed = configuration.status == DoctorCheckStatus::Failed ||
+                                  driver.status == DoctorCheckStatus::Failed ||
+                                  connection.status == DoctorCheckStatus::Failed;
+    const ExecutionStatus status =
+      metrics->checksFailed == 0 && !dependencyFailed ? ExecutionStatus::Success : ExecutionStatus::Failed;
 
     return {
       .info = status == ExecutionStatus::Success ? "Doctor checks completed." : "Doctor found environment problems.",

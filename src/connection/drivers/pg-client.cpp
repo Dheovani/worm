@@ -138,9 +138,8 @@ namespace
   worm::connection::DatabasePermissionStatus pgPermissionStatus(const worm::core::Parameter& value)
   {
     const auto* granted = std::get_if<bool>(&value);
-    return granted != nullptr && *granted
-      ? worm::connection::DatabasePermissionStatus::Granted
-      : worm::connection::DatabasePermissionStatus::Denied;
+    return granted != nullptr && *granted ? worm::connection::DatabasePermissionStatus::Granted
+                                          : worm::connection::DatabasePermissionStatus::Denied;
   }
 } // namespace
 
@@ -240,8 +239,7 @@ namespace worm::connection
     }
 
     const core::ResultRow& row = result.rows().front();
-    const DatabasePermission operations[]{
-      DatabasePermission::Select,
+    const DatabasePermission operations[]{DatabasePermission::Select,
       DatabasePermission::Insert,
       DatabasePermission::Update,
       DatabasePermission::Delete,

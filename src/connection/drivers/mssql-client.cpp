@@ -438,8 +438,7 @@ namespace worm::connection
       throw QueryExecutionException("SQL Server returned an invalid permission result.");
     }
 
-    const DatabasePermission operations[]{
-      DatabasePermission::Select,
+    const DatabasePermission operations[]{DatabasePermission::Select,
       DatabasePermission::Insert,
       DatabasePermission::Update,
       DatabasePermission::Delete,
