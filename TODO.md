@@ -135,7 +135,7 @@ This milestone should end with a complete example that creates, persists, querie
     - [x] Add integration contracts for migration history, locking, successful application, failure recovery, and dialect-specific DDL.
     - [ ] `migrate create`: Create a reviewable migration artifact from the current `diff` without applying it.
     - [x] `migrate validate`: Validate local migration ordering, checksums, and artifact structure without changing the database.
-    - [ ] `migrate status`: Display applied, pending, failed, missing, and checksum-divergent migrations.
+    - [x] `migrate status`: Display applied, pending, failed, missing, and checksum-divergent migrations.
     - [ ] `migrate rollback`: Execute only explicitly authored rollback steps; never infer destructive rollback SQL.
   - [ ] `seed`: Populate the database with pre-defined initial or test data—such as default users, permissions, settings, categories, or fixtures—for development and testing.
   - [x] `n-plus-one`: Detect N+1 query patterns—instances where an initial query triggers multiple unnecessary, repetitive queries to load related data.

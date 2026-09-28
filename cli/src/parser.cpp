@@ -44,6 +44,7 @@ namespace worm::cli
     inline constexpr std::string_view diffCommand = "diff";
     inline constexpr std::string_view migrateCommand = "migrate";
     inline constexpr std::string_view validateMigrationAction = "validate";
+    inline constexpr std::string_view statusMigrationAction = "status";
 
     inline constexpr std::string_view entityCommand = "--entity";
     inline constexpr std::string_view tableCommand = "--table";
@@ -113,9 +114,12 @@ namespace worm::cli
     [[nodiscard]]
     constexpr std::optional<MigrationAction> parseMigrationAction(std::string_view action) noexcept
     {
-      if (action == validateMigrationAction) {
-        return MigrationAction::Validate;
-      }
+      using enum MigrationAction;
+
+      if (action == validateMigrationAction)
+        return Validate;
+      if (action == statusMigrationAction)
+        return Status;
 
       return std::nullopt;
     }

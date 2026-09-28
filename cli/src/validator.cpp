@@ -730,7 +730,7 @@ namespace worm::cli
       const CommandArguments& args = invocation.arguments;
       if (!invocation.migrationAction.has_value()) {
         throw InvalidCliArgumentException(
-          "The 'migrate' command requires a subcommand. Currently supported: validate.");
+          "The 'migrate' command requires a subcommand. Currently supported: validate, status.");
       }
 
       if (args.directory.has_value() && args.directory->empty()) {
@@ -740,7 +740,7 @@ namespace worm::cli
       if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() || args.namespaceName.has_value() ||
           args.name.has_value() || args.apply || args.query.has_value() || args.file.has_value() ||
           args.maxExecutions.has_value()) {
-        throw InvalidCliArgumentException("Only '--directory' is valid for the 'migrate validate' command.");
+        throw InvalidCliArgumentException("Only '--directory' is valid for the selected 'migrate' subcommand.");
       }
     }
   } // namespace

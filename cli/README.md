@@ -1,8 +1,8 @@
 # Worm CLI
 
-`worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, validating migration artifacts, and running opt-in query diagnostics.
+`worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, validating and inspecting migration state, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate validate`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate validate` verifies local migration artifacts without connecting to or changing the database. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate validate`, `migrate status`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate validate` verifies local migration artifacts without connecting to or changing the database, while `migrate status` compares them with persistent migration history. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -289,6 +289,18 @@ directory = "database/migrations"
 ```
 
 This subcommand validates only the local catalog. Comparing it with persisted migration history belongs to `migrate status`, while applying SQL belongs to the base `migrate` command; neither operation is implied by `migrate validate`.
+
+## The `migrate status` command
+
+`migrate status` compares the validated local migration catalog with the Worm-owned migration history table. It reports applied, pending, failed, locally missing, and checksum-divergent migrations. A rolled-back migration whose artifact remains available is pending because it can be applied again. A historical record without a corresponding local artifact is missing. When both sides contain the same migration ID but their checksums differ, the migration is checksum-divergent and its stored execution state is not used to hide that drift.
+
+```bash
+worm --driver postgresql --database application migrate status
+worm --driver sqlite --database application.db migrate status --directory database/migrations
+worm --format json --driver mysql --database application migrate status
+```
+
+The directory defaults to `migrations` and follows the same configuration and override rules as `migrate validate`. The command does not create the history table when it is absent; in that case every local artifact is reported as pending. An existing history table is validated before it is read. Missing artifacts or checksum divergence produce the drift exit status, while matching failed migrations produce the issues-detected exit status. Pending migrations alone do not make the command fail.
 
 ## The `check` command
 

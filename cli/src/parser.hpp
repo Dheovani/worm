@@ -34,7 +34,8 @@ namespace worm::cli
 
   enum class MigrationAction
   {
-    Validate
+    Validate,
+    Status
   };
 
   enum class CommandOptions

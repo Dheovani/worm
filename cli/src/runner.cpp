@@ -94,6 +94,7 @@ namespace worm::cli
               << "  diff                  Display a migration-oriented schema difference report\n"
               << "  inspect               Print the complete supported database structure\n"
               << "  migrate validate      Validate local migration artifacts without changing the database\n"
+              << "  migrate status        Compare local migration artifacts with persistent migration history\n"
               << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
               << '\n'
               << "Global options:\n"
@@ -131,6 +132,7 @@ namespace worm::cli
               << "  worm diff\n"
               << "  worm --driver sqlite --database application.db inspect\n"
               << "  worm migrate validate --directory migrations\n"
+              << "  worm --driver sqlite --database application.db migrate status\n"
               << "  worm pull --apply\n"
               << "  worm push --entity User\n"
               << "  worm pull --table users\n"

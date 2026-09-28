@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -74,6 +75,16 @@ namespace
         {"Drop users", "DROP TABLE users", MigrationRisk::Destructive},
       });
   }
+
+  [[nodiscard]]
+  worm::core::MigrationArtifact statusArtifact(std::string id, std::string name)
+  {
+    return worm::core::makeMigrationArtifact(
+      std::move(id),
+      std::move(name),
+      "postgresql",
+      {{"Apply migration", "SELECT 1", worm::core::MigrationRisk::Safe}});
+  }
 } // namespace
 
 int main()
@@ -113,6 +124,97 @@ int main()
     return 1;
   }
 
+  const std::filesystem::path statusDirectory = temporary.path() / "status";
+  std::filesystem::create_directories(statusDirectory);
+  const auto appliedArtifact = statusArtifact("20260923120001", "applied");
+  const auto pendingArtifact = statusArtifact("20260923120002", "pending");
+  const auto failedArtifact = statusArtifact("20260923120003", "failed");
+  const auto rolledBackArtifact = statusArtifact("20260923120004", "rolled-back");
+  const auto divergentArtifact = statusArtifact("20260923120005", "divergent");
+  for (const auto* statusMigration :
+    {&appliedArtifact, &pendingArtifact, &failedArtifact, &rolledBackArtifact, &divergentArtifact}) {
+    worm::cli::migration::saveMigrationArtifact(
+      statusDirectory / (statusMigration->id() + "_" + statusMigration->name() + ".worm.json"),
+      *statusMigration);
+  }
+
+  const worm::cli::migration::MigrationCatalog statusCatalog =
+    worm::cli::migration::discoverMigrationArtifacts(statusDirectory);
+  const worm::core::MigrationHistory statusHistory{{
+    {
+      .id = appliedArtifact.id(),
+      .name = appliedArtifact.name(),
+      .checksum = appliedArtifact.checksum(),
+      .state = worm::core::MigrationState::Applied,
+    },
+    {
+      .id = failedArtifact.id(),
+      .name = failedArtifact.name(),
+      .checksum = failedArtifact.checksum(),
+      .state = worm::core::MigrationState::Failed,
+    },
+    {
+      .id = rolledBackArtifact.id(),
+      .name = rolledBackArtifact.name(),
+      .checksum = rolledBackArtifact.checksum(),
+      .state = worm::core::MigrationState::RolledBack,
+    },
+    {
+      .id = divergentArtifact.id(),
+      .name = divergentArtifact.name(),
+      .checksum = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      .state = worm::core::MigrationState::Applied,
+    },
+    {
+      .id = "20260923120006",
+      .name = "missing",
+      .checksum = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      .state = worm::core::MigrationState::Applied,
+    },
+  }};
+  const worm::cli::ExecutionReport statusReport = worm::cli::database::migrationStatus(statusCatalog, statusHistory);
+  const auto statusMetrics =
+    std::dynamic_pointer_cast<const worm::cli::database::MigrationStatusMetrics>(statusReport.metrics);
+  if (statusReport.status != worm::cli::ExecutionStatus::DriftDetected || statusMetrics == nullptr ||
+      statusMetrics->migrations != 6 || statusMetrics->appliedMigrations != 1 ||
+      statusMetrics->pendingMigrations != 2 || statusMetrics->failedMigrations != 1 ||
+      statusMetrics->missingMigrations != 1 || statusMetrics->checksumDivergentMigrations != 1) {
+    std::cerr << "Migrate status did not classify local and historical migrations correctly.\n";
+    return 1;
+  }
+
+  std::ostringstream statusText;
+  std::ostringstream statusJson;
+  statusMetrics->writeText(statusText);
+  statusMetrics->writeJson(statusJson);
+  if (statusText.str().find("Checksum divergences") == std::string::npos ||
+      statusJson.str().find("\"checksumDivergentMigrations\":1") == std::string::npos) {
+    std::cerr << "Migrate status did not render checksum divergence metrics.\n";
+    return 1;
+  }
+
+  const worm::core::MigrationHistory failedOnlyHistory{{
+    {
+      .id = failedArtifact.id(),
+      .name = failedArtifact.name(),
+      .checksum = failedArtifact.checksum(),
+      .state = worm::core::MigrationState::Failed,
+    },
+  }};
+  if (worm::cli::database::migrationStatus(statusCatalog, failedOnlyHistory).status !=
+      worm::cli::ExecutionStatus::IssuesDetected) {
+    std::cerr << "Migrate status did not report matching failed migrations as issues.\n";
+    return 1;
+  }
+
+  worm::cli::Invocation statusInvocation =
+    worm::cli::parse({"migrate", "status", "--directory", statusDirectory.string()});
+  worm::cli::validate(statusInvocation);
+  if (statusInvocation.migrationAction != worm::cli::MigrationAction::Status) {
+    std::cerr << "Migrate status was not parsed as a migration subcommand.\n";
+    return 1;
+  }
+
   if (!rejectsArguments([] {
         const auto missingAction = worm::cli::parse({"migrate"});
         worm::cli::validate(missingAction);
@@ -120,6 +222,10 @@ int main()
       !rejectsArguments([] {
         const auto invalidOption = worm::cli::parse({"migrate", "validate", "--apply"});
         worm::cli::validate(invalidOption);
+      }) ||
+      !rejectsArguments([] {
+        const auto invalidStatusOption = worm::cli::parse({"migrate", "status", "--apply"});
+        worm::cli::validate(invalidStatusOption);
       }) ||
       !rejectsArguments([] {
         const auto misplacedDirectory = worm::cli::parse({"check", "--directory", "migrations"});
