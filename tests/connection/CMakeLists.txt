@@ -35,6 +35,12 @@ add_worm_connection_test(
 )
 
 add_worm_connection_test(
+  WormConnectionDiagnosticsTests
+  diagnostics-tests.cpp
+  Worm.Connection.Diagnostics
+)
+
+add_worm_connection_test(
   WormConfigurationTests
   configuration-tests.cpp
   Worm.Connection.Configuration

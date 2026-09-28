@@ -129,7 +129,7 @@ This milestone should end with a complete example that creates, persists, querie
   - [ ] `seed`: Populate the database with pre-defined initial or test data—such as default users, permissions, settings, categories, or fixtures—for development and testing.
   - [x] `n-plus-one`: Detect N+1 query patterns—instances where an initial query triggers multiple unnecessary, repetitive queries to load related data.
   - [x] `inspect`: Introspect the database and display its actual structure: schemas, tables, columns, data types, PKs, FKs, indexes, and other metadata.
-  - [ ] `doctor`: Validate configuration, enabled driver availability, connectivity, permissions, and supported database version without modifying application data or schema.
+  - [x] `doctor`: Validate configuration, enabled driver availability, connectivity, permissions, and supported database version without modifying application data or schema.
 
 ## Milestone 5 — Developer experience
 

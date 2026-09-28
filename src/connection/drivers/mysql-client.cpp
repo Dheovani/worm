@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -181,6 +182,20 @@ namespace
 
     const auto* value = std::get_if<std::int64_t>(&result.rows().front().columns.front().value);
     return value != nullptr && *value == 1;
+  }
+
+  std::string mysqlString(const worm::core::ResultSet& result, std::string_view description)
+  {
+    if (result.rowCount() != 1 || result.rows().front().columns.empty()) {
+      throw worm::QueryExecutionException("MySQL returned an invalid {} result.", description);
+    }
+
+    const auto* value = std::get_if<std::string>(&result.rows().front().columns.front().value);
+    if (value == nullptr) {
+      throw worm::QueryExecutionException("MySQL returned an incompatible {} value.", description);
+    }
+
+    return *value;
   }
 } // namespace
 
@@ -395,6 +410,55 @@ namespace worm::connection
   DatabaseType MySqlClient::type() const noexcept
   {
     return DatabaseType::MySQL;
+  }
+
+  std::string MySqlClient::databaseVersionImpl()
+  {
+    return mysqlString(executeImpl(core::Statement{"SELECT VERSION() AS version"}), "server version");
+  }
+
+  DatabasePermissions MySqlClient::databasePermissionsImpl()
+  {
+    const core::ResultSet result = executeImpl(
+      core::Statement{"SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES "
+                      "WHERE GRANTEE = CONCAT('\'', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), '\'@\'', "
+                      "SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '\'') "
+                      "UNION SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES "
+                      "WHERE REPLACE(TABLE_SCHEMA, CHAR(92), '') = DATABASE() "
+                      "AND GRANTEE = CONCAT('\'', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), "
+                      "'\'@\'', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '\'') "
+                      "UNION SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES "
+                      "WHERE REPLACE(TABLE_SCHEMA, CHAR(92), '') = DATABASE() "
+                      "AND GRANTEE = CONCAT('\'', SUBSTRING_INDEX(CURRENT_USER(), '@', 1), "
+                      "'\'@\'', SUBSTRING_INDEX(CURRENT_USER(), '@', -1), '\'')"});
+
+    std::set<std::string> grants;
+    for (const core::ResultRow& row : result.rows()) {
+      if (row.columns.empty()) {
+        continue;
+      }
+
+      if (const auto* value = std::get_if<std::string>(&row.columns.front().value)) {
+        grants.insert(*value);
+      }
+    }
+
+    const auto permission = [&grants](DatabasePermission operation, std::string_view grant) {
+      return DatabasePermissionCheck{
+        operation,
+        grants.contains(std::string{grant}) ? DatabasePermissionStatus::Granted : DatabasePermissionStatus::Denied,
+        "Current MySQL database",
+      };
+    };
+
+    return {permission(DatabasePermission::Select, "SELECT"),
+      permission(DatabasePermission::Insert, "INSERT"),
+      permission(DatabasePermission::Update, "UPDATE"),
+      permission(DatabasePermission::Delete, "DELETE"),
+      permission(DatabasePermission::CreateTable, "CREATE"),
+      permission(DatabasePermission::AlterTable, "ALTER"),
+      permission(DatabasePermission::DropTable, "DROP"),
+      permission(DatabasePermission::CreateIndex, "INDEX")};
   }
 
   void MySqlClient::beginTransactionImpl()

@@ -21,6 +21,54 @@
 
 namespace worm::connection
 {
+  bool isDriverEnabled(DatabaseType type) noexcept
+  {
+    switch (type) {
+    case DatabaseType::PostgreSQL:
+#if defined(WORM_HAS_POSTGRESQL_DRIVER)
+      return true;
+#else
+      return false;
+#endif
+    case DatabaseType::MySQL:
+#if defined(WORM_HAS_MYSQL_DRIVER)
+      return true;
+#else
+      return false;
+#endif
+    case DatabaseType::SQLite:
+#if defined(WORM_HAS_SQLITE_DRIVER)
+      return true;
+#else
+      return false;
+#endif
+    case DatabaseType::MSSQL:
+#if defined(WORM_HAS_MSSQL_DRIVER)
+      return true;
+#else
+      return false;
+#endif
+    }
+
+    return false;
+  }
+
+  std::string_view databaseTypeName(DatabaseType type) noexcept
+  {
+    switch (type) {
+    case DatabaseType::PostgreSQL:
+      return "PostgreSQL";
+    case DatabaseType::MySQL:
+      return "MySQL";
+    case DatabaseType::SQLite:
+      return "SQLite";
+    case DatabaseType::MSSQL:
+      return "Microsoft SQL Server";
+    }
+
+    return "Unknown";
+  }
+
   std::chrono::milliseconds timeoutMilliseconds(std::chrono::milliseconds timeout)
   {
     if (timeout.count() < 0) {

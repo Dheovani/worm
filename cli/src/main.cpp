@@ -1,3 +1,5 @@
+#define WORM_FAILURE 2
+
 #include <cstdlib>
 #include <exception>
 #include <iostream>
@@ -30,7 +32,7 @@ int main(int argc, char** argv)
     return cli::execute(invocation, argc, argv, std::cout);
   } catch (const cli::WormCliException& ex) {
     std::cerr << ex.what() << '\n';
-    return EXIT_FAILURE;
+    return WORM_FAILURE;
   } catch (const std::exception& ex) {
     std::cerr << "Unexpected error: " << ex.what() << '\n';
     return EXIT_FAILURE;

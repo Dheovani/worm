@@ -39,6 +39,12 @@ namespace worm::connection
     void releaseMigrationLockImpl(std::string_view name, bool completed) override;
 
     [[nodiscard]]
+    std::string databaseVersionImpl() override;
+
+    [[nodiscard]]
+    DatabasePermissions databasePermissionsImpl() override;
+
+    [[nodiscard]]
     core::ResultSet executeImpl(const core::Statement& statement) override;
   };
 

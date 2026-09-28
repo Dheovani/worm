@@ -22,6 +22,7 @@ add_worm_cli_test(WormCliEntityManifestTests entity-manifest-tests.cpp Worm.Cli.
 add_worm_cli_test(WormCliFileTests file-tests.cpp Worm.Cli.File)
 add_worm_cli_test(WormCliCheckTests check-tests.cpp Worm.Cli.Check)
 add_worm_cli_test(WormCliDiffTests diff-tests.cpp Worm.Cli.Diff)
+add_worm_cli_test(WormCliDoctorTests doctor-tests.cpp Worm.Cli.Doctor)
 add_worm_cli_test(WormCliPullTests pull-tests.cpp Worm.Cli.Pull)
 add_worm_cli_test(WormCliPushTests push-tests.cpp Worm.Cli.Push)
 add_worm_cli_test(WormCliInspectTests inspect-tests.cpp Worm.Cli.Inspect)

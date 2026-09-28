@@ -107,6 +107,19 @@ try {
       return 1;
     }
 
+    client->ping();
+    const worm::connection::DatabaseVersion version = client->databaseVersion();
+    const worm::connection::DatabasePermissions permissions = client->databasePermissions();
+    bool permissionsGranted = permissions.size() == 8;
+    for (const worm::connection::DatabasePermissionCheck& permission : permissions) {
+      permissionsGranted =
+        permissionsGranted && permission.status == worm::connection::DatabasePermissionStatus::Granted;
+    }
+    if (!client->isConnected() || version.major != 3 || !permissionsGranted) {
+      std::cerr << "SqliteClient diagnostics did not report a usable writable database.\n";
+      return 1;
+    }
+
     const worm::core::SqliteBuilder sqlBuilder;
     const worm::core::QueryBuilder queryBuilder{sqlBuilder};
     const worm::core::Repository<Person> repository{client, queryBuilder};

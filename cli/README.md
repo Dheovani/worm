@@ -2,7 +2,7 @@
 
 `worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, validating and inspecting migration state, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate --apply`, `migrate --create`, `migrate --validate`, `migrate --status`, `migrate --rollback`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate --apply` executes pending artifacts in order, `migrate --create` writes the current dialect-specific schema diff as a reviewable artifact without executing it, `migrate --validate` verifies local artifacts without connecting to or changing the database, `migrate --status` compares them with persistent migration history, and `migrate --rollback` reverts the latest applied migration using only its explicitly authored rollback statements. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate --apply`, `migrate --create`, `migrate --validate`, `migrate --status`, `migrate --rollback`, `n-plus-one`, and `doctor`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate --apply` executes pending artifacts in order, `migrate --create` writes the current dialect-specific schema diff as a reviewable artifact without executing it, `migrate --validate` verifies local artifacts without connecting to or changing the database, `migrate --status` compares them with persistent migration history, and `migrate --rollback` reverts the latest applied migration using only its explicitly authored rollback statements. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement. `doctor` validates the Worm environment with read-only diagnostics.
 
 ## Build
 
@@ -37,7 +37,7 @@ Driver libraries remain optional. A disabled driver is not compiled or linked in
 The command syntax is:
 
 ```text
-worm [global-options] <check|diff|pull|push|inspect|n-plus-one> [command-options]
+worm [global-options] <check|diff|pull|push|inspect|migrate|n-plus-one|doctor> [command-options]
 ```
 
 Show the built-in reference or version:
@@ -69,6 +69,22 @@ worm \
   --database data/application.db \
   check
 ```
+
+## Doctor
+
+`worm doctor` runs configuration, enabled-driver, connectivity, database-version, and permissions checks in dependency order. Its connectivity check performs a real `SELECT 1` round trip. Version and permission discovery use driver-owned read-only APIs or catalog queries. The command never writes application data, changes database schema, creates diagnostic tables, or runs migrations.
+
+```bash
+worm --driver postgresql --host localhost --database application --username postgres --password-env WORM_DATABASE_PASSWORD doctor
+worm --driver sqlite --database data/application.db doctor --connection --version
+worm --driver sqlite --database data/application.db doctor --verbose
+```
+
+The filters `--config`, `--driver`, `--connection`, `--version`, and `--permissions` select individual checks and may be combined. `--verbose` adds sanitized configuration details, individual durations, and underlying errors; passwords and connection secrets are never printed. A failed prerequisite causes dependent checks to be skipped instead of producing duplicate failures.
+
+Worm currently requires PostgreSQL 14, MySQL 8.0, SQLite 3.35, or SQL Server 2019 (major version 15) and newer. Versions newer than the highest major release validated by this project are reported as warnings rather than failures. Permission checks inspect catalogs or native connection metadata: PostgreSQL evaluates privileges in the current schema, MySQL evaluates global, schema, and table grants for the current database, SQL Server evaluates database and current-schema permissions, and SQLite reports filesystem/database read-only state because it has no server grant model.
+
+Exit code `0` means the selected checks passed or produced only warnings, `1` means at least one check failed, and `2` is reserved for invalid CLI usage or configuration that prevents command dispatch.
 
 ## Schema manifest
 

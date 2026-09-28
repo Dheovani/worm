@@ -228,6 +228,32 @@ namespace worm::connection
     return DatabaseType::SQLite;
   }
 
+  std::string SqliteClient::databaseVersionImpl()
+  {
+    return sqlite3_libversion();
+  }
+
+  DatabasePermissions SqliteClient::databasePermissionsImpl()
+  {
+    const int readOnly = sqlite3_db_readonly(connection_.get(), "main");
+    if (readOnly < 0) {
+      throw QueryExecutionException("SQLite could not determine whether the main database is writable.");
+    }
+
+    const DatabasePermissionStatus writeStatus = readOnly == 0
+      ? DatabasePermissionStatus::Granted
+      : DatabasePermissionStatus::Denied;
+
+    return {{DatabasePermission::Select, DatabasePermissionStatus::Granted, "SQLite database file is readable"},
+      {DatabasePermission::Insert, writeStatus, "SQLite database file write mode"},
+      {DatabasePermission::Update, writeStatus, "SQLite database file write mode"},
+      {DatabasePermission::Delete, writeStatus, "SQLite database file write mode"},
+      {DatabasePermission::CreateTable, writeStatus, "SQLite database file write mode"},
+      {DatabasePermission::AlterTable, writeStatus, "SQLite database file write mode"},
+      {DatabasePermission::DropTable, writeStatus, "SQLite database file write mode"},
+      {DatabasePermission::CreateIndex, writeStatus, "SQLite database file write mode"}};
+  }
+
   void SqliteClient::beginTransactionImpl()
   {
     executeTransactionCommand("BEGIN TRANSACTION");

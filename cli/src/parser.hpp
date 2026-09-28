@@ -29,7 +29,8 @@ namespace worm::cli
     NPlusOne,
     Inspect,
     Diff,
-    Migrate
+    Migrate,
+    Doctor
   };
 
   enum class MigrationAction
@@ -39,6 +40,15 @@ namespace worm::cli
     Validate,
     Status,
     Rollback
+  };
+
+  enum class DoctorCheck
+  {
+    Configuration,
+    Driver,
+    Connection,
+    Version,
+    Permissions
   };
 
   enum class CommandOptions
@@ -93,6 +103,7 @@ namespace worm::cli
     GlobalArguments global;
     Commands command;
     std::optional<MigrationAction> migrationAction;
+    std::vector<DoctorCheck> doctorChecks;
     CommandArguments arguments;
   };
 
