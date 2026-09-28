@@ -2,7 +2,7 @@
 
 `worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, validating and inspecting migration state, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate --create`, `migrate --validate`, `migrate --status`, `migrate --rollback`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate --create` writes the current dialect-specific schema diff as a reviewable artifact without executing it, `migrate --validate` verifies local artifacts without connecting to or changing the database, `migrate --status` compares them with persistent migration history, and `migrate --rollback` reverts the latest applied migration using only its explicitly authored rollback statements. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate --apply`, `migrate --create`, `migrate --validate`, `migrate --status`, `migrate --rollback`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate --apply` executes pending artifacts in order, `migrate --create` writes the current dialect-specific schema diff as a reviewable artifact without executing it, `migrate --validate` verifies local artifacts without connecting to or changing the database, `migrate --status` compares them with persistent migration history, and `migrate --rollback` reverts the latest applied migration using only its explicitly authored rollback statements. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -271,6 +271,17 @@ The current report classifies missing and unexpected tables or columns, canonica
 
 Indexes and foreign keys are displayed by `inspect`, but they do not yet participate in `diff` because the current database snapshot stores their introspected representations as driver-formatted text instead of structured metadata. They must be promoted to structured snapshot types before migration generation can compare them reliably.
 
+## The `migrate --apply` action
+
+`migrate --apply` validates the local catalog and persistent history, rejects missing or edited artifacts, and applies every pending migration in deterministic ID order. The flag is explicit authorization for the reviewed artifact, including ambiguous or destructive statements. A previously failed migration blocks later execution until it is reconciled manually, while an already applied migration is skipped.
+
+```bash
+worm --driver postgresql --database application migrate --apply
+worm --driver sqlite --database application.db migrate --apply --directory database/migrations
+```
+
+Execution progress is written immediately to the diagnostic stream, independently from the final report. After each completed query, Worm prints its operation, optional migration risk, SQL text, parameter count, driver-reported affected rows, and returned rows; parameter values are never logged. A migration is reported as applied only after its transaction or lock-owned scope has been finalized successfully. With `--format json`, progress uses one JSON object per diagnostic line while the final report remains a separate JSON object on standard output.
+
 ## The `migrate --create` action
 
 `migrate --create` compares the configured schema manifest with the current database, compiles every supported difference through the selected SQL dialect, and writes one immutable migration artifact for review. It never executes the generated SQL or registers the migration in `_worm_migrations`.
@@ -301,7 +312,7 @@ The directory defaults to `migrations`. It may also be configured in `worm.toml`
 directory = "database/migrations"
 ```
 
-This action validates only the local catalog. Comparing it with persisted migration history belongs to `migrate --status`. Forward migration application is not yet exposed by the CLI, and neither comparison nor execution is implied by `migrate --validate`.
+This action validates only the local catalog. Comparing it with persisted migration history belongs to `migrate --status`, while execution requires an explicit `migrate --apply`; neither operation is implied by `migrate --validate`.
 
 ## The `migrate --status` action
 

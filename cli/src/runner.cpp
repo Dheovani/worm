@@ -117,7 +117,7 @@ namespace worm::cli
               << "  --output <path>       Output directory for pull or SQL file for push\n"
               << "  --namespace <name>    Namespace for generated entities\n"
               << "  --name <name>         Explicit generated entity or migration name\n"
-              << "  --apply               Apply the generated plan\n"
+              << "  --apply               Apply pending migrations or a generated push plan\n"
               << "  --query <sql>         Analyze one observed SELECT query\n"
               << "  --file <path>         Analyze semicolon-separated SELECT queries from a file\n"
               << "  --max-executions <n>  Allow a query pattern to execute n times before reporting it\n"
@@ -137,6 +137,7 @@ namespace worm::cli
               << "  worm --manifest worm-schema.json --driver sqlite --database application.db migrate --create "
                  "--name create-users\n"
               << "  worm migrate --validate --directory migrations\n"
+              << "  worm --driver sqlite --database application.db migrate --apply\n"
               << "  worm --driver sqlite --database application.db migrate --status\n"
               << "  worm --driver sqlite --database application.db migrate --rollback\n"
               << "  worm pull --apply\n"
@@ -251,7 +252,7 @@ namespace worm::cli
       report = database::diff(invocation);
       break;
     case Commands::Migrate:
-      report = database::migrate(invocation);
+      report = database::migrate(invocation, &std::clog);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

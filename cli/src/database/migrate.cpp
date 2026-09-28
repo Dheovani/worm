@@ -8,11 +8,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <exception>
 #include <filesystem>
 #include <iomanip>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -23,6 +25,7 @@
 #include <helpers/connection.hpp>
 #include <helpers/manifest.hpp>
 #include <helpers/migration/migration-file.hpp>
+#include <helpers/migration/migration-progress.hpp>
 
 namespace worm::cli::database
 {
@@ -30,13 +33,13 @@ namespace worm::cli::database
   {
     struct MigrationRuntime
     {
-      explicit MigrationRuntime(const Invocation& invocation)
+      explicit MigrationRuntime(const Invocation& invocation, core::MigrationQueryObserver* observer = nullptr)
         : type(databaseType(invocation)),
           client(DependencyInjector<connection::Client>::get(connectionConfig(invocation, type), type)),
           sqlBuilder(DependencyInjector<core::SqlBuilder>::get(type)),
           queryBuilder(sqlBuilder),
           schema(defaultSchema(type)),
-          repository(client, queryBuilder, schema),
+          repository(client, queryBuilder, schema, observer),
           databaseSchema(connection::SchemaInspector{*client}.inspect())
       {}
 
@@ -53,6 +56,103 @@ namespace worm::cli::database
     migration::MigrationCatalog migrationCatalog(const Invocation& invocation)
     {
       return migration::discoverMigrationArtifacts(invocation.arguments.directory.value_or("migrations"));
+    }
+
+    [[nodiscard]]
+    std::vector<migration::MigrationReference> migrationReferences(const core::MigrationHistory& history)
+    {
+      std::vector<migration::MigrationReference> references;
+      references.reserve(history.records().size());
+      for (const core::MigrationRecord& record : history.records()) {
+        references.push_back({record.id, record.checksum});
+      }
+      return references;
+    }
+
+    void validateApplicationOrder(
+      const migration::MigrationCatalog& catalog,
+      const core::MigrationHistory& history)
+    {
+      bool pendingFound = false;
+      for (const migration::MigrationFile& file : catalog.migrations()) {
+        const core::MigrationRecord* record = history.find(file.artifact.id());
+        if (record == nullptr || record->state == core::MigrationState::Pending ||
+            record->state == core::MigrationState::RolledBack) {
+          pendingFound = true;
+          continue;
+        }
+
+        if (record->state == core::MigrationState::Failed) {
+          throw MigrationException(
+            "Migration '{}' previously failed and requires manual reconciliation before migrations can continue.",
+            record->id);
+        }
+
+        if (pendingFound) {
+          throw MigrationException(
+            "Applied migration '{}' appears after a pending migration. Migration history is out of order.",
+            record->id);
+        }
+      }
+    }
+
+    [[nodiscard]]
+    ExecutionReport applyMigrations(const Invocation& invocation, std::ostream* progress)
+    {
+      const migration::MigrationCatalog catalog = migrationCatalog(invocation);
+      migration::validateMigrationCatalog(catalog);
+
+      auto metrics = std::make_shared<MigrationApplyMetrics>();
+      metrics->migrations = catalog.migrations().size();
+      migration::MigrationProgressLogger logger{
+        progress,
+        invocation.global.format.value_or("text") == "json",
+      };
+
+      const MigrationRuntime runtime{invocation, &logger};
+      runtime.repository.initialize(runtime.databaseSchema);
+      const core::MigrationHistory history = runtime.repository.load();
+      const std::vector<migration::MigrationReference> references = migrationReferences(history);
+      migration::validateMigrationCatalog(catalog, references);
+      validateApplicationOrder(catalog, history);
+
+      for (const migration::MigrationFile& file : catalog.migrations()) {
+        const core::MigrationArtifact& artifact = file.artifact;
+        const core::MigrationRecord* record = history.find(artifact.id());
+        if (record != nullptr && record->state == core::MigrationState::Applied) {
+          ++metrics->alreadyAppliedMigrations;
+          continue;
+        }
+
+        ++metrics->pendingMigrations;
+        logger.migrationStarted(artifact);
+        try {
+          if (record == nullptr) {
+            runtime.repository.addPending(artifact);
+          }
+
+          runtime.repository.apply(
+            core::compileMigrationExecutionPlan(artifact, runtime.sqlBuilder),
+            core::MigrationConfirmation::Destructive);
+        } catch (const std::exception& error) {
+          logger.migrationFailed(artifact, error.what());
+          throw;
+        }
+        ++metrics->appliedMigrations;
+        logger.migrationCompleted(artifact);
+      }
+
+      metrics->queriesExecuted = logger.queriesExecuted();
+      metrics->statementsExecuted = logger.statementsExecuted();
+      metrics->affectedRows = logger.affectedRows();
+
+      return {
+        .info = metrics->appliedMigrations == 0
+          ? "No pending migrations were found."
+          : "Pending migrations were applied successfully.",
+        .status = ExecutionStatus::Success,
+        .metrics = std::move(metrics),
+      };
     }
 
     [[nodiscard]]
@@ -277,6 +377,26 @@ namespace worm::cli::database
         << ",\"generatedArtifacts\":" << generatedArtifacts << '}';
   }
 
+  void MigrationApplyMetrics::writeText(std::ostream& out) const
+  {
+    printMetric(out, "Migrations", migrations);
+    printMetric(out, "Pending migrations", pendingMigrations);
+    printMetric(out, "Applied migrations", appliedMigrations);
+    printMetric(out, "Already applied", alreadyAppliedMigrations);
+    printMetric(out, "Queries executed", queriesExecuted);
+    printMetric(out, "Migration statements", statementsExecuted);
+    out << "  " << std::left << std::setw(24) << "Affected rows" << std::right << affectedRows << '\n';
+  }
+
+  void MigrationApplyMetrics::writeJson(std::ostream& out) const
+  {
+    out << "{\"migrations\":" << migrations << ",\"pendingMigrations\":" << pendingMigrations
+        << ",\"appliedMigrations\":" << appliedMigrations
+        << ",\"alreadyAppliedMigrations\":" << alreadyAppliedMigrations
+        << ",\"queriesExecuted\":" << queriesExecuted << ",\"statementsExecuted\":" << statementsExecuted
+        << ",\"affectedRows\":" << affectedRows << '}';
+  }
+
   void MigrationValidateMetrics::writeText(std::ostream& out) const
   {
     printMetric(out, "Migrations", migrations);
@@ -415,13 +535,15 @@ namespace worm::cli::database
     };
   }
 
-  ExecutionReport migrate(const Invocation& invocation)
+  ExecutionReport migrate(const Invocation& invocation, std::ostream* progress)
   {
     if (!invocation.migrationAction.has_value()) {
       throw InvalidCliArgumentException("The 'migrate' command requires an action option.");
     }
 
     switch (*invocation.migrationAction) {
+    case MigrationAction::Apply:
+      return applyMigrations(invocation, progress);
     case MigrationAction::Create:
       return createMigration(invocation);
     case MigrationAction::Validate:

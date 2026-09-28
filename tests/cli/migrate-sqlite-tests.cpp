@@ -173,8 +173,30 @@ int main()
     return 1;
   }
 
+  worm::cli::Invocation reapplyInvocation = worm::cli::parse(
+    {"--driver",
+      "sqlite",
+      "--database",
+      database.string(),
+      "migrate",
+      "--apply",
+      "--directory",
+      migrations.string()});
+  worm::cli::validate(reapplyInvocation);
+  const worm::cli::ExecutionReport reapplyReport = worm::cli::database::migrate(reapplyInvocation);
+  const auto reapplyMetrics =
+    std::dynamic_pointer_cast<const worm::cli::database::MigrationApplyMetrics>(reapplyReport.metrics);
+  if (reapplyReport.status != worm::cli::ExecutionStatus::Success || reapplyMetrics == nullptr ||
+      reapplyMetrics->pendingMigrations != 2 || reapplyMetrics->appliedMigrations != 2 ||
+      inspector.inspect().findTable("main", "rollback_first") == nullptr ||
+      inspector.inspect().findTable("main", "rollback_second") == nullptr) {
+    std::cerr << "Migrate apply did not reapply rolled-back migrations in order.\n";
+    return 1;
+  }
+
   const std::filesystem::path manifestPath = temporary.path() / "worm-schema.json";
   const std::filesystem::path createDirectory = temporary.path() / "created-migrations";
+  const std::filesystem::path createDatabase = temporary.path() / "worm-create.sqlite";
   const worm::cli::SchemaManifest manifest{
     .entities =
       {
@@ -206,7 +228,7 @@ int main()
       "--driver",
       "sqlite",
       "--database",
-      database.string(),
+      createDatabase.string(),
       "migrate",
       "--create",
       "--name",
@@ -224,8 +246,7 @@ int main()
       createdCatalog.migrations().size() != 1 ||
       createdCatalog.migrations().front().artifact.name() != "create-users" ||
       createdCatalog.migrations().front().artifact.database() != "sqlite" ||
-      createdCatalog.migrations().front().artifact.rollback().has_value() ||
-      inspector.inspect().findTable("main", "users") != nullptr) {
+      createdCatalog.migrations().front().artifact.rollback().has_value()) {
     std::cerr << "Migrate create did not generate a forward-only artifact without changing the database.\n";
     return 1;
   }
@@ -237,11 +258,78 @@ int main()
     return 1;
   }
 
+  const worm::connection::ConnectionConfig createConfig{.dbname = createDatabase.string()};
+  const std::shared_ptr<worm::connection::Client> createClient =
+    worm::DependencyInjector<worm::connection::Client>::get(createConfig, type);
+  const worm::connection::SchemaInspector createInspector{*createClient};
+  if (createInspector.inspect().findTable("main", "users") != nullptr) {
+    std::cerr << "Migrate create changed the database before migrate apply.\n";
+    return 1;
+  }
+
+  worm::cli::Invocation applyInvocation = worm::cli::parse(
+    {"--driver",
+      "sqlite",
+      "--database",
+      createDatabase.string(),
+      "migrate",
+      "--apply",
+      "--directory",
+      createDirectory.string()});
+  worm::cli::validate(applyInvocation);
+  std::ostringstream progress;
+  const worm::cli::ExecutionReport applyReport = worm::cli::database::migrate(applyInvocation, &progress);
+  const auto applyMetrics =
+    std::dynamic_pointer_cast<const worm::cli::database::MigrationApplyMetrics>(applyReport.metrics);
+  const worm::core::Repository<worm::core::MigrationHistory> createRepository{createClient, queryBuilder, "main"};
+  createRepository.initialize(createInspector.inspect());
+  const worm::core::MigrationHistory createHistory = createRepository.load();
   const worm::core::MigrationArtifact& createdArtifact = createdCatalog.migrations().front().artifact;
-  repository.addPending(createdArtifact);
-  repository.apply(
-    worm::core::compileMigrationExecutionPlan(createdArtifact, sqlBuilder),
-    worm::core::MigrationConfirmation::Ambiguous);
+  const worm::core::MigrationRecord* createdRecord = createHistory.find(createdArtifact.id());
+  if (applyReport.status != worm::cli::ExecutionStatus::Success || applyMetrics == nullptr ||
+      applyMetrics->migrations != 1 || applyMetrics->pendingMigrations != 1 ||
+      applyMetrics->appliedMigrations != 1 || applyMetrics->alreadyAppliedMigrations != 0 ||
+      applyMetrics->statementsExecuted == 0 || createdRecord == nullptr ||
+      createdRecord->state != worm::core::MigrationState::Applied ||
+      createInspector.inspect().findTable("main", "users") == nullptr ||
+      progress.str().find("[migrate] Query completed:") == std::string::npos ||
+      progress.str().find("SQL: create table") == std::string::npos ||
+      progress.str().find("Affected rows:") == std::string::npos ||
+      progress.str().find("[migrate] Applied ") == std::string::npos) {
+    std::cerr << "Migrate apply did not execute and report the pending migration in real time.\n";
+    return 1;
+  }
+
+  std::ostringstream applyJson;
+  applyMetrics->writeJson(applyJson);
+  if (applyJson.str().find("\"appliedMigrations\":1") == std::string::npos ||
+      applyJson.str().find("\"statementsExecuted\":") == std::string::npos) {
+    std::cerr << "Migrate apply did not render its execution metrics.\n";
+    return 1;
+  }
+
+  std::ostringstream secondProgress;
+  const worm::cli::ExecutionReport secondApply = worm::cli::database::migrate(applyInvocation, &secondProgress);
+  const auto secondApplyMetrics =
+    std::dynamic_pointer_cast<const worm::cli::database::MigrationApplyMetrics>(secondApply.metrics);
+  if (secondApply.status != worm::cli::ExecutionStatus::Success || secondApplyMetrics == nullptr ||
+      secondApplyMetrics->pendingMigrations != 0 || secondApplyMetrics->appliedMigrations != 0 ||
+      secondApplyMetrics->alreadyAppliedMigrations != 1) {
+    std::cerr << "Migrate apply did not skip an already applied migration.\n";
+    return 1;
+  }
+
+  worm::cli::Invocation jsonApplyInvocation = applyInvocation;
+  jsonApplyInvocation.global.format = "json";
+  std::ostringstream jsonProgress;
+  static_cast<void>(worm::cli::database::migrate(jsonApplyInvocation, &jsonProgress));
+  if (jsonProgress.str().find("{\"event\":\"migration-query-completed\"") == std::string::npos ||
+      jsonProgress.str().find("\"parameterCount\":") == std::string::npos ||
+      jsonProgress.str().find("\"affectedRows\":") == std::string::npos) {
+    std::cerr << "Migrate apply did not emit structured real-time query logs.\n";
+    return 1;
+  }
+
   const worm::cli::ExecutionReport noDifferenceReport = worm::cli::database::migrate(createInvocation);
   const auto noDifferenceMetrics =
     std::dynamic_pointer_cast<const worm::cli::database::MigrationCreateMetrics>(noDifferenceReport.metrics);

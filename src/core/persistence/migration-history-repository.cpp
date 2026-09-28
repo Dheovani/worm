@@ -208,10 +208,12 @@ namespace worm::core
   Repository<MigrationHistory>::Repository(
     std::shared_ptr<connection::Client> dbClient,
     const QueryBuilder& queryBuilder,
-    std::string schema)
+    std::string schema,
+    MigrationQueryObserver* observer)
     : dbClient_(std::move(dbClient)),
       queryBuilder_(queryBuilder),
-      schema_(std::move(schema))
+      schema_(std::move(schema)),
+      observer_(observer)
   {
     if (!dbClient_) {
       throw InvalidArgException("Migration history repository requires a valid client.");
@@ -230,14 +232,14 @@ namespace worm::core
     }
 
     for (const Statement& statement : queryBuilder_.create(historyTableMetadata(schema_))) {
-      static_cast<void>(execute(statement));
+      static_cast<void>(execute(statement, "Create migration history table"));
     }
   }
 
   MigrationHistory Repository<MigrationHistory>::load() const
   {
     const std::string table = qualifiedTableName();
-    const ResultSet result = execute(queryBuilder_.selectAll({table, historyAlias}));
+    const ResultSet result = execute(queryBuilder_.selectAll({table, historyAlias}), "Load migration history");
     std::vector<MigrationRecord> records;
     records.reserve(result.rowCount());
     for (const ResultRow& row : result) {
@@ -250,17 +252,19 @@ namespace worm::core
   {
     validateMigrationArtifact(artifact);
     const std::string table = qualifiedTableName();
-    const ResultSet result = execute(queryBuilder_.insert(
-      Source{std::string_view{table}},
-      {
-        {"id", artifact.id()},
-        {"name", artifact.name()},
-        {"checksum", artifact.checksum()},
-        {"state", std::string{"pending"}},
-        {"applied_at", nullptr},
-        {"rolled_back_at", nullptr},
-        {"failure_reason", nullptr},
-      }));
+    const ResultSet result = execute(
+      queryBuilder_.insert(
+        Source{std::string_view{table}},
+        {
+          {"id", artifact.id()},
+          {"name", artifact.name()},
+          {"checksum", artifact.checksum()},
+          {"state", std::string{"pending"}},
+          {"applied_at", nullptr},
+          {"rolled_back_at", nullptr},
+          {"failure_reason", nullptr},
+        }),
+      "Register pending migration");
 
     if (result.affectedRows() != 1) {
       throw MigrationException("Unable to persist pending migration '{}'.", artifact.id());
@@ -353,8 +357,10 @@ namespace worm::core
         throw MigrationException("Migration '{}' checksum differs from migration history.", plan.migrationId());
       }
 
-      const MigrationState expectedState = rollback ? MigrationState::Applied : MigrationState::Pending;
-      if (record->state != expectedState) {
+      const bool canExecute =
+        rollback ? record->state == MigrationState::Applied
+                 : record->state == MigrationState::Pending || record->state == MigrationState::RolledBack;
+      if (!canExecute) {
         throw MigrationException(
           "Migration '{}' is not {} and cannot be {}.",
           plan.migrationId(),
@@ -364,6 +370,18 @@ namespace worm::core
 
       if (rollback && history.latestApplied() != record) {
         throw MigrationException("Migration '{}' is not the latest applied migration.", plan.migrationId());
+      }
+
+      if (!rollback && record->state == MigrationState::RolledBack) {
+        updateState(
+          plan.migrationId(),
+          {
+            {"state", std::string{"pending"}},
+            {"applied_at", nullptr},
+            {"rolled_back_at", nullptr},
+            {"failure_reason", nullptr},
+          },
+          "pending");
       }
 
       try {
@@ -448,13 +466,25 @@ namespace worm::core
     return schema_ + "." + std::string{tableName()};
   }
 
-  ResultSet Repository<MigrationHistory>::execute(const Statement& statement) const
-  try {
-    return dbClient_->execute(statement);
-  } catch (const WormException&) {
-    throw;
-  } catch (const std::exception& error) {
-    throw QueryExecutionException(error.what());
+  ResultSet Repository<MigrationHistory>::execute(
+    const Statement& statement,
+    std::string_view operation,
+    std::optional<MigrationRisk> risk) const
+  {
+    ResultSet result;
+    try {
+      result = dbClient_->execute(statement);
+    } catch (const WormException&) {
+      throw;
+    } catch (const std::exception& error) {
+      throw QueryExecutionException(error.what());
+    }
+
+    if (observer_ != nullptr) {
+      observer_->queryExecuted(operation, statement, result, risk);
+    }
+
+    return result;
   }
 
   void Repository<MigrationHistory>::executeSteps(const MigrationExecutionPlan& plan) const
@@ -462,7 +492,7 @@ namespace worm::core
     for (std::size_t index = 0; index < plan.steps().size(); ++index) {
       const MigrationExecutionStep& step = plan.steps()[index];
       try {
-        static_cast<void>(execute(step.statement));
+        static_cast<void>(execute(step.statement, step.description, step.risk));
       } catch (const std::exception& error) {
         throw MigrationException(
           "Migration '{}' failed at step {} ('{}'): {}",
@@ -488,7 +518,7 @@ namespace worm::core
     const Statement statement =
       queryBuilder_.update({table, historyAlias}, fields, Filter{Predicate::equal(idColumn, std::string{id})});
 
-    if (execute(statement).affectedRows() != 1) {
+    if (execute(statement, "Update migration history").affectedRows() != 1) {
       throw MigrationException("Unable to mark migration '{}' as {}.", id, state);
     }
   }

@@ -215,6 +215,14 @@ int main()
     return 1;
   }
 
+  worm::cli::Invocation applyInvocation =
+    worm::cli::parse({"migrate", "--apply", "--directory", statusDirectory.string()});
+  worm::cli::validate(applyInvocation);
+  if (applyInvocation.migrationAction != worm::cli::MigrationAction::Apply || applyInvocation.arguments.apply) {
+    std::cerr << "Migrate apply was not parsed as a migration action.\n";
+    return 1;
+  }
+
   worm::cli::Invocation createInvocation =
     worm::cli::parse({"migrate", "--create", "--name", "create-users", "--directory", statusDirectory.string()});
   worm::cli::validate(createInvocation);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <ostream>
 
 #include <core/model/migration-history.hpp>
@@ -18,6 +19,20 @@ namespace worm::cli::database
     std::size_t ambiguousStatements{};
     std::size_t destructiveStatements{};
     std::size_t generatedArtifacts{};
+
+    void writeText(std::ostream& out) const override;
+    void writeJson(std::ostream& out) const override;
+  };
+
+  struct MigrationApplyMetrics final : ExecutionMetrics
+  {
+    std::size_t migrations{};
+    std::size_t pendingMigrations{};
+    std::size_t appliedMigrations{};
+    std::size_t alreadyAppliedMigrations{};
+    std::size_t queriesExecuted{};
+    std::size_t statementsExecuted{};
+    std::uint64_t affectedRows{};
 
     void writeText(std::ostream& out) const override;
     void writeJson(std::ostream& out) const override;
@@ -65,5 +80,5 @@ namespace worm::cli::database
   ExecutionReport migrationStatus(const migration::MigrationCatalog& catalog, const core::MigrationHistory& history);
 
   [[nodiscard]]
-  ExecutionReport migrate(const Invocation& invocation);
+  ExecutionReport migrate(const Invocation& invocation, std::ostream* progress = nullptr);
 } // namespace worm::cli::database

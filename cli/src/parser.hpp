@@ -34,6 +34,7 @@ namespace worm::cli
 
   enum class MigrationAction
   {
+    Apply,
     Create,
     Validate,
     Status,

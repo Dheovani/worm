@@ -384,6 +384,11 @@ namespace worm::cli
       }
 
       if (const auto commandOption = parseCommandOption(token)) {
+        if (*command == Commands::Migrate && *commandOption == CommandOptions::Apply) {
+          assignMigrationAction(migrationAction, MigrationAction::Apply, token);
+          continue;
+        }
+
         std::optional<std::string> value;
 
         if (requiresValue(*commandOption)) {

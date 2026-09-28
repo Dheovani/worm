@@ -13,6 +13,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -20,6 +21,18 @@
 
 namespace worm::core
 {
+  class MigrationQueryObserver
+  {
+  public:
+    virtual ~MigrationQueryObserver() = default;
+
+    virtual void queryExecuted(
+      std::string_view operation,
+      const Statement& statement,
+      const ResultSet& result,
+      std::optional<MigrationRisk> risk) noexcept = 0;
+  };
+
   template <>
   class Repository<MigrationHistory> final
   {
@@ -27,7 +40,8 @@ namespace worm::core
     explicit Repository(
       std::shared_ptr<connection::Client> dbClient,
       const QueryBuilder& queryBuilder,
-      std::string schema = {});
+      std::string schema = {},
+      MigrationQueryObserver* observer = nullptr);
 
     void initialize(const SchemaSnapshot& schemaSnapshot) const;
 
@@ -66,7 +80,10 @@ namespace worm::core
     std::string qualifiedTableName() const;
 
     [[nodiscard]]
-    ResultSet execute(const Statement& statement) const;
+    ResultSet execute(
+      const Statement& statement,
+      std::string_view operation,
+      std::optional<MigrationRisk> risk = std::nullopt) const;
 
     void executeSteps(const MigrationExecutionPlan& plan) const;
 
@@ -83,5 +100,6 @@ namespace worm::core
     std::shared_ptr<connection::Client> dbClient_;
     const QueryBuilder queryBuilder_;
     std::string schema_;
+    MigrationQueryObserver* observer_;
   };
 } // namespace worm::core

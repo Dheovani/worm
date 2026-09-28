@@ -10,12 +10,36 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace
 {
+  struct ObservedQuery
+  {
+    std::string operation;
+    worm::core::Statement statement;
+    worm::core::ResultSet result;
+    std::optional<worm::core::MigrationRisk> risk;
+  };
+
+  class RecordingObserver final : public worm::core::MigrationQueryObserver
+  {
+  public:
+    void queryExecuted(
+      std::string_view operation,
+      const worm::core::Statement& statement,
+      const worm::core::ResultSet& result,
+      std::optional<worm::core::MigrationRisk> risk) noexcept override
+    {
+      queries.push_back({std::string{operation}, statement, result, risk});
+    }
+
+    std::vector<ObservedQuery> queries;
+  };
+
   class RecordingClient final : public worm::connection::Client
   {
   public:
@@ -122,10 +146,12 @@ int main()
   };
   const worm::core::SqliteBuilder sqlBuilder;
   const worm::core::QueryBuilder queryBuilder{sqlBuilder};
+  RecordingObserver observer;
   const worm::core::Repository<worm::core::MigrationHistory> repository{
     nonOwning(client),
     queryBuilder,
     "main",
+    &observer,
   };
 
   repository.initialize({});
@@ -182,6 +208,12 @@ int main()
       client.statements[4].parameters != expectedFailedParameters ||
       client.statements[5].parameters != expectedRollbackParameters) {
     std::cerr << "Migration history repository did not persist parameterized state transitions.\n";
+    return 1;
+  }
+  if (observer.queries.size() != 6 || observer.queries.front().operation != "Create migration history table" ||
+      observer.queries[2].operation != "Register pending migration" || observer.queries[2].result.affectedRows() != 1 ||
+      observer.queries[2].risk.has_value()) {
+    std::cerr << "Migration history repository did not report completed queries to its observer.\n";
     return 1;
   }
 
