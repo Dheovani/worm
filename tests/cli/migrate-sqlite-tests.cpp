@@ -122,12 +122,12 @@ int main()
       "--database",
       database.string(),
       "migrate",
-      "rollback",
+      "--rollback",
       "--directory",
       migrations.string()});
   worm::cli::validate(invocation);
   if (invocation.migrationAction != worm::cli::MigrationAction::Rollback) {
-    std::cerr << "Migrate rollback was not parsed as a migration subcommand.\n";
+    std::cerr << "Migrate rollback was not parsed as a migration action.\n";
     return 1;
   }
 
@@ -208,7 +208,7 @@ int main()
       "--database",
       database.string(),
       "migrate",
-      "create",
+      "--create",
       "--name",
       "create-users",
       "--directory",

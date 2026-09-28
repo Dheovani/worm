@@ -122,7 +122,7 @@ This milestone should end with a complete example that creates, persists, querie
 
 ### Database manipulation commands
 
-- [x] Evaluate commands `diff`, `migrate`, `seed`, `n-plus-one`, migration subcommands, `inspect`, and `doctor`.
+- [x] Evaluate commands `diff`, `migrate`, `seed`, `n-plus-one`, migration actions, `inspect`, and `doctor`.
 - [ ] Define the usage syntax for each one of the following commands (if accepted):
   - [x] `diff`: Compare reflected entities with the current database schema and display the detected schema differences, including missing or unexpected tables and columns, metadata mismatches, and primary key differences.
   - [ ] `migrate`: Apply pending migrations to the database, updating the schema from a previous version to the version expected by the application.
@@ -133,10 +133,10 @@ This milestone should end with a complete example that creates, persists, querie
     - [x] Compile migration steps into dialect-specific DDL and define transactional boundaries for each supported database.
     - [x] Define confirmation, failure recovery, and partially applied migration policies for ambiguous and destructive operations.
     - [x] Add integration contracts for migration history, locking, successful application, failure recovery, and dialect-specific DDL.
-    - [x] `migrate create`: Create a reviewable migration artifact from the current `diff` without applying it.
-    - [x] `migrate validate`: Validate local migration ordering, checksums, and artifact structure without changing the database.
-    - [x] `migrate status`: Display applied, pending, failed, missing, and checksum-divergent migrations.
-    - [x] `migrate rollback`: Execute only explicitly authored rollback steps; never infer destructive rollback SQL.
+    - [x] `migrate --create`: Create a reviewable migration artifact from the current `diff` without applying it.
+    - [x] `migrate --validate`: Validate local migration ordering, checksums, and artifact structure without changing the database.
+    - [x] `migrate --status`: Display applied, pending, failed, missing, and checksum-divergent migrations.
+    - [x] `migrate --rollback`: Execute only explicitly authored rollback steps; never infer destructive rollback SQL.
   - [ ] `seed`: Populate the database with pre-defined initial or test data—such as default users, permissions, settings, categories, or fixtures—for development and testing.
   - [x] `n-plus-one`: Detect N+1 query patterns—instances where an initial query triggers multiple unnecessary, repetitive queries to load related data.
   - [x] `inspect`: Introspect the database and display its actual structure: schemas, tables, columns, data types, PKs, FKs, indexes, and other metadata.

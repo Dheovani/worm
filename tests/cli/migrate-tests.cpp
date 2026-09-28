@@ -52,7 +52,7 @@ namespace
   {
     try {
       std::forward<Action>(action)();
-    } catch (const worm::cli::InvalidCliArgumentException&) {
+    } catch (const worm::WormException&) {
       return true;
     }
     return false;
@@ -94,7 +94,7 @@ int main()
   worm::cli::migration::saveMigrationArtifact(temporary.path() / "20260923120000_create-users.worm.json", artifact);
 
   worm::cli::Invocation invocation =
-    worm::cli::parse({"migrate", "validate", "--directory", temporary.path().string()});
+    worm::cli::parse({"migrate", "--validate", "--directory", temporary.path().string()});
   worm::cli::validate(invocation);
   const worm::cli::ExecutionReport report = worm::cli::database::migrate(invocation);
   const auto metrics = std::dynamic_pointer_cast<const worm::cli::database::MigrationValidateMetrics>(report.metrics);
@@ -116,7 +116,7 @@ int main()
            << temporary.path().generic_string() << "\"\n";
   }
 
-  worm::cli::Invocation configured = worm::cli::parse({"--config", configuration.string(), "migrate", "validate"});
+  worm::cli::Invocation configured = worm::cli::parse({"--config", configuration.string(), "migrate", "--validate"});
   worm::cli::resolve(configured);
   worm::cli::validate(configured);
   if (configured.arguments.directory != temporary.path().generic_string()) {
@@ -208,15 +208,15 @@ int main()
   }
 
   worm::cli::Invocation statusInvocation =
-    worm::cli::parse({"migrate", "status", "--directory", statusDirectory.string()});
+    worm::cli::parse({"migrate", "--status", "--directory", statusDirectory.string()});
   worm::cli::validate(statusInvocation);
   if (statusInvocation.migrationAction != worm::cli::MigrationAction::Status) {
-    std::cerr << "Migrate status was not parsed as a migration subcommand.\n";
+    std::cerr << "Migrate status was not parsed as a migration action.\n";
     return 1;
   }
 
   worm::cli::Invocation createInvocation =
-    worm::cli::parse({"migrate", "create", "--name", "create-users", "--directory", statusDirectory.string()});
+    worm::cli::parse({"migrate", "--create", "--name", "create-users", "--directory", statusDirectory.string()});
   worm::cli::validate(createInvocation);
   if (createInvocation.migrationAction != worm::cli::MigrationAction::Create ||
       createInvocation.arguments.name != "create-users") {
@@ -229,30 +229,34 @@ int main()
         worm::cli::validate(missingAction);
       }) ||
       !rejectsArguments([] {
-        const auto invalidOption = worm::cli::parse({"migrate", "validate", "--apply"});
+        const auto invalidOption = worm::cli::parse({"migrate", "--validate", "--apply"});
         worm::cli::validate(invalidOption);
       }) ||
       !rejectsArguments([] {
-        const auto invalidStatusOption = worm::cli::parse({"migrate", "status", "--apply"});
+        const auto invalidStatusOption = worm::cli::parse({"migrate", "--status", "--apply"});
         worm::cli::validate(invalidStatusOption);
       }) ||
+      !rejectsArguments([] { static_cast<void>(worm::cli::parse({"migrate", "validate"})); }) ||
+      !rejectsArguments([] { static_cast<void>(worm::cli::parse({"migrate", "--status", "--rollback"})); }) ||
+      !rejectsArguments([] { static_cast<void>(worm::cli::parse({"migrate", "--validate", "--validate"})); }) ||
+      !rejectsArguments([] { static_cast<void>(worm::cli::parse({"check", "--status"})); }) ||
       !rejectsArguments([] {
-        const auto missingName = worm::cli::parse({"migrate", "create"});
+        const auto missingName = worm::cli::parse({"migrate", "--create"});
         worm::cli::validate(missingName);
       }) ||
       !rejectsArguments([] {
-        const auto invalidName = worm::cli::parse({"migrate", "create", "--name", "Create Users"});
+        const auto invalidName = worm::cli::parse({"migrate", "--create", "--name", "Create Users"});
         worm::cli::validate(invalidName);
       }) ||
       !rejectsArguments([] {
-        const auto misplacedName = worm::cli::parse({"migrate", "status", "--name", "status"});
+        const auto misplacedName = worm::cli::parse({"migrate", "--status", "--name", "status"});
         worm::cli::validate(misplacedName);
       }) ||
       !rejectsArguments([] {
         const auto misplacedDirectory = worm::cli::parse({"check", "--directory", "migrations"});
         worm::cli::validate(misplacedDirectory);
       })) {
-    std::cerr << "Migrate accepted a missing argument or an option outside its subcommand contract.\n";
+    std::cerr << "Migrate accepted a missing argument or an option outside its action contract.\n";
     return 1;
   }
 

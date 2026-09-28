@@ -731,7 +731,8 @@ namespace worm::cli
       const CommandArguments& args = invocation.arguments;
       if (!invocation.migrationAction.has_value()) {
         throw InvalidCliArgumentException(
-          "The 'migrate' command requires a subcommand. Currently supported: create, validate, status, rollback.");
+          "The 'migrate' command requires an action option. Currently supported: --create, --validate, --status, "
+          "--rollback.");
       }
 
       if (args.directory.has_value() && args.directory->empty()) {
@@ -740,7 +741,7 @@ namespace worm::cli
 
       if (*invocation.migrationAction == MigrationAction::Create) {
         if (!args.name.has_value()) {
-          throw InvalidCliArgumentException("The 'migrate create' command requires option '--name'.");
+          throw InvalidCliArgumentException("The 'migrate --create' action requires option '--name'.");
         }
 
         const bool isLowerCase = std::ranges::all_of(*args.name, [](unsigned char character) {
@@ -753,7 +754,7 @@ namespace worm::cli
             *args.name);
         }
       } else if (args.name.has_value()) {
-        throw InvalidCliArgumentException("Option '--name' is only valid for 'migrate create'.");
+        throw InvalidCliArgumentException("Option '--name' is only valid for 'migrate --create'.");
       }
 
       if (args.output.has_value() || !args.entities.empty() || !args.tables.empty() ||
@@ -761,9 +762,9 @@ namespace worm::cli
           args.file.has_value() || args.maxExecutions.has_value()) {
         if (*invocation.migrationAction == MigrationAction::Create) {
           throw InvalidCliArgumentException(
-            "Only '--name' and '--directory' are valid for the 'migrate create' subcommand.");
+            "Only '--name' and '--directory' are valid for the 'migrate --create' action.");
         }
-        throw InvalidCliArgumentException("Only '--directory' is valid for the selected 'migrate' subcommand.");
+        throw InvalidCliArgumentException("Only '--directory' is valid for the selected 'migrate' action.");
       }
     }
   } // namespace

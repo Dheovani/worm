@@ -2,7 +2,7 @@
 
 `worm` is the command-line interface for inspecting database schemas, generating Worm entity declarations, validating and inspecting migration state, and running opt-in query diagnostics.
 
-The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate create`, `migrate validate`, `migrate status`, `migrate rollback`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate create` writes the current dialect-specific schema diff as a reviewable artifact without executing it, `migrate validate` verifies local artifacts without connecting to or changing the database, `migrate status` compares them with persistent migration history, and `migrate rollback` reverts the latest applied migration using only its explicitly authored rollback statements. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
+The implemented commands are `check`, `diff`, `pull`, the safe initial form of `push`, `inspect`, `migrate --create`, `migrate --validate`, `migrate --status`, `migrate --rollback`, and `n-plus-one`. `check` provides a concise compatibility result suitable for CI. `diff` produces a detailed, migration-oriented comparison without modifying the database. `pull` introspects database tables and plans or generates C++ entity headers. `push` plans and creates missing tables while leaving incompatible existing tables unchanged. `inspect` prints the database structure supported by the selected driver. `migrate --create` writes the current dialect-specific schema diff as a reviewable artifact without executing it, `migrate --validate` verifies local artifacts without connecting to or changing the database, `migrate --status` compares them with persistent migration history, and `migrate --rollback` reverts the latest applied migration using only its explicitly authored rollback statements. `n-plus-one` analyzes observed read-only SQL without opening a database connection or executing a statement.
 
 ## Build
 
@@ -271,27 +271,27 @@ The current report classifies missing and unexpected tables or columns, canonica
 
 Indexes and foreign keys are displayed by `inspect`, but they do not yet participate in `diff` because the current database snapshot stores their introspected representations as driver-formatted text instead of structured metadata. They must be promoted to structured snapshot types before migration generation can compare them reliably.
 
-## The `migrate create` command
+## The `migrate --create` action
 
-`migrate create` compares the configured schema manifest with the current database, compiles every supported difference through the selected SQL dialect, and writes one immutable migration artifact for review. It never executes the generated SQL or registers the migration in `_worm_migrations`.
+`migrate --create` compares the configured schema manifest with the current database, compiles every supported difference through the selected SQL dialect, and writes one immutable migration artifact for review. It never executes the generated SQL or registers the migration in `_worm_migrations`.
 
 ```bash
-worm --manifest worm-schema.json --driver postgresql --database application migrate create --name add-user-profile
-worm --manifest worm-schema.json --driver sqlite --database application.db migrate create --name create-users --directory database/migrations
+worm --manifest worm-schema.json --driver postgresql --database application migrate --create --name add-user-profile
+worm --manifest worm-schema.json --driver sqlite --database application.db migrate --create --name create-users --directory database/migrations
 ```
 
 `--name` is required and must be a lowercase kebab-case slug. The directory defaults to `migrations`. The generated filename uses a 14-digit UTC timestamp followed by the supplied name, such as `20260928153045_add-user-profile.worm.json`. Worm validates the existing local catalog and refuses a generated ID that would not follow its latest migration.
 
 The generated artifact contains the exact forward statements, descriptions, and risk classifications produced by the current dialect. Its `down` field is `null`: Worm does not infer rollback SQL. Unsupported or insufficiently described transformations fail before a file is written. If the schemas already match, the command succeeds without producing an empty artifact. The internal `_worm_migrations` table is excluded from comparison.
 
-## The `migrate validate` command
+## The `migrate --validate` action
 
-`migrate validate` checks migration artifacts stored in a local directory without connecting to the database or executing SQL. It validates artifact filenames, deterministic ID ordering, duplicate IDs, required fields, supported database names, statement structure, and embedded SHA-256 checksums. The report summarizes migration and forward-statement counts by risk and identifies how many migrations provide explicit rollback statements.
+`migrate --validate` checks migration artifacts stored in a local directory without connecting to the database or executing SQL. It validates artifact filenames, deterministic ID ordering, duplicate IDs, required fields, supported database names, statement structure, and embedded SHA-256 checksums. The report summarizes migration and forward-statement counts by risk and identifies how many migrations provide explicit rollback statements.
 
 ```bash
-worm migrate validate
-worm migrate validate --directory database/migrations
-worm --format json migrate validate --directory database/migrations
+worm migrate --validate
+worm migrate --validate --directory database/migrations
+worm --format json migrate --validate --directory database/migrations
 ```
 
 The directory defaults to `migrations`. It may also be configured in `worm.toml`; an explicit `--directory` value takes precedence:
@@ -301,30 +301,30 @@ The directory defaults to `migrations`. It may also be configured in `worm.toml`
 directory = "database/migrations"
 ```
 
-This subcommand validates only the local catalog. Comparing it with persisted migration history belongs to `migrate status`. Forward migration application is not yet exposed by the CLI, and neither comparison nor execution is implied by `migrate validate`.
+This action validates only the local catalog. Comparing it with persisted migration history belongs to `migrate --status`. Forward migration application is not yet exposed by the CLI, and neither comparison nor execution is implied by `migrate --validate`.
 
-## The `migrate status` command
+## The `migrate --status` action
 
-`migrate status` compares the validated local migration catalog with the Worm-owned migration history table. It reports applied, pending, failed, locally missing, and checksum-divergent migrations. A rolled-back migration whose artifact remains available is pending because it can be applied again. A historical record without a corresponding local artifact is missing. When both sides contain the same migration ID but their checksums differ, the migration is checksum-divergent and its stored execution state is not used to hide that drift.
-
-```bash
-worm --driver postgresql --database application migrate status
-worm --driver sqlite --database application.db migrate status --directory database/migrations
-worm --format json --driver mysql --database application migrate status
-```
-
-The directory defaults to `migrations` and follows the same configuration and override rules as `migrate validate`. The command does not create the history table when it is absent; in that case every local artifact is reported as pending. An existing history table is validated before it is read. Missing artifacts or checksum divergence produce the drift exit status, while matching failed migrations produce the issues-detected exit status. Pending migrations alone do not make the command fail.
-
-## The `migrate rollback` command
-
-`migrate rollback` reverts exactly one migration: the applied migration with the greatest ordered migration ID. This preserves reverse schema order even when application timestamps are equal or unavailable. The command requires the matching local artifact and checksum, executes only the artifact's explicit `down` statements, and refuses irreversible, missing, edited, non-applied, or out-of-order migrations. Worm never derives rollback SQL from the forward statements.
+`migrate --status` compares the validated local migration catalog with the Worm-owned migration history table. It reports applied, pending, failed, locally missing, and checksum-divergent migrations. A rolled-back migration whose artifact remains available is pending because it can be applied again. A historical record without a corresponding local artifact is missing. When both sides contain the same migration ID but their checksums differ, the migration is checksum-divergent and its stored execution state is not used to hide that drift.
 
 ```bash
-worm --driver postgresql --database application migrate rollback
-worm --driver sqlite --database application.db migrate rollback --directory database/migrations
+worm --driver postgresql --database application migrate --status
+worm --driver sqlite --database application.db migrate --status --directory database/migrations
+worm --format json --driver mysql --database application migrate --status
 ```
 
-Invoking the rollback subcommand is the explicit authorization for destructive rollback steps. Execution uses the configured driver's migration lock and transaction policy. A successful rollback records the `rolled_back` state and timestamp in `_worm_migrations`; when no migration is currently applied, the command succeeds without changing the database. If the history table does not exist, the command fails instead of creating migration state during a rollback operation.
+The directory defaults to `migrations` and follows the same configuration and override rules as `migrate --validate`. The action does not create the history table when it is absent; in that case every local artifact is reported as pending. An existing history table is validated before it is read. Missing artifacts or checksum divergence produce the drift exit status, while matching failed migrations produce the issues-detected exit status. Pending migrations alone do not make the command fail.
+
+## The `migrate --rollback` action
+
+`migrate --rollback` reverts exactly one migration: the applied migration with the greatest ordered migration ID. This preserves reverse schema order even when application timestamps are equal or unavailable. The action requires the matching local artifact and checksum, executes only the artifact's explicit `down` statements, and refuses irreversible, missing, edited, non-applied, or out-of-order migrations. Worm never derives rollback SQL from the forward statements.
+
+```bash
+worm --driver postgresql --database application migrate --rollback
+worm --driver sqlite --database application.db migrate --rollback --directory database/migrations
+```
+
+Invoking the rollback action is the explicit authorization for destructive rollback steps. Execution uses the configured driver's migration lock and transaction policy. A successful rollback records the `rolled_back` state and timestamp in `_worm_migrations`; when no migration is currently applied, the command succeeds without changing the database. If the history table does not exist, the command fails instead of creating migration state during a rollback operation.
 
 ## The `check` command
 

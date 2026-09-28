@@ -108,11 +108,11 @@ namespace worm::cli::database
     ExecutionReport createMigration(const Invocation& invocation)
     {
       if (!invocation.global.manifest.has_value()) {
-        throw InvalidCliArgumentException("The 'migrate create' command requires a schema manifest.");
+        throw InvalidCliArgumentException("The 'migrate --create' action requires a schema manifest.");
       }
 
       if (!invocation.arguments.name.has_value()) {
-        throw InvalidCliArgumentException("The 'migrate create' command requires option '--name'.");
+        throw InvalidCliArgumentException("The 'migrate --create' action requires option '--name'.");
       }
 
       const MigrationRuntime runtime{invocation};
@@ -418,7 +418,7 @@ namespace worm::cli::database
   ExecutionReport migrate(const Invocation& invocation)
   {
     if (!invocation.migrationAction.has_value()) {
-      throw InvalidCliArgumentException("The 'migrate' command requires a subcommand.");
+      throw InvalidCliArgumentException("The 'migrate' command requires an action option.");
     }
 
     switch (*invocation.migrationAction) {
@@ -432,6 +432,6 @@ namespace worm::cli::database
       return rollbackMigration(invocation);
     }
 
-    throw InvalidCliArgumentException("Unsupported migration subcommand.");
+    throw InvalidCliArgumentException("Unsupported migration action.");
   }
 } // namespace worm::cli::database
