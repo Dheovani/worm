@@ -600,8 +600,14 @@ namespace worm::cli
       }
     }
 
-    void validatePushArguments(const CommandArguments& args)
+    void validatePushArguments(const Invocation& invocation)
     {
+      const CommandArguments& args = invocation.arguments;
+
+      if (!invocation.global.manifest.has_value()) {
+        throw InvalidCliArgumentException("The 'push' command requires a schema manifest.");
+      }
+
       if (!args.tables.empty()) {
         throw InvalidCliArgumentException("Option '--table' is not valid for the 'push' command.");
       }
@@ -773,6 +779,38 @@ namespace worm::cli
         throw InvalidCliArgumentException("Only doctor check filters and '--verbose' are valid for 'doctor'.");
       }
     }
+
+    void validateSeedArguments(const CommandArguments& args)
+    {
+      if (args.apply && args.tables.empty() && !args.schema.has_value() && !args.all) {
+        throw InvalidCliArgumentException(
+          "Option '--apply' requires at least one of '--table', '--schema', or '--all' to be specified.");
+      }
+
+      if (args.rows.has_value()) {
+        if (!isPositiveInteger(*args.rows)) {
+          throw InvalidCliArgumentException("Option '--rows' must be a positive integer.");
+        }
+      }
+
+      if (args.file.has_value()) {
+        if (args.file->empty()) {
+          throw InvalidCliArgumentException("Option '--file' cannot be empty.");
+        }
+
+        if (!fileExists(args.file.value())) {
+          throw InvalidCliArgumentException("Provided file does not exist.");
+        }
+
+        if (!fileHasContent(args.file.value())) {
+          throw InvalidCliArgumentException("Provided file does not have any content.");
+        }
+
+        if (!fileContainsOnlySelectQueries(args.file.value())) {
+          throw InvalidCliArgumentException("Option '--file' accepts only read-only query files.");
+        }
+      }
+    }
   } // namespace
 
   bool isCppKeyword(std::string_view value) noexcept
@@ -798,7 +836,7 @@ namespace worm::cli
       validateCheckArguments(invocation.arguments);
       break;
     case Commands::Push:
-      validatePushArguments(invocation.arguments);
+      validatePushArguments(invocation);
       break;
     case Commands::Pull:
       validatePullArguments(invocation.arguments);
@@ -817,6 +855,9 @@ namespace worm::cli
       break;
     case Commands::Doctor:
       validateDoctorArguments(invocation.arguments);
+      break;
+    case Commands::Seed:
+      validateSeedArguments(invocation.arguments);
       break;
     default:
       throw EmptyCommandException("No valid command given");

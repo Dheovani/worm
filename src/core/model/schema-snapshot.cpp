@@ -13,8 +13,9 @@ namespace worm::core
     return column == columns.end() ? nullptr : &*column;
   }
 
-  const SchemaTableSnapshot*
-  SchemaSnapshot::findTable(std::string_view schema, std::string_view tableName) const noexcept
+  const SchemaTableSnapshot* SchemaSnapshot::findTable(
+    std::string_view schema,
+    std::string_view tableName) const noexcept
   {
     const auto table = std::find_if(tables.begin(), tables.end(), [schema, tableName](const auto& candidate) {
       return candidate.schema == schema && candidate.name == tableName;

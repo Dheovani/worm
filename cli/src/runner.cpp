@@ -9,6 +9,7 @@
 #include "database/inspect.hpp"
 #include "database/migrate.hpp"
 #include "database/n-plus-one.hpp"
+#include "database/seed.hpp"
 #include "errors/invalid-cli-argument-exception.hpp"
 #include "generator/check.hpp"
 #include "generator/pull.hpp"
@@ -97,6 +98,7 @@ namespace worm::cli
               << "  migrate               Manage migration artifacts and database migration state\n"
               << "  n-plus-one            Detect repeated parameterized SELECT query patterns\n"
               << "  doctor                Diagnose configuration, driver, connection, version, and permissions\n"
+              << "  seed                  Seed the database with initial data\n"
               << '\n'
               << "Global options:\n"
               << "  -c, --config <path>   Path to the Worm configuration file\n"
@@ -114,14 +116,17 @@ namespace worm::cli
               << "  -V, --version         Show Worm version\n"
               << '\n'
               << "Command options:\n"
+              << "  --all                 Apply to all tables in the database (for 'seed' command)\n"
               << "  --entity <name>       Select an entity (repeatable)\n"
               << "  --table <name>        Select a table (repeatable)\n"
+              << "  --schema <name>       Select a database schema (default: public)\n"
               << "  --output <path>       Output directory for pull or SQL file for push\n"
               << "  --namespace <name>    Namespace for generated entities\n"
               << "  --name <name>         Explicit generated entity or migration name\n"
               << "  --apply               Apply pending migrations or a generated push plan\n"
               << "  --query <sql>         Analyze one observed SELECT query\n"
               << "  --file <path>         Analyze semicolon-separated SELECT queries from a file\n"
+              << "  --rows <n>            Number of rows to generate for each table (for 'seed' command)\n"
               << "  --max-executions <n>  Allow a query pattern to execute n times before reporting it\n"
               << "  --directory <path>    Migration artifact directory (default: migrations)\n"
               << "  --create              Create a reviewed migration artifact from the current schema diff\n"
@@ -144,6 +149,8 @@ namespace worm::cli
               << "  worm --driver sqlite --database application.db migrate --apply\n"
               << "  worm --driver sqlite --database application.db migrate --status\n"
               << "  worm --driver sqlite --database application.db migrate --rollback\n"
+              << "  worm --driver sqlite --database application.db doctor --connection --version\n"
+              << "  worm seed --table users --rows 10\n"
               << "  worm pull --apply\n"
               << "  worm push --entity User\n"
               << "  worm pull --table users\n"
@@ -260,6 +267,9 @@ namespace worm::cli
       break;
     case Commands::Doctor:
       report = database::examine(invocation);
+      break;
+    case Commands::Seed:
+      report = database::seed(invocation);
       break;
     default:
       throw InvalidCliArgumentException("Command is unknown or not implemented.");

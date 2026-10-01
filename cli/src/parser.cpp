@@ -45,15 +45,19 @@ namespace worm::cli
     inline constexpr std::string_view diffCommand = "diff";
     inline constexpr std::string_view migrateCommand = "migrate";
     inline constexpr std::string_view doctorCommand = "doctor";
+    inline constexpr std::string_view seedCommand = "seed";
 
+    inline constexpr std::string_view allCommand = "--all";
     inline constexpr std::string_view entityCommand = "--entity";
     inline constexpr std::string_view tableCommand = "--table";
+    inline constexpr std::string_view schemaCommand = "--schema";
     inline constexpr std::string_view outputCommand = "--output";
     inline constexpr std::string_view namespaceCommand = "--namespace";
     inline constexpr std::string_view nameCommand = "--name";
     inline constexpr std::string_view applyCommand = "--apply";
     inline constexpr std::string_view queryCommand = "--query";
     inline constexpr std::string_view fileCommand = "--file";
+    inline constexpr std::string_view rowsCommand = "--rows";
     inline constexpr std::string_view maxExecutionsCommand = "--max-executions";
     inline constexpr std::string_view directoryCommand = "--directory";
     inline constexpr std::string_view createMigrationAction = "--create";
@@ -115,6 +119,8 @@ namespace worm::cli
         return Migrate;
       if (cmd == doctorCommand)
         return Doctor;
+      if (cmd == seedCommand)
+        return Seed;
 
       return std::nullopt;
     }
@@ -158,10 +164,14 @@ namespace worm::cli
     {
       using enum CommandOptions;
 
+      if (opt == allCommand)
+        return All;
       if (opt == entityCommand)
         return Entity;
       if (opt == tableCommand)
         return Table;
+      if (opt == schemaCommand)
+        return Schema;
       if (opt == outputCommand)
         return Output;
       if (opt == namespaceCommand)
@@ -174,6 +184,8 @@ namespace worm::cli
         return Query;
       if (opt == fileCommand)
         return File;
+      if (opt == rowsCommand)
+        return Rows;
       if (opt == maxExecutionsCommand)
         return MaxExecutions;
       if (opt == directoryCommand)
@@ -298,11 +310,20 @@ namespace worm::cli
       using enum CommandOptions;
 
       switch (option) {
+      case All:
+        if (arguments.all) {
+          throw DuplicateCommandException("Option '--all' was specified more than once.");
+        }
+        arguments.all = true;
+        return;
       case Entity:
         arguments.entities.emplace_back(std::move(value).value());
         return;
       case Table:
         arguments.tables.emplace_back(std::move(value).value());
+        return;
+      case Schema:
+        assignUnique(arguments.schema, std::move(value).value(), token);
         return;
       case Output:
         assignUnique(arguments.output, std::move(value).value(), token);
@@ -324,6 +345,9 @@ namespace worm::cli
         return;
       case File:
         assignUnique(arguments.file, std::move(value).value(), token);
+        return;
+      case Rows:
+        assignUnique(arguments.rows, std::move(value).value(), token);
         return;
       case MaxExecutions:
         assignUnique(arguments.maxExecutions, std::move(value).value(), token);
