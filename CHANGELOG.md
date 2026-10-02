@@ -14,7 +14,7 @@ The format follows the categories from Keep a Changelog without claiming semanti
 
 ### Changed
 
-- Test and code-quality workflows no longer start for documentation-only changes.
+- Test and code-quality workflows skip expensive pull-request jobs and all documentation-only `main`-branch runs while preserving required pull-request statuses.
 
 ### Fixed
 

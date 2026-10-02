@@ -76,7 +76,7 @@ Driver contract tests may require database-specific environment variables. See
 
 To validate API documentation locally, follow [docs/api-documentation.md](docs/api-documentation.md). Documentation generation is optional for normal builds and is exposed through the `WormDocs` CMake target.
 
-Pull requests that change only Markdown, `docs/`, `.env.example`, the license, issue templates, or CI workflow definitions do not start the test or code-quality workflows. Relevant documentation changes continue through the Doxygen workflow.
+Pull requests always run a lightweight source-change check so required statuses can complete. When a pull request changes only Markdown, `docs/`, `.env.example`, the license, issue templates, or the documentation workflow, compilation, static analysis, driver services, and test matrices are skipped. Documentation-only pushes to `main` skip the test and code-quality workflows completely, while relevant documentation changes continue through the Doxygen workflow.
 
 Architectural changes must update [docs/architecture.md](docs/architecture.md) and [docs/technical-decisions.md](docs/technical-decisions.md) when they replace or materially alter a recorded boundary. Breaking changes must also provide concrete consumer steps in [docs/upgrading.md](docs/upgrading.md).
 
