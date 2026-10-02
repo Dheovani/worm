@@ -138,7 +138,7 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Maintain complete examples for CRUD, transactions, queries, and relationships.
 - [x] Produce error messages that identify entity, field, column, and operation.
 - [x] Document ownership, lifetime, and thread-safety guarantees.
-- [ ] Create API documentation with Doxygen or an equivalent tool.
+- [x] Create API documentation with Doxygen or an equivalent tool.
 - [ ] Publish an architecture guide and relevant technical decisions.
 - [ ] Add a changelog and migration guide for breaking changes.
 - [x] Complete `LOGGER.todo` with a logging policy, severity levels, and structured logging.

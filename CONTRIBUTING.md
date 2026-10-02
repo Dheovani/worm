@@ -52,6 +52,7 @@ ctest --test-dir build/sqlite -C Debug --output-on-failure
 - Application methods and variables use `camelCase`.
 - Metaprogramming helpers may use `snake_case`.
 - Format C++ with the repository `.clang-format`.
+- Document new public APIs with Doxygen comments that describe observable contracts.
 
 See the root [AGENTS.md](AGENTS.md) and scoped `AGENTS.md` files for the full
 repository rules.
@@ -71,6 +72,8 @@ ctest --test-dir build -C Debug --output-on-failure
 
 Driver contract tests may require database-specific environment variables. See
 [.env.example](.env.example).
+
+To validate API documentation locally, follow [docs/api-documentation.md](docs/api-documentation.md). Documentation generation is optional for normal builds and is exposed through the `WormDocs` CMake target.
 
 ## Pull request expectations
 
