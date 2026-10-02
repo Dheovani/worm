@@ -59,16 +59,15 @@ namespace
     SQLSMALLINT length = 0;
 
     for (SQLSMALLINT record = 1;; ++record) {
-      const SQLRETURN result =
-        SQLGetDiagRec(
-          handleType,
-          handle,
-          record,
-          state.data(),
-          &nativeError,
-          text.data(),
-          static_cast<SQLSMALLINT>(text.size()),
-          &length);
+      const SQLRETURN result = SQLGetDiagRec(
+        handleType,
+        handle,
+        record,
+        state.data(),
+        &nativeError,
+        text.data(),
+        static_cast<SQLSMALLINT>(text.size()),
+        &length);
 
       if (result == SQL_NO_DATA) {
         break;
