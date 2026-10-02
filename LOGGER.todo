@@ -1,6 +1,6 @@
 ## Logger
 
-- [ ] Define logging conventions and establish when each log level should be used:
+- [x] Define logging conventions and establish when each log level should be used:
   - `Trace`: fine-grained execution flow, function entry/exit, iteration details.
   - `Debug`: internal state, resolved options, generated plans, discovered metadata.
   - `Info`: relevant high-level operations and successful execution steps.
@@ -95,4 +95,4 @@
 
 - [ ] Review the codebase for missing logging points and eliminate duplicate/noisy logs.
 
-- [ ] Document the project's logging conventions and provide examples for each level.
+- [x] Document the project's logging conventions and provide examples for each level.

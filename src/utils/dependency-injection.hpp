@@ -42,7 +42,7 @@ namespace worm
   struct DependencyInjector<Logger>
   {
     [[nodiscard]]
-    static const Logger& get() noexcept
+    static Logger& get() noexcept
     {
       return logger;
     }
