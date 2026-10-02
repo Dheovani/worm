@@ -782,6 +782,19 @@ namespace worm::cli
 
     void validateSeedArguments(const CommandArguments& args)
     {
+      if (!args.entities.empty() || args.output.has_value() || args.namespaceName.has_value() ||
+          args.name.has_value() || args.query.has_value() || args.maxExecutions.has_value()) {
+        throw InvalidCliArgumentException("Only seed options are valid for the 'seed' command.");
+      }
+
+      if (args.all && (!args.tables.empty() || args.schema.has_value())) {
+        throw InvalidCliArgumentException("Option '--all' cannot be combined with '--table' or '--schema'.");
+      }
+
+      if (args.schema.has_value() && args.schema->empty()) {
+        throw InvalidCliArgumentException("Option '--schema' cannot be empty.");
+      }
+
       if (args.apply && args.tables.empty() && !args.schema.has_value() && !args.all) {
         throw InvalidCliArgumentException(
           "Option '--apply' requires at least one of '--table', '--schema', or '--all' to be specified.");
@@ -805,10 +818,6 @@ namespace worm::cli
         if (!fileHasContent(args.file.value())) {
           throw InvalidCliArgumentException("Provided file does not have any content.");
         }
-
-        if (!fileContainsOnlySelectQueries(args.file.value())) {
-          throw InvalidCliArgumentException("Option '--file' accepts only read-only query files.");
-        }
       }
     }
   } // namespace
@@ -826,6 +835,12 @@ namespace worm::cli
   void validate(const Invocation& invocation)
   {
     validateGlobalArguments(invocation.global);
+
+    const bool hasSeedOptions =
+      invocation.arguments.all || invocation.arguments.schema.has_value() || invocation.arguments.rows.has_value();
+    if (invocation.command != Commands::Seed && hasSeedOptions) {
+      throw InvalidCliArgumentException("Options '--all', '--schema', and '--rows' are only valid for 'seed'.");
+    }
 
     if (invocation.command != Commands::Migrate && invocation.arguments.directory.has_value()) {
       throw InvalidCliArgumentException("Option '--directory' is only valid for the 'migrate' command.");

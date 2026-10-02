@@ -205,7 +205,7 @@ namespace worm::cli
     constexpr bool requiresValue(CommandOptions opt) noexcept
     {
       using enum CommandOptions;
-      return opt != Apply;
+      return opt != All && opt != Apply;
     }
 
     [[nodiscard]]

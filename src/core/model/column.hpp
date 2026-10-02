@@ -2,9 +2,9 @@
 
 #include <core/query/parameter-value.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <chrono>
 #include <string>
 
 namespace worm::core
@@ -92,7 +92,6 @@ namespace worm::core
     using Type = Binary;
   };
 
-  // Date,
   template <>
   struct ColumnTypeTraits<ColumnTypeKind::Date>
   {
