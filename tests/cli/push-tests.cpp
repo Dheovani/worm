@@ -1,6 +1,7 @@
 #include <generator/push.hpp>
 
 #include <errors/invalid-cli-argument-exception.hpp>
+#include <validator.hpp>
 
 #include <iostream>
 #include <memory>
@@ -127,13 +128,24 @@ int main()
 
   invocation.arguments.output = "schema.sql";
   invocation.arguments.apply = true;
+  invocation.global.manifest = "worm-schema.json";
   try {
-    static_cast<void>(worm::cli::generator::push(invocation, schemaManifest));
+    worm::cli::validate(invocation);
     std::cerr << "Push accepted simultaneous SQL output and database application.\n";
     return 1;
   } catch (const worm::cli::InvalidCliArgumentException&) {}
 
+  invocation.arguments.output.reset();
   invocation.arguments.apply = false;
+  invocation.global.manifest.reset();
+  try {
+    worm::cli::validate(invocation);
+    std::cerr << "Push validation accepted an invocation without a schema manifest.\n";
+    return 1;
+  } catch (const worm::cli::InvalidCliArgumentException&) {}
+
+  invocation.global.manifest = "worm-schema.json";
+  invocation.arguments.output = "schema.sql";
   try {
     static_cast<void>(worm::cli::generator::planPush(invocation, schemaManifest, {}));
     std::cerr << "Pure push planning wrote an output file.\n";

@@ -329,10 +329,6 @@ namespace worm::cli::generator
 
   ExecutionReport push(const Invocation& invocation, const SchemaManifest& manifest)
   {
-    if (invocation.arguments.output.has_value() && invocation.arguments.apply) {
-      throw InvalidCliArgumentException("Options '--output' and '--apply' cannot be used together for 'push'.");
-    }
-
     const auto started = Clock::now();
     const connection::DatabaseType type = databaseType(invocation);
     std::shared_ptr<connection::Client> client =
@@ -357,8 +353,10 @@ namespace worm::cli::generator
     return report;
   }
 
-  ExecutionReport
-  planPush(const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema)
+  ExecutionReport planPush(
+    const Invocation& invocation,
+    const SchemaManifest& manifest,
+    const core::SchemaSnapshot& databaseSchema)
   {
     if (invocation.arguments.apply) {
       throw InvalidCliArgumentException("A push plan cannot apply schema changes.");
@@ -376,10 +374,6 @@ namespace worm::cli::generator
 
   ExecutionReport push(const Invocation& invocation)
   {
-    if (!invocation.global.manifest.has_value()) {
-      throw InvalidCliArgumentException("The 'push' command requires a schema manifest.");
-    }
-
     const connection::DatabaseType type = databaseType(invocation);
     const std::string schema =
       type == connection::DatabaseType::MySQL ? invocation.global.database.value_or("") : defaultSchema(type);

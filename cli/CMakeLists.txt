@@ -6,6 +6,7 @@ add_library(
     src/database/inspect.cpp
     src/database/migrate.cpp
     src/database/n-plus-one.cpp
+    src/database/seed.cpp
     src/generator/check.cpp
     src/generator/pull.cpp
     src/generator/push.cpp

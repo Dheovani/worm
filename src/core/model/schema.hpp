@@ -6,30 +6,11 @@
 #include <string_view>
 #include <vector>
 
+#include <core/model/column.hpp>
 #include <reflection/metadata.hpp>
 
 namespace worm::core
 {
-  enum class ColumnTypeKind
-  {
-    Boolean,
-    Int16,
-    Int32,
-    Int64,
-    Float32,
-    Float64,
-    Decimal,
-    String,
-    Enum,
-    Binary,
-    Date,
-    Time,
-    DateTime,
-    Uuid,
-    Json,
-    Unknown
-  };
-
   struct NativeEnum
   {
     std::string schema;

@@ -600,8 +600,14 @@ namespace worm::cli
       }
     }
 
-    void validatePushArguments(const CommandArguments& args)
+    void validatePushArguments(const Invocation& invocation)
     {
+      const CommandArguments& args = invocation.arguments;
+
+      if (!invocation.global.manifest.has_value()) {
+        throw InvalidCliArgumentException("The 'push' command requires a schema manifest.");
+      }
+
       if (!args.tables.empty()) {
         throw InvalidCliArgumentException("Option '--table' is not valid for the 'push' command.");
       }
@@ -773,6 +779,33 @@ namespace worm::cli
         throw InvalidCliArgumentException("Only doctor check filters and '--verbose' are valid for 'doctor'.");
       }
     }
+
+    void validateSeedArguments(const CommandArguments& args)
+    {
+      if (!args.entities.empty() || args.output.has_value() || args.namespaceName.has_value() ||
+          args.name.has_value() || args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
+        throw InvalidCliArgumentException("Only seed options are valid for the 'seed' command.");
+      }
+
+      if (args.all && (!args.tables.empty() || args.schema.has_value())) {
+        throw InvalidCliArgumentException("Option '--all' cannot be combined with '--table' or '--schema'.");
+      }
+
+      if (args.schema.has_value() && args.schema->empty()) {
+        throw InvalidCliArgumentException("Option '--schema' cannot be empty.");
+      }
+
+      if (args.apply && args.tables.empty() && !args.schema.has_value() && !args.all) {
+        throw InvalidCliArgumentException(
+          "Option '--apply' requires at least one of '--table', '--schema', or '--all' to be specified.");
+      }
+
+      if (args.rows.has_value()) {
+        if (!isPositiveInteger(*args.rows)) {
+          throw InvalidCliArgumentException("Option '--rows' must be a positive integer.");
+        }
+      }
+    }
   } // namespace
 
   bool isCppKeyword(std::string_view value) noexcept
@@ -789,6 +822,12 @@ namespace worm::cli
   {
     validateGlobalArguments(invocation.global);
 
+    const bool hasSeedOptions =
+      invocation.arguments.all || invocation.arguments.schema.has_value() || invocation.arguments.rows.has_value();
+    if (invocation.command != Commands::Seed && hasSeedOptions) {
+      throw InvalidCliArgumentException("Options '--all', '--schema', and '--rows' are only valid for 'seed'.");
+    }
+
     if (invocation.command != Commands::Migrate && invocation.arguments.directory.has_value()) {
       throw InvalidCliArgumentException("Option '--directory' is only valid for the 'migrate' command.");
     }
@@ -798,7 +837,7 @@ namespace worm::cli
       validateCheckArguments(invocation.arguments);
       break;
     case Commands::Push:
-      validatePushArguments(invocation.arguments);
+      validatePushArguments(invocation);
       break;
     case Commands::Pull:
       validatePullArguments(invocation.arguments);
@@ -817,6 +856,9 @@ namespace worm::cli
       break;
     case Commands::Doctor:
       validateDoctorArguments(invocation.arguments);
+      break;
+    case Commands::Seed:
+      validateSeedArguments(invocation.arguments);
       break;
     default:
       throw EmptyCommandException("No valid command given");

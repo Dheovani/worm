@@ -30,7 +30,8 @@ namespace worm::cli
     Inspect,
     Diff,
     Migrate,
-    Doctor
+    Doctor,
+    Seed
   };
 
   enum class MigrationAction
@@ -53,14 +54,17 @@ namespace worm::cli
 
   enum class CommandOptions
   {
+    All,
     Entity,
     Table,
     Output,
+    Schema,
     Namespace,
     Name,
     Apply,
     Query,
     File,
+    Rows,
     MaxExecutions,
     Directory
   };
@@ -87,14 +91,17 @@ namespace worm::cli
     std::vector<std::string> entities;
     std::vector<std::string> tables;
 
+    std::optional<std::string> schema;
     std::optional<std::string> output;
     std::optional<std::string> namespaceName;
     std::optional<std::string> name;
     std::optional<std::string> file;
+    std::optional<std::string> rows;
     std::optional<std::string> query;
     std::optional<std::string> maxExecutions;
     std::optional<std::string> directory;
 
+    bool all{false};
     bool apply{false};
   };
 
