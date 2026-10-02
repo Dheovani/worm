@@ -783,7 +783,7 @@ namespace worm::cli
     void validateSeedArguments(const CommandArguments& args)
     {
       if (!args.entities.empty() || args.output.has_value() || args.namespaceName.has_value() ||
-          args.name.has_value() || args.query.has_value() || args.maxExecutions.has_value()) {
+          args.name.has_value() || args.query.has_value() || args.file.has_value() || args.maxExecutions.has_value()) {
         throw InvalidCliArgumentException("Only seed options are valid for the 'seed' command.");
       }
 
@@ -803,20 +803,6 @@ namespace worm::cli
       if (args.rows.has_value()) {
         if (!isPositiveInteger(*args.rows)) {
           throw InvalidCliArgumentException("Option '--rows' must be a positive integer.");
-        }
-      }
-
-      if (args.file.has_value()) {
-        if (args.file->empty()) {
-          throw InvalidCliArgumentException("Option '--file' cannot be empty.");
-        }
-
-        if (!fileExists(args.file.value())) {
-          throw InvalidCliArgumentException("Provided file does not exist.");
-        }
-
-        if (!fileHasContent(args.file.value())) {
-          throw InvalidCliArgumentException("Provided file does not have any content.");
         }
       }
     }

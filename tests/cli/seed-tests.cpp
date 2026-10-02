@@ -4,6 +4,7 @@
 #include <validator.hpp>
 
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,11 +39,12 @@ namespace
     };
 
     for (std::string& column : foreignKeyColumns) {
-      result.columns.push_back({
-        .name = std::move(column),
-        .type = {.kind = worm::core::ColumnTypeKind::Int64},
-        .nullable = false,
-      });
+      result.columns.push_back(
+        {
+          .name = std::move(column),
+          .type = {.kind = worm::core::ColumnTypeKind::Int64},
+          .nullable = false,
+        });
     }
     return result;
   }
@@ -73,8 +75,9 @@ int main()
   Invocation conflicting = parsed;
   conflicting.arguments.tables = {"users"};
   Invocation missingTarget{.command = Commands::Seed, .arguments = {.apply = true}};
+  Invocation unsupportedFile{.command = Commands::Seed, .arguments = {.file = "fixtures.sql"}};
   Invocation misplaced{.command = Commands::Push, .arguments = {.rows = "2"}};
-  if (!rejects(conflicting) || !rejects(missingTarget) || !rejects(misplaced)) {
+  if (!rejects(conflicting) || !rejects(missingTarget) || !rejects(unsupportedFile) || !rejects(misplaced)) {
     std::cerr << "Seed command validation accepted conflicting or misplaced options.\n";
     return 1;
   }
@@ -84,10 +87,12 @@ int main()
     table("users", {"role_id -> roles.id"}, {"role_id"}),
     table("posts", {"user_id -> users.id"}, {"user_id"}),
   }};
-  Invocation selected{.command = Commands::Seed, .arguments = {.tables = {"posts"}}};
+  Invocation selected{.command = Commands::Seed, .arguments = {.tables = {"posts"}, .rows = "2"}};
   const worm::cli::ExecutionReport report = worm::cli::database::seed(selected, schema);
-  if (report.metrics == nullptr) {
-    std::cerr << "Seed planning did not return its execution metrics.\n";
+  const auto metrics = std::dynamic_pointer_cast<const worm::cli::database::SeedMetrics>(report.metrics);
+  if (metrics == nullptr || metrics->requestedRows != 2 || metrics->plannedRows != 4 || metrics->dependencyRows != 2 ||
+      metrics->generatedValues != 7) {
+    std::cerr << "Seed planning did not return the expected row and value metrics.\n";
     return 1;
   }
 
@@ -110,11 +115,12 @@ int main()
   } catch (const worm::cli::InvalidCliArgumentException&) {}
 
   worm::core::SchemaTableSnapshot invalidRequired = table("invalid_required");
-  invalidRequired.columns.push_back({
-    .name = "unsupported",
-    .type = {.kind = worm::core::ColumnTypeKind::Unknown},
-    .nullable = false,
-  });
+  invalidRequired.columns.push_back(
+    {
+      .name = "unsupported",
+      .type = {.kind = worm::core::ColumnTypeKind::Unknown},
+      .nullable = false,
+    });
   const worm::core::SchemaSnapshot invalidConstraint{{std::move(invalidRequired)}};
   if (!rejectsSeed(Invocation{.command = Commands::Seed, .arguments = {.all = true}}, invalidConstraint)) {
     std::cerr << "Seed planning accepted a required column without a generated value.\n";
@@ -129,6 +135,29 @@ int main()
   }};
   if (!rejectsSeed(Invocation{.command = Commands::Seed, .arguments = {.all = true}}, incompatibleForeignKey)) {
     std::cerr << "Seed planning accepted an incompatible foreign-key value.\n";
+    return 1;
+  }
+
+  worm::core::SchemaTableSnapshot constrainedValues = table("constrained_values");
+  constrainedValues.columns.push_back(
+    {
+      .name = "code",
+      .type = {.kind = worm::core::ColumnTypeKind::String, .length = 1},
+      .nullable = false,
+      .unique = true,
+    });
+  constrainedValues.columns.push_back(
+    {
+      .name = "ratio",
+      .type = {.kind = worm::core::ColumnTypeKind::Decimal, .precision = 2, .scale = 2},
+      .nullable = false,
+    });
+  const worm::core::SchemaSnapshot constrainedSchema{{std::move(constrainedValues)}};
+  const worm::cli::ExecutionReport constrainedReport = worm::cli::database::seed(
+    Invocation{.command = Commands::Seed, .arguments = {.rows = "2", .all = true}},
+    constrainedSchema);
+  if (constrainedReport.status != worm::cli::ExecutionStatus::Success) {
+    std::cerr << "Seed planning did not generate valid constrained string and decimal values.\n";
     return 1;
   }
 

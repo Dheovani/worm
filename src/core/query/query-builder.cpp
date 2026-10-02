@@ -51,8 +51,9 @@ namespace worm::core
     return sqlBuilder_.select(fields, source, criteria);
   }
 
-  Statement
-  QueryBuilder::insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const
+  Statement QueryBuilder::insert(
+    const Source& source,
+    const std::vector<std::pair<std::string, Parameter>>& columns) const
   {
     return sqlBuilder_.insert(source, columns);
   }

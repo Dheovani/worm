@@ -139,8 +139,9 @@ namespace worm
   struct DependencyInjector<connection::Client>
   {
     [[nodiscard]]
-    static std::unique_ptr<connection::Client>
-    get(const connection::ConnectionConfig& config, connection::DatabaseType dbType)
+    static std::unique_ptr<connection::Client> get(
+      const connection::ConnectionConfig& config,
+      connection::DatabaseType dbType)
     {
       return connection::makeClient(config, dbType);
     }

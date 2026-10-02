@@ -49,8 +49,10 @@ namespace worm::core
       const std::optional<Filter>& having = std::nullopt) const;
 
     [[nodiscard]]
-    Statement
-    select(const std::vector<worm::core::Field>& fields, const Source& source, const Criteria& criteria) const;
+    Statement select(
+      const std::vector<worm::core::Field>& fields,
+      const Source& source,
+      const Criteria& criteria) const;
 
     [[nodiscard]]
     Statement insert(const Source& source, const std::vector<std::pair<std::string, Parameter>>& columns) const;
