@@ -16,6 +16,7 @@ option(WORM_ENABLE_SQLITE "Build the SQLite driver" ON)
 option(WORM_ENABLE_MSSQL "Build the Microsoft SQL Server driver" OFF)
 option(WORM_BUILD_EXAMPLES "Build Worm usage examples" OFF)
 option(WORM_BUILD_CLI "Build the Worm entity and schema cli" OFF)
+option(WORM_BUILD_DOCS "Add the Worm API documentation target" OFF)
 
 set(WORM_VCPKG_FEATURES)
 if(WORM_ENABLE_POSTGRESQL)
@@ -82,4 +83,8 @@ endif()
 
 if(WORM_BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
+
+if(WORM_BUILD_DOCS)
+  add_subdirectory(docs)
 endif()

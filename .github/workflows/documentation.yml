@@ -1,0 +1,94 @@
+name: API documentation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/documentation.yml"
+      - "CMakeLists.txt"
+      - "README.md"
+      - "docs/**"
+      - "src/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/documentation.yml"
+      - "CMakeLists.txt"
+      - "README.md"
+      - "docs/**"
+      - "src/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Generate Doxygen HTML
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Doxygen and Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Configure
+        run: >
+          cmake -S . -B build/docs
+          -DWORM_BUILD_DOCS=ON
+          -DBUILD_TESTING=OFF
+          -DWORM_BUILD_EXAMPLES=OFF
+          -DWORM_BUILD_CLI=OFF
+          -DWORM_ENABLE_POSTGRESQL=OFF
+          -DWORM_ENABLE_MYSQL=OFF
+          -DWORM_ENABLE_SQLITE=OFF
+          -DWORM_ENABLE_MSSQL=OFF
+
+      - name: Generate API documentation
+        run: cmake --build build/docs --target WormDocs
+
+      - name: Verify entry point
+        run: test -f build/docs/api/html/index.html
+
+      - name: Upload review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-api-documentation-${{ github.sha }}
+          path: build/docs/api
+          retention-days: 14
+
+      - name: Configure GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/docs/api/html
+
+  deploy:
+    name: Publish GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
