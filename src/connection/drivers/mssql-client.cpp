@@ -20,6 +20,7 @@ namespace
 {
   constexpr std::size_t diagnosticBufferSize = 1024;
   constexpr std::size_t valueBufferSize = 4096;
+  static_assert(diagnosticBufferSize <= static_cast<std::size_t>((std::numeric_limits<SQLSMALLINT>::max)()));
 
   struct BoundParameter
   {
@@ -59,7 +60,15 @@ namespace
 
     for (SQLSMALLINT record = 1;; ++record) {
       const SQLRETURN result =
-        SQLGetDiagRec(handleType, handle, record, state.data(), &nativeError, text.data(), text.size(), &length);
+        SQLGetDiagRec(
+          handleType,
+          handle,
+          record,
+          state.data(),
+          &nativeError,
+          text.data(),
+          static_cast<SQLSMALLINT>(text.size()),
+          &length);
 
       if (result == SQL_NO_DATA) {
         break;
@@ -127,11 +136,12 @@ namespace
   SQLULEN odbcTimeoutSeconds(std::chrono::milliseconds timeout)
   {
     const std::chrono::seconds seconds = worm::connection::timeoutSeconds(timeout);
-    if (seconds.count() > (std::numeric_limits<SQLULEN>::max)()) {
+    const auto secondsCount = static_cast<std::uintmax_t>(seconds.count());
+    if (secondsCount > static_cast<std::uintmax_t>((std::numeric_limits<SQLULEN>::max)())) {
       throw worm::InvalidArgException("ODBC timeout is too large.");
     }
 
-    return static_cast<SQLULEN>(seconds.count());
+    return static_cast<SQLULEN>(secondsCount);
   }
 
   BoundParameter makeParameter(const worm::core::Parameter& parameter)
