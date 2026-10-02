@@ -7,6 +7,7 @@ OUTPUT_LANGUAGE        = English
 # Input and path presentation
 INPUT                   = "@PROJECT_SOURCE_DIR@/src" \
                           "@PROJECT_SOURCE_DIR@/README.md" \
+                          "@PROJECT_SOURCE_DIR@/CHANGELOG.md" \
                           "@PROJECT_SOURCE_DIR@/TODO.md" \
                           "@PROJECT_SOURCE_DIR@/CONTRIBUTING.md" \
                           "@PROJECT_SOURCE_DIR@/CODE_OF_CONDUCT.md" \

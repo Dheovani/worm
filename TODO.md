@@ -139,13 +139,14 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Produce error messages that identify entity, field, column, and operation.
 - [x] Document ownership, lifetime, and thread-safety guarantees.
 - [x] Create API documentation with Doxygen or an equivalent tool.
-- [ ] Publish an architecture guide and relevant technical decisions.
-- [ ] Add a changelog and migration guide for breaking changes.
+- [x] Publish an architecture guide and relevant technical decisions.
+- [x] Add a changelog and migration guide for breaking changes.
 - [x] Complete `LOGGER.todo` with a logging policy, severity levels, and structured logging.
 
 ## Milestone 6 — Quality, security, and performance
 
 - [x] Run formatting and static analysis automatically in CI.
+- [x] Disable tests/quality CIs when no source code is changed.
 - [ ] Enable strict warnings and treat project warnings as errors in CI.
 - [ ] Add sanitizers on Linux and equivalent tooling on Windows.
 - [ ] Measure coverage and publish relevant gaps without chasing only a percentage.

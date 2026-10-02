@@ -6,13 +6,87 @@ on:
     branches:
       - main
       - master
+    paths-ignore:
+      - "**/*.md"
+      - ".env.example"
+      - "LICENSE"
+      - "docs/**"
+      - ".github/actions/detect-source-changes/action.yml"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/code-quality.yml"
+      - ".github/workflows/documentation.yml"
+      - ".github/workflows/unit-tests.yml"
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect source changes
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: filter
+        uses: ./.github/actions/detect-source-changes
+        with:
+          base-sha: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head-sha: ${{ github.sha }}
+
+  documentation-unit-statuses:
+    name: ${{ matrix.os }} / ${{ matrix.compiler }}
+    needs: changes
+    if: needs.changes.outputs.code != 'true'
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+          - os: ubuntu-latest
+            compiler: clang
+          - os: windows-latest
+            compiler: msvc
+          - os: macos-latest
+            compiler: appleclang
+
+    steps:
+      - name: Report documentation-only change
+        run: echo "No source code changed; this required test status replaces the skipped build."
+
+  documentation-driver-statuses:
+    name: Optional drivers / ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.code != 'true'
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        name:
+          - no drivers
+          - SQLite only
+          - PostgreSQL only
+          - MySQL only
+          - MSSQL only
+
+    steps:
+      - name: Report documentation-only change
+        run: echo "No source code changed; this required driver status replaces the skipped build."
+
   unit-tests:
     name: ${{ matrix.os }} / ${{ matrix.compiler }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -104,6 +178,8 @@ jobs:
 
   driver-contracts:
     name: Driver contracts
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -187,6 +263,8 @@ jobs:
 
   optional-drivers:
     name: Optional drivers / ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     strategy:

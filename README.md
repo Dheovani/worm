@@ -24,7 +24,9 @@ the roadmap.
 
 ## Real usage
 
-The [getting started guide](docs/getting-started.md) shows a complete SQLite flow: CMake integration, reflected entity, CRUD, parameterized queries, transactions, errors, ownership, and current limitations. The [examples index](examples/README.md) provides executable programs for reflection, hydration, CRUD, queries, relationships, sessions, transactions, schema comparison, and migration planning. The [API documentation guide](docs/api-documentation.md) explains how to generate the browsable Doxygen reference locally.
+The [getting started guide](docs/getting-started.md) shows a complete SQLite flow: CMake integration, reflected entity, CRUD, parameterized queries, transactions, errors, ownership, and current limitations. The [examples index](examples/README.md) provides executable programs for reflection, hydration, CRUD, queries, relationships, sessions, transactions, schema comparison, and migration planning. The [architecture guide](docs/architecture.md) maps the subsystems and execution flow, while [technical decisions](docs/technical-decisions.md) explain the constraints behind them. The [API documentation guide](docs/api-documentation.md) explains how to generate the browsable Doxygen reference locally.
+
+User-visible changes are recorded in the [changelog](CHANGELOG.md). Because Worm is still pre-release, consult the [upgrade guide](docs/upgrading.md) before moving an application between revisions that may change public APIs, configuration, or schema behavior.
 
 The optional [Worm CLI](cli/README.md) can analyze one observed `SELECT` query or a semicolon-separated query log for repeated parameterized shapes without connecting to or executing statements against a database. See the [logging guide](docs/logging.md) for severity levels, structured fields, sensitive-data rules, and verbose CLI diagnostics.
 
