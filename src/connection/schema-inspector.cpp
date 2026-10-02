@@ -1,7 +1,9 @@
 #include <connection/schema-inspector.hpp>
 
+#include <connection/configuration.hpp>
 #include <core/query/statement.hpp>
 #include <errors/query-execution-exception.hpp>
+#include <utils/logger.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -298,8 +300,10 @@ namespace worm::connection
     }
 
     [[nodiscard]]
-    std::optional<std::string>
-    defaultExpression(const core::ResultRow& row, DatabaseType database, const core::ColumnType& type)
+    std::optional<std::string> defaultExpression(
+      const core::ResultRow& row,
+      DatabaseType database,
+      const core::ColumnType& type)
     {
       std::optional<std::string> expression = optionalStringValue(row, "default_expression");
       if (!expression.has_value() || database != DatabaseType::MySQL) {
@@ -434,6 +438,13 @@ namespace worm::connection
 
   core::SchemaSnapshot SchemaInspector::inspect() const
   {
+    logger.log(
+      LogLevel::Info,
+      "Schema introspection started.",
+      {
+        {"driver", std::string{databaseTypeName(client_->type())}},
+      });
+    logger.trace("Executing database metadata query.");
     const core::ResultSet result = client_->execute(metadataStatement(client_->type()));
     core::SchemaSnapshot snapshot;
 
@@ -452,10 +463,28 @@ namespace worm::connection
       if (table == nullptr) {
         snapshot.tables.push_back({.schema = schemaName, .name = tableName});
         table = &snapshot.tables.back();
+        logger.log(
+          LogLevel::Trace,
+          "Schema table discovered.",
+          {
+            {"schema", schemaName},
+            {"table", tableName},
+          });
       }
 
       const std::string columnName = stringValue(row, "column_name");
       const core::ColumnType normalizedType = columnType(row, client_->type());
+      if (normalizedType.kind == core::ColumnTypeKind::Unknown) {
+        logger.log(
+          LogLevel::Warning,
+          "Database column type could not be normalized.",
+          {
+            {"schema", schemaName},
+            {"table", tableName},
+            {"column", columnName},
+            {"native_type", normalizedType.nativeName},
+          });
+      }
       const bool generated = boolValue(row, "is_generated");
       table->columns.push_back(
         {
@@ -470,8 +499,25 @@ namespace worm::connection
       if (boolValue(row, "is_primary_key")) {
         table->primaryKey.push_back(columnName);
       }
+
+      logger.log(
+        LogLevel::Trace,
+        "Schema column inspected.",
+        {
+          {"schema", schemaName},
+          {"table", tableName},
+          {"column", columnName},
+          {"native_type", normalizedType.nativeName},
+        });
     }
 
+    logger.log(
+      LogLevel::Debug,
+      "Schema introspection finished.",
+      {
+        {"tables", std::to_string(snapshot.tables.size())},
+        {"metadata_rows", std::to_string(result.rowCount())},
+      });
     return snapshot;
   }
 } // namespace worm::connection

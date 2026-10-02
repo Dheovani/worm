@@ -1,15 +1,15 @@
-add_library(WormUtils INTERFACE)
+add_library(WormUtils logger.cpp)
 add_library(Worm::Utils ALIAS WormUtils)
 
-target_compile_features(WormUtils INTERFACE cxx_std_20)
+target_compile_features(WormUtils PUBLIC cxx_std_20)
 target_compile_options(
   WormUtils
-  INTERFACE
+  PUBLIC
     $<$<CXX_COMPILER_ID:MSVC>:/Zc:__cplusplus>
 )
 
 target_include_directories(
   WormUtils
-  INTERFACE
+  PUBLIC
     $<BUILD_INTERFACE:${PROJECT_INCLUDE_DIR}>
 )

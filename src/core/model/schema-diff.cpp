@@ -1,5 +1,7 @@
 #include <core/model/schema-diff.hpp>
 
+#include <utils/logger.hpp>
+
 #include <algorithm>
 #include <string>
 #include <string_view>
@@ -147,12 +149,26 @@ namespace worm::core
 
   std::vector<SchemaDifference> compareSchemas(const SchemaMetadata& expected, const SchemaSnapshot& actual)
   {
+    logger.log(
+      LogLevel::Debug,
+      "Schema comparison started.",
+      {
+        {"expected_tables", std::to_string(expected.tables().size())},
+        {"actual_tables", std::to_string(actual.tables.size())},
+      });
     std::vector<SchemaDifference> differences;
     for (const TableMetadata& expectedTable : expected.tables()) {
       const Table& table = expectedTable.table();
       const SchemaTableSnapshot* actualTable = actual.findTable(table.schema().name(), table.name());
       if (actualTable == nullptr) {
         differences.push_back(differenceFor(SchemaDifferenceKind::MissingTable, table));
+        logger.log(
+          LogLevel::Trace,
+          "Schema table is missing from the database.",
+          {
+            {"schema", std::string{table.schema().name()}},
+            {"table", std::string{table.name()}},
+          });
         continue;
       }
       compareTable(expectedTable, *actualTable, differences);
@@ -162,7 +178,25 @@ namespace worm::core
       const Table table{Schema{actualTable.schema}, actualTable.name};
       if (expected.findTable(table) == nullptr) {
         differences.push_back(differenceFor(SchemaDifferenceKind::UnexpectedTable, actualTable));
+        logger.log(
+          LogLevel::Trace,
+          "Unexpected database table discovered.",
+          {
+            {"schema", actualTable.schema},
+            {"table", actualTable.name},
+          });
       }
+    }
+
+    if (!differences.empty()) {
+      logger.log(
+        LogLevel::Info,
+        "Schema drift detected.",
+        {
+          {"differences", std::to_string(differences.size())},
+        });
+    } else {
+      logger.debug("Schema comparison completed without drift.");
     }
     return differences;
   }

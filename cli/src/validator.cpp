@@ -2,6 +2,7 @@
 
 #include <core/query/statement.hpp>
 #include <core/query/validator.hpp>
+#include <utils/logger.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -303,6 +304,12 @@ namespace worm::cli
     [[nodiscard]]
     Configuration parseConfiguration(const std::filesystem::path& path)
     {
+      logger.log(
+        LogLevel::Debug,
+        "Configuration file discovered.",
+        {
+          {"path", path.lexically_normal().generic_string()},
+        });
       std::ifstream stream{path};
       if (!stream) {
         throw InvalidCliArgumentException("Unable to open configuration file '{}'.", path.string());
@@ -357,6 +364,13 @@ namespace worm::cli
         }
       }
 
+      logger.log(
+        LogLevel::Debug,
+        "Configuration file parsed.",
+        {
+          {"path", path.lexically_normal().generic_string()},
+        });
+
       return configuration;
     }
 
@@ -406,6 +420,7 @@ namespace worm::cli
       }
 
       arguments.password = password;
+      logger.debug("Database credential resolved from the configured environment variable.");
     }
 
     [[nodiscard]]
@@ -820,6 +835,12 @@ namespace worm::cli
 
   void validate(const Invocation& invocation)
   {
+    logger.log(
+      LogLevel::Trace,
+      "Global CLI validation started.",
+      {
+        {"command", std::to_string(static_cast<int>(invocation.command))},
+      });
     validateGlobalArguments(invocation.global);
 
     const bool hasSeedOptions =
@@ -863,6 +884,13 @@ namespace worm::cli
     default:
       throw EmptyCommandException("No valid command given");
     }
+
+    logger.log(
+      LogLevel::Trace,
+      "Command-specific CLI validation finished.",
+      {
+        {"command", std::to_string(static_cast<int>(invocation.command))},
+      });
   }
 
   void resolve(Invocation& invocation)
@@ -902,6 +930,13 @@ namespace worm::cli
       const std::string reason =
         std::filesystem::exists(configurationStatus) ? "is not a regular file" : "does not exist";
       throw InvalidCliArgumentException("Configuration file '{}' {}.", configurationPath.string(), reason);
+    } else {
+      logger.log(
+        LogLevel::Debug,
+        "Optional default configuration file was not found.",
+        {
+          {"path", configurationPath.lexically_normal().generic_string()},
+        });
     }
 
     if (!invocation.global.format.has_value()) {

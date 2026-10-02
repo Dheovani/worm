@@ -1,6 +1,7 @@
 #include <core/persistence/migration-execution.hpp>
 
 #include <errors/migration-exception.hpp>
+#include <utils/logger.hpp>
 
 #include <string_view>
 #include <utility>
@@ -135,6 +136,13 @@ namespace worm::core
     MigrationDirection direction)
   {
     validateMigrationArtifact(artifact);
+    logger.log(
+      LogLevel::Debug,
+      "Migration execution plan compilation started.",
+      {
+        {"migration", artifact.id()},
+        {"direction", direction == MigrationDirection::Forward ? "forward" : "rollback"},
+      });
 
     if (artifact.database() != sqlBuilder.databaseName()) {
       throw MigrationException(
@@ -155,6 +163,14 @@ namespace worm::core
     std::vector<MigrationExecutionStep> steps;
     steps.reserve(source->size());
     for (const MigrationStatement& statement : *source) {
+      logger.log(
+        LogLevel::Trace,
+        "Migration execution step planned.",
+        {
+          {"migration", artifact.id()},
+          {"description", statement.description},
+          {"risk", std::to_string(static_cast<int>(statement.risk))},
+        });
       steps.push_back(
         {
           .description = statement.description,
@@ -163,6 +179,13 @@ namespace worm::core
         });
     }
 
+    logger.log(
+      LogLevel::Debug,
+      "Migration execution plan compiled.",
+      {
+        {"migration", artifact.id()},
+        {"steps", std::to_string(steps.size())},
+      });
     return {
       artifact.id(),
       artifact.checksum(),

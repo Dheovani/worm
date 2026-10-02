@@ -9,6 +9,7 @@
 #include <core/model/schema-diff.hpp>
 #include <errors/invalid-cli-argument-exception.hpp>
 #include <helpers/connection.hpp>
+#include <utils/logger.hpp>
 
 namespace worm::cli::generator
 {
@@ -63,6 +64,12 @@ namespace worm::cli::generator
 
     void addDifference(CheckMetrics& metrics, std::string difference)
     {
+      logger.log(
+        LogLevel::Trace,
+        "Schema compatibility difference detected.",
+        {
+          {"difference", difference},
+        });
       metrics.differences.push_back(std::move(difference));
     }
 
@@ -214,6 +221,15 @@ namespace worm::cli::generator
       const bool drift =
         metrics->missingInCode != 0 || metrics->missingInDatabase != 0 || metrics->incompatibleObjects != 0;
 
+      logger.log(
+        drift ? LogLevel::Info : LogLevel::Debug,
+        drift ? "Schema compatibility check detected drift." : "Schema compatibility check passed.",
+        {
+          {"entities", std::to_string(metrics->entitiesSelected)},
+          {"tables", std::to_string(metrics->tablesSelected)},
+          {"differences", std::to_string(metrics->differences.size())},
+        });
+
       return {
         .info = drift ? "Schema drift detected." : "Code and database schemas are compatible.",
         .status = drift ? ExecutionStatus::DriftDetected : ExecutionStatus::Success,
@@ -266,8 +282,10 @@ namespace worm::cli::generator
     out << "]}";
   }
 
-  ExecutionReport
-  check(const Invocation& invocation, const SchemaManifest& manifest, const core::SchemaSnapshot& databaseSchema)
+  ExecutionReport check(
+    const Invocation& invocation,
+    const SchemaManifest& manifest,
+    const core::SchemaSnapshot& databaseSchema)
   {
     auto metrics = std::make_shared<CheckMetrics>();
     return compareSchemas(invocation, manifest, databaseSchema, metrics);

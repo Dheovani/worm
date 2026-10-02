@@ -53,7 +53,7 @@ namespace worm::connection
     friend class core::MigrationLock;
 
   public:
-    virtual ~Client() = default;
+    virtual ~Client();
 
     Client(const Client&) = delete;
     Client& operator=(const Client&) = delete;
@@ -97,27 +97,7 @@ namespace worm::connection
 
   private:
     [[nodiscard]]
-    core::ResultSet execute(const core::Statement& statement)
-    {
-      ensureThreadAffinity();
-
-      const bool cacheable =
-        cacheResults_ && !transactionActive_ && migrationLockName_.empty() && core::isSelect(statement.sql);
-      if (cacheable) {
-        if (const auto cachedResult = cachedResults_.get(statement)) {
-          return cachedResult->get();
-        }
-      } else if (!core::isSelect(statement.sql)) {
-        cachedResults_.clear();
-      }
-
-      core::ResultSet result = executeImpl(statement);
-      if (cacheable) {
-        cachedResults_.add(statement, result);
-      }
-
-      return result;
-    }
+    core::ResultSet execute(const core::Statement& statement);
 
     void startTransaction();
     void commitActiveTransaction();
