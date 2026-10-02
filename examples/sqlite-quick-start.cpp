@@ -39,8 +39,7 @@ namespace
 
     static constexpr auto reflect() noexcept
     {
-      return std::tuple{
-        worm::reflection::field("id", &User::id),
+      return std::tuple{worm::reflection::field("id", &User::id),
         worm::reflection::field("name", &User::name),
         worm::reflection::field("email", &User::email)};
     }
@@ -60,7 +59,8 @@ namespace
       }
 
       char* errorMessage = nullptr;
-      const int result = sqlite3_exec(connection,
+      const int result = sqlite3_exec(
+        connection,
         "CREATE TABLE users ("
         "id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NULL)",
         nullptr,
@@ -107,26 +107,30 @@ try {
   const auto registry = std::make_shared<worm::core::Registry>();
   const worm::core::Repository<User> users{client, queryBuilder, registry};
 
-  const std::shared_ptr<User> ada = users.insert({
-    .id = 1,
-    .name = "Ada",
-    .email = "ada@example.com",
-  });
+  const std::shared_ptr<User> ada = users.insert(
+    {
+      .id = 1,
+      .name = "Ada",
+      .email = "ada@example.com",
+    });
 
   ada->name = "Ada Lovelace";
   const std::uint64_t updatedRows = users.update(ada->id, *ada);
 
   const worm::core::Statement namedAda = queryBuilder.selectAll(
-    {User::table().name()}, {}, worm::core::Filter{worm::core::Predicate::equal("users.name", ada->name)});
+    {User::table().name()},
+    {},
+    worm::core::Filter{worm::core::Predicate::equal("users.name", ada->name)});
   const std::vector<std::shared_ptr<User>> matches = users.findAll(namedAda);
 
   {
     auto transaction = client->beginTransaction();
-    static_cast<void>(users.insert({
-      .id = 2,
-      .name = "Grace Hopper",
-      .email = std::nullopt,
-    }));
+    static_cast<void>(users.insert(
+      {
+        .id = 2,
+        .name = "Grace Hopper",
+        .email = std::nullopt,
+      }));
     transaction.commit();
   }
 

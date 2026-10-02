@@ -1,9 +1,6 @@
 # Getting started
 
-This guide shows the smallest complete flow currently supported by Worm:
-configure a SQLite build, map an entity, insert, query, update, delete records,
-and control a transaction. The matching buildable example lives in
-[`examples/sqlite-quick-start.cpp`](../examples/sqlite-quick-start.cpp).
+This guide shows the smallest complete flow currently supported by Worm: configure a SQLite build, map an entity, insert, query, update, delete records, and control a transaction. The matching buildable example lives in [`examples/sqlite-quick-start.cpp`](../examples/sqlite-quick-start.cpp). The complete [examples index](../examples/README.md) covers the principal reflection, hydration, persistence, query, relationship, transaction, schema, and migration-planning APIs.
 
 ## API status
 
