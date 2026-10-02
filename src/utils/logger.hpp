@@ -155,16 +155,16 @@ namespace worm
     {
       if constexpr (sizeof...(Args) == 0) {
         return message;
-      }
+      } else {
+        const int size = std::snprintf(nullptr, 0, message, std::forward<Args>(args)...);
+        if (size <= 0) {
+          return message;
+        }
 
-      const int size = std::snprintf(nullptr, 0, message, std::forward<Args>(args)...);
-      if (size <= 0) {
-        return message;
+        std::string result(static_cast<std::size_t>(size), '\0');
+        std::snprintf(result.data(), result.size() + 1, message, std::forward<Args>(args)...);
+        return result;
       }
-
-      std::string result(static_cast<std::size_t>(size), '\0');
-      std::snprintf(result.data(), result.size() + 1, message, std::forward<Args>(args)...);
-      return result;
     }
 
     std::ostream* output_;

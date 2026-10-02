@@ -324,9 +324,9 @@ namespace worm::core
         constexpr auto primaryKey = primaryKeyField();
         registry->instances<T>().put(primaryKey.get(entity), entity);
         return registry->instances<T>().get(primaryKey.get(entity));
+      } else {
+        return std::make_shared<T>(std::move(entity));
       }
-
-      return std::make_shared<T>(std::move(entity));
     }
 
     [[nodiscard]]

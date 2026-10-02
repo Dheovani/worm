@@ -28,6 +28,8 @@ cmake --build --preset debug
 ctest --preset debug
 ```
 
+Top-level builds enable strict compiler warnings by default through `WORM_ENABLE_STRICT_WARNINGS`. Pass `-DWORM_WARNINGS_AS_ERRORS=ON` during configuration to reproduce the CI policy that rejects project warnings.
+
 For a minimal SQLite-only build:
 
 ```powershell

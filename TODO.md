@@ -147,7 +147,7 @@ This milestone should end with a complete example that creates, persists, querie
 
 - [x] Run formatting and static analysis automatically in CI.
 - [x] Disable tests/quality CIs when no source code is changed.
-- [ ] Enable strict warnings and treat project warnings as errors in CI.
+- [x] Enable strict warnings and treat project warnings as errors in CI.
 - [ ] Add sanitizers on Linux and equivalent tooling on Windows.
 - [ ] Measure coverage and publish relevant gaps without chasing only a percentage.
 - [ ] Add property tests and fuzzing for parsing, SQL generation, and SQL parameters.
