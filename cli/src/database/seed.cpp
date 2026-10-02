@@ -7,6 +7,7 @@
 #include <core/query/expression.hpp>
 #include <reflection/field.hpp>
 #include <utils/dependency-injection.hpp>
+#include <utils/logger.hpp>
 
 #include <algorithm>
 #include <charconv>
@@ -899,6 +900,12 @@ namespace worm::cli::database
       return {};
     } catch (const std::exception& error) {
       metrics->insertedRows = 0;
+      logger.log(
+        LogLevel::Warning,
+        "Seed execution rolled back.",
+        {
+          {"reason", error.what()},
+        });
       return error.what();
     }
 
@@ -920,18 +927,35 @@ namespace worm::cli::database
       metrics->dependencyTables = orderedTables.size() - selected.size();
       metrics->requestedRows = requestedRows;
 
+      logger.log(
+        LogLevel::Debug,
+        "Seed population plan created.",
+        {
+          {"selected_tables", std::to_string(metrics->tablesSelected)},
+          {"dependency_tables", std::to_string(metrics->dependencyTables)},
+          {"planned_rows", std::to_string(metrics->plannedRows)},
+        });
+
       validateGeneratedValues(plan);
       bindForeignKeyValues(plan, orderedTables);
       validateTableConstraints(plan, orderedTables);
 
       std::string executionError;
       if (invocation.arguments.apply) {
+        logger.info("Seed population plan execution started.");
         const auto executionStarted = Clock::now();
         executionError = executePopulationPlan(invocation, plan, metrics);
         metrics->executionDuration = Clock::now() - executionStarted;
       }
 
       const bool success = executionError.empty();
+      logger.log(
+        success ? LogLevel::Info : LogLevel::Warning,
+        success ? "Seed command completed." : "Seed command completed with a rolled-back execution.",
+        {
+          {"inserted_rows", std::to_string(metrics->insertedRows)},
+          {"executed_statements", std::to_string(metrics->executedStatements)},
+        });
 
       return {
         .info = success ? "Seed completed successfully." : "Seed failed: " + executionError,

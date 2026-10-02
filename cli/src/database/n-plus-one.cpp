@@ -2,6 +2,7 @@
 
 #include <core/query/statement.hpp>
 #include <utils/n-plus-one-detector.hpp>
+#include <utils/logger.hpp>
 
 #include <cctype>
 #include <charconv>
@@ -264,6 +265,13 @@ namespace worm::cli::database
       std::size_t allowedExecutions)
     {
       metrics->queriesDiscovered = queries.size();
+      logger.log(
+        LogLevel::Debug,
+        "N+1 analysis started.",
+        {
+          {"queries", std::to_string(queries.size())},
+          {"allowed_executions", std::to_string(allowedExecutions)},
+        });
 
       const auto parsingStarted = Clock::now();
       std::vector<core::Statement> statements;
@@ -274,8 +282,16 @@ namespace worm::cli::database
 
       const auto analysisStarted = Clock::now();
       utils::NPlusOneDetector detector{allowedExecutions + 1};
-      for (const auto& statement : statements)
+      for (const auto& statement : statements) {
+        logger.log(
+          LogLevel::Trace,
+          "Parameterized query pattern analyzed.",
+          {
+            {"sql", statement.sql},
+            {"binding_count", std::to_string(statement.parameters.size())},
+          });
         detector.record(statement);
+      }
 
       const auto warnings = detector.warnings();
       metrics->queriesAnalyzed = detector.executionCount();
@@ -287,9 +303,25 @@ namespace worm::cli::database
           return total + warning.executions;
         });
       metrics->findings.reserve(warnings.size());
-      for (const auto& warning : warnings)
+      for (const auto& warning : warnings) {
         metrics->findings.push_back(warning.sql);
+        logger.log(
+          LogLevel::Info,
+          "Potential N+1 query pattern detected.",
+          {
+            {"sql", warning.sql},
+            {"executions", std::to_string(warning.executions)},
+          });
+      }
       metrics->analysisDuration = Clock::now() - analysisStarted;
+
+      logger.log(
+        LogLevel::Debug,
+        "N+1 analysis finished.",
+        {
+          {"patterns", std::to_string(metrics->queryPatterns)},
+          {"findings", std::to_string(metrics->potentialNPlusOnePatterns)},
+        });
 
       return {
         .info = reportInfo(warnings),

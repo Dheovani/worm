@@ -7,6 +7,7 @@
 #include <core/query/query-builder.hpp>
 #include <errors/worm-exception.hpp>
 #include <utils/dependency-injection.hpp>
+#include <utils/logger.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -217,6 +218,13 @@ namespace worm::cli::generator
         }
 
         ++metrics->entitiesSelected;
+        logger.log(
+          LogLevel::Trace,
+          "Schema push entity selected.",
+          {
+            {"entity", entity.name},
+            {"table", entity.table.name},
+          });
         const core::Table table{core::Schema{entity.table.schema}, entity.table.name};
         const core::TableMetadata* tableMetadata = desiredSchema.findTable(table);
         const core::SchemaTableSnapshot* tableSnapshot =
@@ -234,6 +242,13 @@ namespace worm::cli::generator
           ++metrics->compatibleTables;
         } else {
           ++metrics->incompatibleTables;
+          logger.log(
+            LogLevel::Warning,
+            "Existing table is incompatible with the manifest.",
+            {
+              {"entity", entity.name},
+              {"table", entity.table.name},
+            });
         }
       }
       metrics->comparisonDuration = Clock::now() - comparisonStarted;
@@ -266,6 +281,13 @@ namespace worm::cli::generator
           } catch (const worm::WormException& error) {
             failures.push_back({tableLabel(table->table()), error.what()});
             ++metrics->failedTables;
+            logger.log(
+              LogLevel::Warning,
+              "Schema table creation failed.",
+              {
+                {"table", tableLabel(table->table())},
+                {"reason", error.what()},
+              });
           }
         }
         metrics->executionDuration = Clock::now() - executionStarted;
@@ -277,6 +299,16 @@ namespace worm::cli::generator
       } else if (metrics->incompatibleTables != 0) {
         status = ExecutionStatus::DriftDetected;
       }
+
+      logger.log(
+        LogLevel::Debug,
+        "Schema push plan finished.",
+        {
+          {"selected_entities", std::to_string(metrics->entitiesSelected)},
+          {"planned_tables", std::to_string(metrics->plannedTables)},
+          {"created_tables", std::to_string(metrics->createdTables)},
+          {"failed_tables", std::to_string(metrics->failedTables)},
+        });
 
       return {
         .info = reportInfo(

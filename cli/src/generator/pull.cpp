@@ -19,6 +19,7 @@
 #include "../validator.hpp"
 #include <helpers/connection.hpp>
 #include <helpers/file.hpp>
+#include <utils/logger.hpp>
 
 namespace worm::cli::generator
 {
@@ -453,9 +454,24 @@ namespace worm::cli::generator
                                          ? *invocation.arguments.name
                                          : pascalCase(table->name);
         const auto path = outputDirectory(invocation) / fileName(entityName);
+        logger.log(
+          LogLevel::Trace,
+          "Entity generation candidate selected.",
+          {
+            {"table", table->name},
+            {"entity", entityName},
+            {"path", path.lexically_normal().generic_string()},
+          });
 
         if (std::filesystem::exists(path)) {
           ++metrics->existingEntities;
+          logger.log(
+            LogLevel::Warning,
+            "Entity generation skipped because the target file exists.",
+            {
+              {"table", table->name},
+              {"path", path.lexically_normal().generic_string()},
+            });
           continue;
         }
 
@@ -473,6 +489,13 @@ namespace worm::cli::generator
             });
         } catch (const std::exception& error) {
           failures.push_back({table->name, error.what()});
+          logger.log(
+            LogLevel::Warning,
+            "Entity generation planning failed for a table.",
+            {
+              {"table", table->name},
+              {"reason", error.what()},
+            });
         }
       }
 
@@ -480,6 +503,14 @@ namespace worm::cli::generator
       metrics->plannedEntities = plans.size();
       metrics->failedEntities = failures.size();
       metrics->planningDuration = Clock::now() - planningStarted;
+      logger.log(
+        LogLevel::Debug,
+        "Entity generation plan created.",
+        {
+          {"selected_tables", std::to_string(metrics->tablesSelected)},
+          {"planned_entities", std::to_string(metrics->plannedEntities)},
+          {"failures", std::to_string(metrics->failedEntities)},
+        });
 
       if (invocation.arguments.apply && failures.empty() && !plans.empty()) {
         const auto executionStarted = Clock::now();
@@ -490,6 +521,13 @@ namespace worm::cli::generator
           } catch (const std::exception& error) {
             failures.push_back({plan.path.filename().string(), error.what()});
             ++metrics->failedEntities;
+            logger.log(
+              LogLevel::Warning,
+              "Entity file generation failed.",
+              {
+                {"path", plan.path.lexically_normal().generic_string()},
+                {"reason", error.what()},
+              });
           }
         }
 

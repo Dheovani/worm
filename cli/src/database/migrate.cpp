@@ -5,6 +5,7 @@
 #include <core/persistence/migration-history-repository.hpp>
 #include <core/query/migration-ddl.hpp>
 #include <utils/dependency-injection.hpp>
+#include <utils/logger.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -51,6 +52,25 @@ namespace worm::cli::database
       const core::Repository<core::MigrationHistory> repository;
       const core::SchemaSnapshot databaseSchema;
     };
+
+    [[nodiscard]]
+    constexpr std::string_view migrationActionName(MigrationAction action) noexcept
+    {
+      switch (action) {
+      case MigrationAction::Apply:
+        return "apply";
+      case MigrationAction::Create:
+        return "create";
+      case MigrationAction::Validate:
+        return "validate";
+      case MigrationAction::Status:
+        return "status";
+      case MigrationAction::Rollback:
+        return "rollback";
+      }
+
+      return "unknown";
+    }
 
     [[nodiscard]]
     migration::MigrationCatalog migrationCatalog(const Invocation& invocation)
@@ -529,6 +549,13 @@ namespace worm::cli::database
     if (!invocation.migrationAction.has_value()) {
       throw InvalidCliArgumentException("The 'migrate' command requires an action option.");
     }
+
+    logger.log(
+      LogLevel::Info,
+      "Migration command action started.",
+      {
+        {"action", std::string{migrationActionName(*invocation.migrationAction)}},
+      });
 
     switch (*invocation.migrationAction) {
     case MigrationAction::Apply:

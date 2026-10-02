@@ -47,3 +47,9 @@ logger.debug("Schema plan contains %zu operations.", operationCount);
 ```
 
 The process-wide `worm::logger` writes to `std::clog`. Change its threshold with `setMinimumLevel`; the logger serializes writes so individual records are not interleaved. The output stream must outlive any `Logger` that references it.
+
+## Operational coverage
+
+The CLI lifecycle, configuration resolution, database connections, parameterized SQL execution, schema introspection and comparison, migration planning, code generation, seed planning and execution, N+1 analysis, and filesystem operations emit diagnostics at their responsibility boundaries. Errors are logged at the boundary that converts them into a final operation result; internal layers add context to exceptions without logging and rethrowing the same failure.
+
+SQL diagnostics contain placeholder-based SQL, binding counts, elapsed time, affected rows, and returned rows. Parameter values are never included. Executions taking at least one second produce a `Warning` diagnostic.

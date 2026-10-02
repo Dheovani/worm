@@ -1,5 +1,7 @@
 #include <core/model/migration.hpp>
 
+#include <utils/logger.hpp>
+
 #include <string_view>
 #include <utility>
 
@@ -196,13 +198,42 @@ namespace worm::core
 
   MigrationPlan generateMigrationPlan(const std::vector<SchemaDifference>& differences)
   {
+    logger.log(
+      LogLevel::Debug,
+      "Migration planning started.",
+      {
+        {"differences", std::to_string(differences.size())},
+      });
     std::vector<MigrationStep> steps;
     steps.reserve(differences.size());
 
     for (const SchemaDifference& difference : differences) {
-      steps.push_back(migrationStepFor(difference));
+      MigrationStep step = migrationStepFor(difference);
+      logger.log(
+        LogLevel::Trace,
+        "Migration step planned.",
+        {
+          {"description", step.description},
+          {"risk", std::to_string(static_cast<int>(step.risk))},
+        });
+      if (step.risk != MigrationRisk::Safe) {
+        logger.log(
+          LogLevel::Warning,
+          "Migration step requires review.",
+          {
+            {"description", step.description},
+            {"risk", std::to_string(static_cast<int>(step.risk))},
+          });
+      }
+      steps.push_back(std::move(step));
     }
 
+    logger.log(
+      LogLevel::Debug,
+      "Migration planning finished.",
+      {
+        {"steps", std::to_string(steps.size())},
+      });
     return MigrationPlan{std::move(steps)};
   }
 } // namespace worm::core

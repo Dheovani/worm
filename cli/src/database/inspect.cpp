@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <helpers/connection.hpp>
+#include <utils/logger.hpp>
 
 namespace worm::cli::database
 {
@@ -247,6 +248,15 @@ namespace worm::cli::database
     {
       const auto schemas = extractSchemas(databaseSchema, metrics);
       const bool json = invocation.global.format.value_or("text") == "json";
+      logger.log(
+        LogLevel::Debug,
+        "Inspected schema translated for output.",
+        {
+          {"format", json ? "json" : "text"},
+          {"schemas", std::to_string(metrics->schemasDiscovered)},
+          {"tables", std::to_string(metrics->tablesDiscovered)},
+          {"columns", std::to_string(metrics->columnsDiscovered)},
+        });
 
       return {
         .info = "Database schema inspected.",

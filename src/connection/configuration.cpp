@@ -2,6 +2,7 @@
 
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/unsupported-database-exception.hpp>
+#include <utils/logger.hpp>
 
 #if defined(WORM_HAS_MYSQL_DRIVER)
 #include <connection/drivers/mysql-client.hpp>
@@ -96,33 +97,56 @@ namespace worm::connection
 
   std::unique_ptr<Client> makeClient(const ConnectionConfig& connectionData, DatabaseType type)
   {
+    logger.log(
+      LogLevel::Info,
+      "Opening database connection.",
+      {
+        {"driver", std::string{databaseTypeName(type)}},
+        {"host", connectionData.host},
+        {"port", connectionData.port},
+        {"database", connectionData.dbname},
+      });
+
+    std::unique_ptr<Client> client;
     switch (type) {
     case DatabaseType::PostgreSQL:
 #if defined(WORM_HAS_POSTGRESQL_DRIVER)
-      return std::make_unique<PgClient>(connectionData);
+      client = std::make_unique<PgClient>(connectionData);
+      break;
 #else
       throw UnsupportedDatabaseException("PostgreSQL driver is not enabled in this build.");
 #endif
     case DatabaseType::MySQL:
 #if defined(WORM_HAS_MYSQL_DRIVER)
-      return std::make_unique<MySqlClient>(connectionData);
+      client = std::make_unique<MySqlClient>(connectionData);
+      break;
 #else
       throw UnsupportedDatabaseException("MySQL driver is not enabled in this build.");
 #endif
     case DatabaseType::SQLite:
 #if defined(WORM_HAS_SQLITE_DRIVER)
-      return std::make_unique<SqliteClient>(connectionData);
+      client = std::make_unique<SqliteClient>(connectionData);
+      break;
 #else
       throw UnsupportedDatabaseException("SQLite driver is not enabled in this build.");
 #endif
     case DatabaseType::MSSQL:
 #if defined(WORM_HAS_MSSQL_DRIVER)
-      return std::make_unique<MsSqlClient>(connectionData);
+      client = std::make_unique<MsSqlClient>(connectionData);
+      break;
 #else
       throw UnsupportedDatabaseException("MSSQL driver is not enabled in this build.");
 #endif
     default:
       throw UnsupportedDatabaseException("Unsupported database type.");
     }
+
+    logger.log(
+      LogLevel::Debug,
+      "Database connection opened.",
+      {
+        {"driver", std::string{databaseTypeName(type)}},
+      });
+    return client;
   }
 } // namespace worm::connection

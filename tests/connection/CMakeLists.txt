@@ -29,6 +29,12 @@ add_worm_connection_test(
 )
 
 add_worm_connection_test(
+  WormClientLoggingTests
+  client-logging-tests.cpp
+  Worm.Connection.ClientLogging
+)
+
+add_worm_connection_test(
   WormClientCacheTests
   client-cache-tests.cpp
   Worm.Connection.ClientCache

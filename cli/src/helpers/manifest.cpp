@@ -13,6 +13,7 @@
 
 #include <core/query/validator.hpp>
 #include <errors/invalid-cli-argument-exception.hpp>
+#include <utils/logger.hpp>
 
 namespace worm::cli
 {
@@ -244,6 +245,12 @@ namespace worm::cli
 
   SchemaManifest loadManifest(const std::filesystem::path& path, std::string defaultSchema)
   {
+    logger.log(
+      LogLevel::Debug,
+      "Schema manifest loading started.",
+      {
+        {"path", path.lexically_normal().generic_string()},
+      });
     std::ifstream stream{path};
     if (!stream) {
       throw InvalidCliArgumentException("Unable to open schema manifest '{}'.", path.string());
@@ -477,6 +484,13 @@ namespace worm::cli
       }
     }
 
+    logger.log(
+      LogLevel::Debug,
+      "Schema manifest loaded.",
+      {
+        {"path", path.lexically_normal().generic_string()},
+        {"entities", std::to_string(manifest.entities.size())},
+      });
     return manifest;
   }
 

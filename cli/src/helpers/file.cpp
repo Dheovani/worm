@@ -3,24 +3,46 @@
 #include <fstream>
 #include <system_error>
 
+#include <utils/logger.hpp>
+
 #include "../errors/worm-cli-exception.hpp"
 
 namespace worm::cli
 {
   std::string readFile(const std::filesystem::path& path)
   {
+    logger.log(
+      LogLevel::Trace,
+      "Filesystem path resolved for reading.",
+      {
+        {"path", path.lexically_normal().generic_string()},
+      });
     std::ifstream stream{path, std::ios::binary};
     if (!stream) {
       throw WormCliException("Failed to read file '{}'.", path.string());
     }
 
-    return {std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
+    std::string contents{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
+    logger.log(
+      LogLevel::Debug,
+      "File read.",
+      {
+        {"path", path.lexically_normal().generic_string()},
+        {"bytes", std::to_string(contents.size())},
+      });
+    return contents;
   }
 
   void writeGeneratedFile(const std::filesystem::path& path, std::string_view contents)
   {
     std::error_code error;
     if (std::filesystem::exists(path, error)) {
+      logger.log(
+        LogLevel::Warning,
+        "Existing file will not be overwritten.",
+        {
+          {"path", path.lexically_normal().generic_string()},
+        });
       throw WormCliException("Generated file '{}' already exists and will not be overwritten.", path.string());
     }
     if (error) {
@@ -53,6 +75,14 @@ namespace worm::cli
       std::filesystem::remove(temporary, error);
       throw WormCliException("Failed to publish generated file '{}'.", path.string());
     }
+
+    logger.log(
+      LogLevel::Info,
+      "Generated file published.",
+      {
+        {"path", path.lexically_normal().generic_string()},
+        {"bytes", std::to_string(contents.size())},
+      });
   }
 
   bool fileExists(const std::filesystem::path& path) noexcept

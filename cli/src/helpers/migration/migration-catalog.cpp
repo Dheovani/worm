@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <errors/migration-exception.hpp>
+#include <utils/logger.hpp>
 
 namespace worm::cli::migration
 {
@@ -103,6 +104,12 @@ namespace worm::cli::migration
 
   MigrationCatalog discoverMigrationArtifacts(const std::filesystem::path& directory)
   {
+    logger.log(
+      LogLevel::Debug,
+      "Migration catalog discovery started.",
+      {
+        {"directory", directory.lexically_normal().generic_string()},
+      });
     std::error_code error;
     if (!std::filesystem::is_directory(directory, error)) {
       if (error) {
@@ -124,6 +131,12 @@ namespace worm::cli::migration
     while (entry != end) {
       const std::filesystem::directory_entry& file = *entry;
       if (migrationFileName(file.path())) {
+        logger.log(
+          LogLevel::Trace,
+          "Migration artifact discovered.",
+          {
+            {"path", file.path().lexically_normal().generic_string()},
+          });
         const std::filesystem::file_status status = file.symlink_status(error);
         if (error) {
           throw MigrationException("Unable to inspect migration file '{}': {}.", file.path().string(), error.message());
@@ -143,6 +156,12 @@ namespace worm::cli::migration
       }
     }
 
+    logger.log(
+      LogLevel::Debug,
+      "Migration catalog discovery finished.",
+      {
+        {"migrations", std::to_string(migrations.size())},
+      });
     return MigrationCatalog{std::move(migrations)};
   }
 
