@@ -78,9 +78,7 @@ namespace worm::core
     [[nodiscard]]
     std::shared_ptr<T> findOne(const Statement& statement) const
     {
-      if (!isOperationValid(statement, core::Operation::Select)) {
-        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
-      }
+      requireOperation(statement, core::Operation::Select, "findOne");
 
       const ResultSet resultSet = execute(statement);
       const std::size_t rowCount = resultSet.rowCount();
@@ -90,7 +88,11 @@ namespace worm::core
       }
 
       if (rowCount > 1) {
-        throw worm::MappingException("More than one row returned for a single-result repository query.");
+        throw worm::MappingException(
+          "Repository method 'findOne' for {} '{}' expected at most one row during SELECT, but received {}.",
+          detail::modelKind<T>(),
+          detail::modelName<T>(),
+          rowCount);
       }
 
       return hydrateModel(resultSet.rows().front());
@@ -105,9 +107,7 @@ namespace worm::core
     [[nodiscard]]
     std::vector<std::shared_ptr<T>> findAll(const Statement& statement) const
     {
-      if (!isOperationValid(statement, core::Operation::Select)) {
-        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
-      }
+      requireOperation(statement, core::Operation::Select, "findAll");
 
       const ResultSet resultSet = execute(statement);
 
@@ -145,18 +145,30 @@ namespace worm::core
       }
 
       if (resultSet.rowCount() > 1) {
-        throw worm::MappingException("More than one row returned for a single-result insert operation.");
+        throw worm::MappingException(
+          "Repository method 'insert' for entity table '{}' expected at most one returned row during INSERT, but "
+          "received {}.",
+          detail::modelName<T>(),
+          resultSet.rowCount());
       }
 
       constexpr auto primaryKey = primaryKeyField();
       if (primaryKey.isGenerated()) {
         throw worm::MappingException(
-          "Insert operation did not return the generated primary key required to hydrate the created entity.");
+          "INSERT for entity table '{}' did not return generated primary key field '{}' mapped to column '{}'.",
+          detail::modelName<T>(),
+          primaryKey.name(),
+          primaryKey.columnName());
       }
 
       const std::shared_ptr<T> createdEntity = find(primaryKey.get(entity));
       if (!createdEntity) {
-        throw worm::MappingException("Inserted entity could not be retrieved by its primary key.");
+        throw worm::MappingException(
+          "Entity table '{}' was inserted but could not be retrieved during SELECT by primary key field '{}' mapped "
+          "to column '{}'.",
+          detail::modelName<T>(),
+          primaryKey.name(),
+          primaryKey.columnName());
       }
 
       return createdEntity;
@@ -180,22 +192,19 @@ namespace worm::core
     std::uint64_t insert(const Statement& statement) const
       requires PersistableEntity<T>
     {
-      if (!isOperationValid(statement, core::Operation::Insert)) {
-        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
-      }
+      requireOperation(statement, core::Operation::Insert, "insert");
 
       const ResultSet resultSet = execute(statement);
       return resultSet.affectedRows();
     }
 
     [[nodiscard]]
-    std::uint64_t
-    insertFromSelect(const std::vector<std::string>& targetColumns, const Statement& sourceStatement) const
+    std::uint64_t insertFromSelect(
+      const std::vector<std::string>& targetColumns,
+      const Statement& sourceStatement) const
       requires PersistableEntity<T>
     {
-      if (!isOperationValid(sourceStatement, core::Operation::Select)) {
-        throw worm::InvalidOperationException("The provided source statement performs an invalid operation.");
-      }
+      requireOperation(sourceStatement, core::Operation::Select, "insertFromSelect", "source statement");
 
       const Statement statement = queryBuilder.insertFromSelect({T::table().name()}, targetColumns, sourceStatement);
 
@@ -261,9 +270,7 @@ namespace worm::core
     std::uint64_t update(const Statement& statement) const
       requires PersistableEntity<T>
     {
-      if (!isOperationValid(statement, core::Operation::Update)) {
-        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
-      }
+      requireOperation(statement, core::Operation::Update, "update");
 
       const ResultSet resultSet = executeFiltered(statement, T::table().name(), "UPDATE");
       return resultSet.affectedRows();
@@ -286,9 +293,7 @@ namespace worm::core
     void delete_(const Statement& statement) const
       requires PersistableEntity<T>
     {
-      if (!isOperationValid(statement, core::Operation::Delete)) {
-        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
-      }
+      requireOperation(statement, core::Operation::Delete, "delete_");
 
       delete_(statement, T::table().name());
     }
@@ -297,11 +302,17 @@ namespace worm::core
     void ensureDependencies() const
     {
       if (!dbClient) {
-        throw worm::InvalidArgException("Repository requires a valid client.");
+        throw worm::InvalidArgException(
+          "Repository for {} '{}' requires a valid database client.",
+          detail::modelKind<T>(),
+          detail::modelName<T>());
       }
 
       if (!registry) {
-        throw worm::InvalidArgException("Repository requires a valid registry.");
+        throw worm::InvalidArgException(
+          "Repository for {} '{}' requires a valid identity registry.",
+          detail::modelKind<T>(),
+          detail::modelName<T>());
       }
     }
 
@@ -334,7 +345,44 @@ namespace worm::core
     }
 
     [[nodiscard]]
-    bool isOperationValid(const Statement& statement, core::Operation kind) const
+    static constexpr std::string_view operationName(core::Operation kind) noexcept
+    {
+      using enum core::Operation;
+
+      switch (kind) {
+      case Insert:
+        return "INSERT";
+      case Update:
+        return "UPDATE";
+      case Delete:
+        return "DELETE";
+      case Select:
+        return "SELECT";
+      default:
+        return "SQL";
+      }
+    }
+
+    [[nodiscard]]
+    static std::string_view statementOperation(const Statement& statement) noexcept
+    {
+      if (core::isInsert(statement.sql)) {
+        return "INSERT";
+      }
+      if (core::isUpdate(statement.sql)) {
+        return "UPDATE";
+      }
+      if (core::isDelete(statement.sql)) {
+        return "DELETE";
+      }
+      if (core::isSelect(statement.sql)) {
+        return "SELECT";
+      }
+      return "SQL";
+    }
+
+    [[nodiscard]]
+    static bool isOperationValid(const Statement& statement, core::Operation kind)
     {
       using enum core::Operation;
 
@@ -349,6 +397,23 @@ namespace worm::core
         return core::isSelect(statement.sql);
       default:
         return false;
+      }
+    }
+
+    static void requireOperation(
+      const Statement& statement,
+      core::Operation expected,
+      std::string_view repositoryMethod,
+      std::string_view statementRole = "statement")
+    {
+      if (!isOperationValid(statement, expected)) {
+        throw worm::InvalidOperationException(
+          "Repository method '{}' for {} '{}' requires {} {}.",
+          repositoryMethod,
+          detail::modelKind<T>(),
+          detail::modelName<T>(),
+          operationName(expected),
+          statementRole);
       }
     }
 
@@ -367,7 +432,17 @@ namespace worm::core
                 return;
               }
 
-              result.emplace_back(std::string{fields.columnName()}, encode(fields.get(entity)));
+              try {
+                result.emplace_back(std::string{fields.columnName()}, encode(fields.get(entity)));
+              } catch (const worm::WormException& error) {
+                throw worm::MappingException(
+                  "Unable to map entity field '{}' to column '{}.{}' during {}: {}",
+                  fields.name(),
+                  detail::modelName<T>(),
+                  fields.columnName(),
+                  operationName(kind),
+                  error.what());
+              }
             }(),
             ...);
         },
@@ -388,7 +463,16 @@ namespace worm::core
         entity,
         [&](const auto& field, const auto&, const auto& currentValue) {
           if (!isPrimaryKeyField(field) && !field.isGenerated()) {
-            result.emplace_back(std::string{field.columnName()}, encode(currentValue));
+            try {
+              result.emplace_back(std::string{field.columnName()}, encode(currentValue));
+            } catch (const worm::WormException& error) {
+              throw worm::MappingException(
+                "Unable to map changed entity field '{}' to column '{}.{}' during UPDATE: {}",
+                field.name(),
+                detail::modelName<T>(),
+                field.columnName(),
+                error.what());
+            }
           }
         });
 
@@ -424,18 +508,37 @@ namespace worm::core
     core::ResultSet execute(const Statement& statement) const
     try {
       return dbClient->execute(statement);
+    } catch (const worm::QueryExecutionException& error) {
+      throw worm::QueryExecutionException(
+        "Repository {} for {} '{}' failed: {}",
+        statementOperation(statement),
+        detail::modelKind<T>(),
+        detail::modelName<T>(),
+        error.what());
     } catch (const worm::WormException&) {
       throw;
     } catch (const std::exception& error) {
-      throw worm::QueryExecutionException(error.what());
+      throw worm::QueryExecutionException(
+        "Repository {} for {} '{}' failed: {}",
+        statementOperation(statement),
+        detail::modelKind<T>(),
+        detail::modelName<T>(),
+        error.what());
     }
 
     [[nodiscard]]
-    core::ResultSet
-    executeFiltered(const Statement& statement, std::string_view filterQualifier, std::string_view operation) const
+    core::ResultSet executeFiltered(
+      const Statement& statement,
+      std::string_view filterQualifier,
+      std::string_view operation) const
     {
       if (!core::hasFilterWhere(statement.sql, filterQualifier)) {
-        throw worm::SqlBuildException("{} operation's statement must have a `WHERE` filter clause.", operation);
+        throw worm::SqlBuildException(
+          "Repository {} for {} '{}' requires a WHERE clause qualified by '{}'.",
+          operation,
+          detail::modelKind<T>(),
+          detail::modelName<T>(),
+          filterQualifier);
       }
 
       return execute(statement);
@@ -443,9 +546,7 @@ namespace worm::core
 
     void delete_(const Statement& statement, std::string_view filterQualifier) const
     {
-      if (!isOperationValid(statement, core::Operation::Delete)) {
-        throw worm::InvalidOperationException("The provided statement performs an invalid operation.");
-      }
+      requireOperation(statement, core::Operation::Delete, "delete_");
 
       static_cast<void>(executeFiltered(statement, filterQualifier, "DELETE"));
     }
@@ -477,7 +578,7 @@ namespace worm::core
         queryBuilder_(queryBuilder)
     {
       if (!dbClient_) {
-        throw worm::InvalidArgException("Schema repository requires a valid client.");
+        throw worm::InvalidArgException("Schema repository requires a valid database client for CREATE operations.");
       }
     }
 
@@ -487,10 +588,18 @@ namespace worm::core
       for (const Statement& statement : statements) {
         try {
           static_cast<void>(dbClient_->execute(statement));
+        } catch (const worm::QueryExecutionException& error) {
+          throw worm::QueryExecutionException(
+            "Schema repository CREATE for table '{}' failed: {}",
+            table.table().name(),
+            error.what());
         } catch (const worm::WormException&) {
           throw;
         } catch (const std::exception& error) {
-          throw worm::QueryExecutionException(error.what());
+          throw worm::QueryExecutionException(
+            "Schema repository CREATE for table '{}' failed: {}",
+            table.table().name(),
+            error.what());
         }
       }
     }

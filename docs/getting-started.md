@@ -291,6 +291,8 @@ try {
 }
 ```
 
+Repository, mapping, and hydration failures preserve the available operation and model context. Diagnostics identify the entity table or view and, when applicable, the reflected field and mapped column; SQL parameter values and connection credentials are not included.
+
 ## Persistence context and lifetime
 
 `Session` centralizes the client, the identity map, and repositories. The

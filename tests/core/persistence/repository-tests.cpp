@@ -262,8 +262,9 @@ namespace
     mutable std::string sourceQuery;
   };
 
-  worm::core::ResultSet
-  usersResult(std::initializer_list<std::pair<std::int64_t, std::string>> users, std::uint64_t affectedRows = 0)
+  worm::core::ResultSet usersResult(
+    std::initializer_list<std::pair<std::int64_t, std::string>> users,
+    std::uint64_t affectedRows = 0)
   {
     std::vector<worm::core::ResultRow> rows;
 
@@ -346,16 +347,20 @@ int main()
   }
 
   bool nonUniqueFailed = false;
+  std::string nonUniqueMessage;
   try {
     RecordingClient duplicatedClient{{usersResult({{1, "Ada"}, {2, "Grace"}})}};
     const worm::core::Repository<User> duplicatedRepository{nonOwning(duplicatedClient), queryBuilder};
     static_cast<void>(duplicatedRepository.findOne("select duplicated"));
-  } catch (const worm::MappingException&) {
+  } catch (const worm::MappingException& error) {
     nonUniqueFailed = true;
+    nonUniqueMessage = error.what();
   }
 
-  if (!nonUniqueFailed) {
-    std::cerr << "Repository findOne accepted a non-unique result.\n";
+  if (!nonUniqueFailed || nonUniqueMessage.find("method 'findOne'") == std::string::npos ||
+      nonUniqueMessage.find("entity table 'users'") == std::string::npos ||
+      nonUniqueMessage.find("during SELECT") == std::string::npos) {
+    std::cerr << "Repository findOne diagnostic omitted method, entity, or operation context.\n";
     return 1;
   }
 
@@ -365,7 +370,8 @@ int main()
   try {
     static_cast<void>(failingRepository.findOne("select failing"));
   } catch (const worm::QueryExecutionException& error) {
-    driverFailureWrapped = std::string{error.what()} == "driver failure";
+    driverFailureWrapped =
+      std::string{error.what()} == "Repository SELECT for entity table 'users' failed: driver failure";
   } catch (const std::exception& error) {
     std::cerr << "Repository leaked a raw standard exception from the driver: " << error.what() << "\n";
     return 1;
@@ -408,17 +414,22 @@ int main()
   }
 
   bool missingGeneratedIdFailed = false;
+  std::string missingGeneratedIdMessage;
   try {
     RecordingClient missingGeneratedIdClient{{worm::core::ResultSet{std::uint64_t{1}}}};
     const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{nonOwning(missingGeneratedIdClient),
       queryBuilder};
     static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Missing"}));
-  } catch (const worm::MappingException&) {
+  } catch (const worm::MappingException& error) {
     missingGeneratedIdFailed = true;
+    missingGeneratedIdMessage = error.what();
   }
 
-  if (!missingGeneratedIdFailed) {
-    std::cerr << "Repository insert(entity) accepted a generated primary key without a returned row.\n";
+  if (!missingGeneratedIdFailed || missingGeneratedIdMessage.find("INSERT") == std::string::npos ||
+      missingGeneratedIdMessage.find("entity table 'users'") == std::string::npos ||
+      missingGeneratedIdMessage.find("primary key field 'id'") == std::string::npos ||
+      missingGeneratedIdMessage.find("column 'id'") == std::string::npos) {
+    std::cerr << "Repository generated-key diagnostic omitted entity, field, column, or operation context.\n";
     return 1;
   }
 
@@ -446,16 +457,20 @@ int main()
   }
 
   bool invalidInsertFailed = false;
+  std::string invalidInsertMessage;
   try {
     RecordingClient invalidInsertClient{{worm::core::ResultSet{std::uint64_t{1}}}};
     const worm::core::Repository<User> invalidInsertRepository{nonOwning(invalidInsertClient), queryBuilder};
     static_cast<void>(invalidInsertRepository.insert({"select * from users"}));
-  } catch (const worm::InvalidOperationException&) {
+  } catch (const worm::InvalidOperationException& error) {
     invalidInsertFailed = true;
+    invalidInsertMessage = error.what();
   }
 
-  if (!invalidInsertFailed) {
-    std::cerr << "Repository insert(statement) accepted a non-insert statement.\n";
+  if (!invalidInsertFailed || invalidInsertMessage.find("method 'insert'") == std::string::npos ||
+      invalidInsertMessage.find("entity table 'users'") == std::string::npos ||
+      invalidInsertMessage.find("requires INSERT statement") == std::string::npos) {
+    std::cerr << "Repository insert diagnostic omitted method, entity, or expected operation context.\n";
     return 1;
   }
 
@@ -472,17 +487,22 @@ int main()
   }
 
   bool invalidInsertFromSelectFailed = false;
+  std::string invalidInsertFromSelectMessage;
   try {
     RecordingClient invalidInsertFromSelectClient{{worm::core::ResultSet{std::uint64_t{1}}}};
     const worm::core::Repository<User> invalidInsertFromSelectRepository{nonOwning(invalidInsertFromSelectClient),
       queryBuilder};
     static_cast<void>(invalidInsertFromSelectRepository.insertFromSelect({"id", "name"}, {"delete from users"}));
-  } catch (const worm::InvalidOperationException&) {
+  } catch (const worm::InvalidOperationException& error) {
     invalidInsertFromSelectFailed = true;
+    invalidInsertFromSelectMessage = error.what();
   }
 
-  if (!invalidInsertFromSelectFailed) {
-    std::cerr << "Repository insertFromSelect(statement) accepted a non-select source statement.\n";
+  if (!invalidInsertFromSelectFailed ||
+      invalidInsertFromSelectMessage.find("method 'insertFromSelect'") == std::string::npos ||
+      invalidInsertFromSelectMessage.find("entity table 'users'") == std::string::npos ||
+      invalidInsertFromSelectMessage.find("requires SELECT source statement") == std::string::npos) {
+    std::cerr << "Repository insertFromSelect diagnostic omitted method, entity, or source-operation context.\n";
     return 1;
   }
 
@@ -537,16 +557,20 @@ int main()
   }
 
   bool unsafeUpdateFailed = false;
+  std::string unsafeUpdateMessage;
   try {
     RecordingClient unsafeUpdateClient{{worm::core::ResultSet{std::uint64_t{1}}}};
     const worm::core::Repository<User> unsafeUpdateRepository{nonOwning(unsafeUpdateClient), queryBuilder};
     static_cast<void>(unsafeUpdateRepository.update({"update users set name = ? where true"}));
-  } catch (const worm::SqlBuildException&) {
+  } catch (const worm::SqlBuildException& error) {
     unsafeUpdateFailed = true;
+    unsafeUpdateMessage = error.what();
   }
 
-  if (!unsafeUpdateFailed) {
-    std::cerr << "Repository update(statement) accepted a statement without a qualified WHERE filter.\n";
+  if (!unsafeUpdateFailed || unsafeUpdateMessage.find("Repository UPDATE") == std::string::npos ||
+      unsafeUpdateMessage.find("entity table 'users'") == std::string::npos ||
+      unsafeUpdateMessage.find("qualified by 'users'") == std::string::npos) {
+    std::cerr << "Repository unsafe-update diagnostic omitted operation, entity, or filter qualifier context.\n";
     return 1;
   }
 
@@ -565,16 +589,20 @@ int main()
   }
 
   bool unsafeDeleteFailed = false;
+  std::string unsafeDeleteMessage;
   try {
     RecordingClient unsafeDeleteClient{{worm::core::ResultSet{}}};
     const worm::core::Repository<User> unsafeDeleteRepository{nonOwning(unsafeDeleteClient), queryBuilder};
     static_cast<void>(unsafeDeleteRepository.delete_(worm::core::Statement{"delete from users where true"}));
-  } catch (const worm::SqlBuildException&) {
+  } catch (const worm::SqlBuildException& error) {
     unsafeDeleteFailed = true;
+    unsafeDeleteMessage = error.what();
   }
 
-  if (!unsafeDeleteFailed) {
-    std::cerr << "Repository delete_(statement) accepted a statement without a qualified WHERE filter.\n";
+  if (!unsafeDeleteFailed || unsafeDeleteMessage.find("Repository DELETE") == std::string::npos ||
+      unsafeDeleteMessage.find("entity table 'users'") == std::string::npos ||
+      unsafeDeleteMessage.find("qualified by 'users'") == std::string::npos) {
+    std::cerr << "Repository unsafe-delete diagnostic omitted operation, entity, or filter qualifier context.\n";
     return 1;
   }
 
