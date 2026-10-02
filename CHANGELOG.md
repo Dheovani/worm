@@ -14,7 +14,7 @@ The format follows the categories from Keep a Changelog without claiming semanti
 
 ### Changed
 
-- Test and code-quality workflows now classify changed files and skip expensive jobs for documentation-only changes while leaving successful checks for repository rulesets.
+- Test and code-quality workflows no longer start for documentation-only changes.
 
 ### Fixed
 
