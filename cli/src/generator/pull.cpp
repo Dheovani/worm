@@ -393,8 +393,10 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
-    std::string
-    reportInfo(const std::vector<GenerationFailure>& failures, const std::vector<GenerationPlan>& plans, bool applied)
+    std::string reportInfo(
+      const std::vector<GenerationFailure>& failures,
+      const std::vector<GenerationPlan>& plans,
+      bool applied)
     {
       std::string message;
       if (!failures.empty()) {
@@ -416,8 +418,9 @@ namespace worm::cli::generator
     }
 
     [[nodiscard]]
-    std::vector<const core::SchemaTableSnapshot*>
-    selectedTables(const Invocation& invocation, const core::SchemaSnapshot& databaseSchema)
+    std::vector<const core::SchemaTableSnapshot*> selectedTables(
+      const Invocation& invocation,
+      const core::SchemaSnapshot& databaseSchema)
     {
       std::vector<const core::SchemaTableSnapshot*> selected;
       for (const auto& table : databaseSchema.tables) {

@@ -300,8 +300,10 @@ namespace worm::connection
     }
 
     [[nodiscard]]
-    std::optional<std::string>
-    defaultExpression(const core::ResultRow& row, DatabaseType database, const core::ColumnType& type)
+    std::optional<std::string> defaultExpression(
+      const core::ResultRow& row,
+      DatabaseType database,
+      const core::ColumnType& type)
     {
       std::optional<std::string> expression = optionalStringValue(row, "default_expression");
       if (!expression.has_value() || database != DatabaseType::MySQL) {

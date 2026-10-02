@@ -1,8 +1,8 @@
 #include "n-plus-one.hpp"
 
 #include <core/query/statement.hpp>
-#include <utils/n-plus-one-detector.hpp>
 #include <utils/logger.hpp>
+#include <utils/n-plus-one-detector.hpp>
 
 #include <cctype>
 #include <charconv>

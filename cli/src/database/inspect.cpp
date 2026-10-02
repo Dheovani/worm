@@ -27,8 +27,9 @@ namespace worm::cli::database
     };
 
     [[nodiscard]]
-    std::vector<SchemaInformation>
-    extractSchemas(const core::SchemaSnapshot& databaseSchema, const std::shared_ptr<InspectMetrics>& metrics)
+    std::vector<SchemaInformation> extractSchemas(
+      const core::SchemaSnapshot& databaseSchema,
+      const std::shared_ptr<InspectMetrics>& metrics)
     {
       std::set<std::string_view> schemaNames;
       for (const auto& table : databaseSchema.tables) {

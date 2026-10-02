@@ -81,9 +81,7 @@ namespace worm
     std::initializer_list<LogField> fields) const
   {
     const std::scoped_lock lock{mutex_};
-    *output_ << getLogTypeMessage(level)
-             << getClassName(location.file_name())
-             << ':' << location.line() << ' '
+    *output_ << getLogTypeMessage(level) << getClassName(location.file_name()) << ':' << location.line() << ' '
              << message;
 
     for (const LogField& field : fields) {
