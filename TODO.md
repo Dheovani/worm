@@ -135,7 +135,7 @@ This milestone should end with a complete example that creates, persists, querie
 
 - [x] Create a quick start that works in less than ten minutes.
 - [x] Document the minimum build, entity, CRUD, query, transaction, and error flow.
-- [ ] Maintain complete examples for CRUD, transactions, queries, and relationships.
+- [x] Maintain complete examples for CRUD, transactions, queries, and relationships.
 - [ ] Produce error messages that identify entity, field, column, and operation.
 - [x] Document ownership, lifetime, and thread-safety guarantees.
 - [ ] Create API documentation with Doxygen or an equivalent tool.

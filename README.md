@@ -24,11 +24,7 @@ the roadmap.
 
 ## Real usage
 
-The [getting started guide](docs/getting-started.md) shows a complete SQLite
-flow: CMake integration, reflected entity, CRUD, parameterized queries,
-transactions, errors, ownership, and current limitations. The same flow is also
-available as a buildable example in
-[`examples/sqlite-quick-start.cpp`](examples/sqlite-quick-start.cpp).
+The [getting started guide](docs/getting-started.md) shows a complete SQLite flow: CMake integration, reflected entity, CRUD, parameterized queries, transactions, errors, ownership, and current limitations. The [examples index](examples/README.md) provides executable programs for reflection, hydration, CRUD, queries, relationships, sessions, transactions, schema comparison, and migration planning.
 
 The optional [Worm CLI](cli/README.md) can analyze one observed `SELECT` query or a semicolon-separated query log for repeated parameterized shapes without connecting to or executing statements against a database. See the [logging guide](docs/logging.md) for severity levels, structured fields, sensitive-data rules, and verbose CLI diagnostics.
 
