@@ -190,7 +190,8 @@ namespace worm::core
       return static_cast<Value>(std::get<Underlying>(decoded));
     } else {
       return std::visit(
-        []<typename Stored>(const Stored& stored) -> DecodeResult<Value> {
+        []<typename Stored>([[maybe_unused]]
+          const Stored& stored) -> DecodeResult<Value> {
           using Source = std::remove_cvref_t<Stored>;
 
           if constexpr (std::same_as<Value, std::nullptr_t>) {

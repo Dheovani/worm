@@ -58,9 +58,29 @@ project(
   LANGUAGES CXX
 )
 
+option(WORM_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings for Worm targets" ${PROJECT_IS_TOP_LEVEL})
+option(WORM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(WORM_ENABLE_STRICT_WARNINGS)
+  if(MSVC)
+    add_compile_options(/W4)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+  else()
+    add_compile_options(-Wall -Wextra -Wpedantic -Wno-missing-field-initializers)
+  endif()
+endif()
+
+if(WORM_WARNINGS_AS_ERRORS)
+  if(MSVC)
+    add_compile_options(/WX)
+  else()
+    add_compile_options(-Werror)
+  endif()
+endif()
 
 # Existing headers use project-rooted includes such as <core/model/entity.hpp>.
 set(PROJECT_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/src")

@@ -122,12 +122,12 @@ namespace worm::cli::database
 
       auto metrics = std::make_shared<MigrationApplyMetrics>();
       metrics->migrations = catalog.migrations().size();
-      migration::MigrationProgressLogger logger{
+      migration::MigrationProgressLogger progressLogger{
         progress,
         invocation.global.format.value_or("text") == "json",
       };
 
-      const MigrationRuntime runtime{invocation, &logger};
+      const MigrationRuntime runtime{invocation, &progressLogger};
       runtime.repository.initialize(runtime.databaseSchema);
       const core::MigrationHistory history = runtime.repository.load();
       const std::vector<migration::MigrationReference> references = migrationReferences(history);
@@ -143,7 +143,7 @@ namespace worm::cli::database
         }
 
         ++metrics->pendingMigrations;
-        logger.migrationStarted(artifact);
+        progressLogger.migrationStarted(artifact);
         try {
           if (record == nullptr) {
             runtime.repository.addPending(artifact);
@@ -153,16 +153,16 @@ namespace worm::cli::database
             core::compileMigrationExecutionPlan(artifact, runtime.sqlBuilder),
             core::MigrationConfirmation::Destructive);
         } catch (const std::exception& error) {
-          logger.migrationFailed(artifact, error.what());
+          progressLogger.migrationFailed(artifact, error.what());
           throw;
         }
         ++metrics->appliedMigrations;
-        logger.migrationCompleted(artifact);
+        progressLogger.migrationCompleted(artifact);
       }
 
-      metrics->queriesExecuted = logger.queriesExecuted();
-      metrics->statementsExecuted = logger.statementsExecuted();
-      metrics->affectedRows = logger.affectedRows();
+      metrics->queriesExecuted = progressLogger.queriesExecuted();
+      metrics->statementsExecuted = progressLogger.statementsExecuted();
+      metrics->affectedRows = progressLogger.affectedRows();
 
       return {
         .info = metrics->appliedMigrations == 0 ? "No pending migrations were found."
