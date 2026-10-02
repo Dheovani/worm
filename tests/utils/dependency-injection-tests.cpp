@@ -20,12 +20,7 @@ namespace
   class ExternalDependency
   {
   public:
-    explicit ExternalDependency(int value)
-      : value_(value)
-    {}
-
-  private:
-    int value_;
+    explicit ExternalDependency(int) {}
   };
 
   void setEnvironment(const char* key, const char* value)
