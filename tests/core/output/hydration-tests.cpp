@@ -104,13 +104,24 @@ int main()
   }
 
   bool invalidColumnFailed = false;
+  std::string invalidColumnMessage;
   try {
-    (void)worm::core::hydrate<User>({{{"missing", std::int64_t{1}}}});
-  } catch (const worm::HydrationException&) {
+    (void)worm::core::hydrate<User>({{
+      {"id", std::int64_t{7}},
+      {"name", std::string{"Ada"}},
+      {"active", true},
+      {"status", std::int64_t{1}},
+      {"nickname", nullptr},
+      {"born_at", std::string{"1815-12-10"}},
+      {"missing", std::int64_t{1}},
+    }});
+  } catch (const worm::HydrationException& error) {
     invalidColumnFailed = true;
+    invalidColumnMessage = error.what();
   }
 
   bool invalidTypeFailed = false;
+  std::string invalidTypeMessage;
   try {
     (void)worm::core::hydrate<User>({{
       {"id", std::string{"not an integer"}},
@@ -120,11 +131,13 @@ int main()
       {"nickname", nullptr},
       {"born_at", std::string{"1815-12-10"}},
     }});
-  } catch (const worm::HydrationException&) {
+  } catch (const worm::HydrationException& error) {
     invalidTypeFailed = true;
+    invalidTypeMessage = error.what();
   }
 
   bool missingColumnFailed = false;
+  std::string missingColumnMessage;
   try {
     (void)worm::core::hydrate<User>({{
       {"id", std::int64_t{7}},
@@ -133,12 +146,38 @@ int main()
       {"status", std::int64_t{1}},
       {"nickname", nullptr},
     }});
-  } catch (const worm::HydrationException&) {
+  } catch (const worm::HydrationException& error) {
     missingColumnFailed = true;
+    missingColumnMessage = error.what();
   }
 
-  if (!invalidColumnFailed || !invalidTypeFailed || !missingColumnFailed) {
-    std::cerr << "Hydration did not report invalid columns, missing columns or conversions.\n";
+  bool ignoredFieldFailed = false;
+  std::string ignoredFieldMessage;
+  try {
+    (void)worm::core::hydrate<User>({{
+      {"id", std::int64_t{7}},
+      {"name", std::string{"Ada"}},
+      {"active", true},
+      {"status", std::int64_t{1}},
+      {"nickname", nullptr},
+      {"born_at", std::string{"1815-12-10"}},
+      {"transientValue", std::string{"ignored"}},
+    }});
+  } catch (const worm::HydrationException& error) {
+    ignoredFieldFailed = true;
+    ignoredFieldMessage = error.what();
+  }
+
+  if (!invalidColumnFailed || invalidColumnMessage.find("entity table 'users'") == std::string::npos ||
+      invalidColumnMessage.find("during SELECT") == std::string::npos ||
+      invalidColumnMessage.find("result column 'missing'") == std::string::npos || !invalidTypeFailed ||
+      invalidTypeMessage.find("field 'id' mapped to column 'id'") == std::string::npos ||
+      invalidTypeMessage.find("incompatible column type") == std::string::npos || !missingColumnFailed ||
+      missingColumnMessage.find("field 'bornAt' mapped to column 'born_at'") == std::string::npos ||
+      !ignoredFieldFailed ||
+      ignoredFieldMessage.find("field 'transientValue' mapped to column 'transientValue'") == std::string::npos ||
+      ignoredFieldMessage.find("is ignored") == std::string::npos) {
+    std::cerr << "Hydration diagnostics omitted model, operation, field, or column context.\n";
     return 1;
   }
 

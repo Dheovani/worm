@@ -215,7 +215,8 @@ namespace worm::core
     {
       if (std::this_thread::get_id() != ownerThread_) {
         throw worm::ConcurrentAccessException(
-          "InstanceRegistry accessed from a different thread than it was created on.");
+          "Instance registry for entity table '{}' was accessed from a different thread than it was created on.",
+          detail::modelName<T>());
       }
     }
 

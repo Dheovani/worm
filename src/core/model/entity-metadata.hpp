@@ -270,7 +270,9 @@ namespace worm::core
                   type = column_type_of<Value>();
                 } else {
                   throw MappingException(
-                    "Entity column '{}.{}' has no SQL type mapping.",
+                    "Unable to map entity field '{}' to column '{}.{}' while building schema metadata: no SQL type "
+                    "mapping is available.",
+                    fields.name(),
                     table.name(),
                     fields.columnName());
                 }
@@ -352,4 +354,29 @@ namespace worm::core
 
   template <typename T>
   concept Model = PersistableEntity<T> || QueryableView<T>;
+
+  namespace detail
+  {
+    template <Model T>
+    [[nodiscard]]
+    constexpr std::string_view modelKind() noexcept
+    {
+      if constexpr (PersistableEntity<T>) {
+        return "entity table";
+      } else {
+        return "view";
+      }
+    }
+
+    template <Model T>
+    [[nodiscard]]
+    constexpr std::string_view modelName() noexcept
+    {
+      if constexpr (PersistableEntity<T>) {
+        return table_of<T>().name();
+      } else {
+        return view_of<T>().name();
+      }
+    }
+  } // namespace detail
 } // namespace worm::core

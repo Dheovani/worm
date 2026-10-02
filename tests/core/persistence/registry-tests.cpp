@@ -144,17 +144,20 @@ int main()
   foreignRegistryAccess.join();
 
   bool instanceRegistryRejectedForeignThread = false;
+  std::string instanceRegistryMessage;
   std::thread foreignInstanceAccess([&] {
     try {
       static_cast<void>(registryUsers.has(7));
-    } catch (const worm::ConcurrentAccessException&) {
+    } catch (const worm::ConcurrentAccessException& error) {
       instanceRegistryRejectedForeignThread = true;
+      instanceRegistryMessage = error.what();
     }
   });
   foreignInstanceAccess.join();
 
-  if (!registryRejectedForeignThread || !instanceRegistryRejectedForeignThread) {
-    std::cerr << "Registry accepted access from a foreign thread.\n";
+  if (!registryRejectedForeignThread || !instanceRegistryRejectedForeignThread ||
+      instanceRegistryMessage.find("entity table 'users'") == std::string::npos) {
+    std::cerr << "Registry accepted foreign-thread access or omitted entity context from its diagnostic.\n";
     return 1;
   }
 

@@ -1,4 +1,5 @@
 #include <core/model/entity-metadata.hpp>
+#include <errors/mapping-exception.hpp>
 #include <reflection/field.hpp>
 
 #include <cstdint>
@@ -81,6 +82,33 @@ namespace
         {{worm::core::Operation::Delete, worm::core::ReferentialAction::Restrict}}}};
     }
   };
+
+  struct UnsupportedSettings
+  {
+    std::int64_t id{};
+    std::tuple<int> settings;
+
+    static constexpr worm::core::Table table() noexcept
+    {
+      return worm::core::Table{"unsupported_settings"};
+    }
+
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return worm::core::PrimaryKey{"pk_unsupported_settings", {worm::core::Column{"id", table()}}};
+    }
+
+    static constexpr auto reflect() noexcept
+    {
+      return std::tuple{worm::reflection::field("id", &UnsupportedSettings::id),
+        worm::reflection::field("settings", &UnsupportedSettings::settings, {.columnName = "settings_json"})};
+    }
+
+    static worm::core::ColumnType columnType(std::string_view) noexcept
+    {
+      return {};
+    }
+  };
 } // namespace
 
 int main()
@@ -117,6 +145,20 @@ int main()
   if (schema.tables().size() != 2 || schema.findTable(Role::table()) == nullptr ||
       schema.findTable(User::table()) == nullptr) {
     std::cerr << "Reflected schema metadata conversion failed.\n";
+    return 1;
+  }
+
+  std::string mappingMessage;
+  try {
+    static_cast<void>(worm::core::table_metadata_of<UnsupportedSettings>());
+  } catch (const worm::MappingException& error) {
+    mappingMessage = error.what();
+  }
+
+  if (mappingMessage.find("field 'settings'") == std::string::npos ||
+      mappingMessage.find("column 'unsupported_settings.settings_json'") == std::string::npos ||
+      mappingMessage.find("building schema metadata") == std::string::npos) {
+    std::cerr << "Entity metadata mapping diagnostic omitted field, column, or operation context.\n";
     return 1;
   }
 
