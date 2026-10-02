@@ -1,0 +1,41 @@
+name: Detect source changes
+description: Distinguish documentation-only changes from changes that require builds and tests.
+
+inputs:
+  base-sha:
+    description: Base commit used to calculate the changed files.
+    required: true
+  head-sha:
+    description: Head commit used to calculate the changed files.
+    required: true
+
+outputs:
+  code:
+    description: Whether at least one source, build, test, or workflow file changed.
+    value: ${{ steps.filter.outputs.code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify changed files
+      id: filter
+      shell: bash
+      env:
+        BASE_SHA: ${{ inputs.base-sha }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+      run: |
+        if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+          BASE_SHA=$(git rev-list --max-parents=0 "$HEAD_SHA")
+        fi
+
+        if git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- . \
+          ':(glob,exclude)docs/**' \
+          ':(glob,exclude)**/*.md' \
+          ':(exclude).env.example' \
+          ':(exclude)LICENSE' \
+          ':(glob,exclude).github/ISSUE_TEMPLATE/**' \
+          ':(exclude).github/workflows/documentation.yml'; then
+          echo "code=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "code=true" >> "$GITHUB_OUTPUT"
+        fi

@@ -53,6 +53,7 @@ ctest --test-dir build/sqlite -C Debug --output-on-failure
 - Metaprogramming helpers may use `snake_case`.
 - Format C++ with the repository `.clang-format`.
 - Document new public APIs with Doxygen comments that describe observable contracts.
+- Record user-visible and breaking changes under `Unreleased` in `CHANGELOG.md`.
 
 See the root [AGENTS.md](AGENTS.md) and scoped `AGENTS.md` files for the full
 repository rules.
@@ -74,6 +75,10 @@ Driver contract tests may require database-specific environment variables. See
 [.env.example](.env.example).
 
 To validate API documentation locally, follow [docs/api-documentation.md](docs/api-documentation.md). Documentation generation is optional for normal builds and is exposed through the `WormDocs` CMake target.
+
+Pull requests that change only Markdown, `docs/`, `.env.example`, the license, issue templates, or the documentation workflow skip compilation, static analysis, and test matrices. Their lightweight source-change jobs still complete so required ruleset checks do not remain pending, and relevant documentation changes continue through the Doxygen workflow.
+
+Architectural changes must update [docs/architecture.md](docs/architecture.md) and [docs/technical-decisions.md](docs/technical-decisions.md) when they replace or materially alter a recorded boundary. Breaking changes must also provide concrete consumer steps in [docs/upgrading.md](docs/upgrading.md).
 
 ## Pull request expectations
 

@@ -11,8 +11,29 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect source changes
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: filter
+        uses: ./.github/actions/detect-source-changes
+        with:
+          base-sha: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head-sha: ${{ github.sha }}
+
   formatting:
     name: clang-format
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
 
     steps:
@@ -51,6 +72,8 @@ jobs:
 
   static-analysis:
     name: clang-tidy
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     env:

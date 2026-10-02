@@ -11,8 +11,29 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect source changes
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: filter
+        uses: ./.github/actions/detect-source-changes
+        with:
+          base-sha: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head-sha: ${{ github.sha }}
+
   unit-tests:
     name: ${{ matrix.os }} / ${{ matrix.compiler }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -104,6 +125,8 @@ jobs:
 
   driver-contracts:
     name: Driver contracts
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -187,6 +210,8 @@ jobs:
 
   optional-drivers:
     name: Optional drivers / ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     strategy:

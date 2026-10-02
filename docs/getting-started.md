@@ -335,7 +335,7 @@ use one `Session` and one `Client` per concurrent workflow.
 
 ## Current limitations
 
-- Migrations and schema creation are not implemented yet.
+- Migration and schema generation cover the explicitly documented DDL set; unsupported transformations require authored SQL, and SQLite table rebuilds are not generated automatically.
 - Database-generated keys do not yet have portable behavior across drivers.
 - The SQL Server driver compiles and implements the ODBC contract, but it does
   not yet have a contract test running against a real CI instance.
