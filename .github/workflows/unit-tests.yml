@@ -264,6 +264,194 @@ jobs:
       - name: Run driver contracts
         run: ctest --test-dir build -C Debug -L driver-contract --output-on-failure
 
+  sanitizers:
+    name: Sanitizers / ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux ASan + UBSan
+            os: ubuntu-latest
+            build-type: Debug
+          - name: Windows ASan
+            os: windows-latest
+            build-type: RelWithDebInfo
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Linux build tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf autoconf-archive automake clang libtool
+
+      - name: Bootstrap vcpkg
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+
+      - name: Bootstrap vcpkg
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
+          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat"
+
+      - name: Configure
+        if: runner.os == 'Linux'
+        env:
+          CC: clang
+          CXX: clang++
+        run: >
+          cmake -S . -B build/sanitizers
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }}
+          -DBUILD_TESTING=ON
+          -DWORM_BUILD_CLI=ON
+          -DWORM_BUILD_EXAMPLES=ON
+          -DWORM_ENABLE_POSTGRESQL=OFF
+          -DWORM_ENABLE_MYSQL=OFF
+          -DWORM_ENABLE_SQLITE=ON
+          -DWORM_ENABLE_SANITIZERS=ON
+          -DWORM_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Configure
+        if: runner.os == 'Windows'
+        run: >
+          cmake -S . -B build/sanitizers
+          -DBUILD_TESTING=ON
+          -DWORM_BUILD_CLI=ON
+          -DWORM_BUILD_EXAMPLES=ON
+          -DWORM_ENABLE_POSTGRESQL=OFF
+          -DWORM_ENABLE_MYSQL=OFF
+          -DWORM_ENABLE_SQLITE=ON
+          -DWORM_ENABLE_SANITIZERS=ON
+          -DWORM_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build/sanitizers --config ${{ matrix.build-type }} --parallel
+
+      - name: Add MSVC AddressSanitizer runtime to PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $visualStudio = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.ASAN -property installationPath
+          if (-not $visualStudio) {
+            throw "Visual Studio with the AddressSanitizer component was not found."
+          }
+
+          $asanRuntime = Get-ChildItem `
+            -Path "$visualStudio\VC\Tools\MSVC\*\bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll" `
+            -File | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $asanRuntime) {
+            throw "The MSVC AddressSanitizer runtime DLL was not found."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $asanRuntime.DirectoryName
+
+      - name: Run Linux sanitizer tests
+        if: runner.os == 'Linux'
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: ctest --test-dir build/sanitizers -C ${{ matrix.build-type }} --output-on-failure
+
+      - name: Run Windows sanitizer tests
+        if: runner.os == 'Windows'
+        env:
+          ASAN_OPTIONS: halt_on_error=1
+        run: ctest --test-dir build/sanitizers -C ${{ matrix.build-type }} --output-on-failure
+
+  coverage:
+    name: Coverage / GCC
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf autoconf-archive automake gcovr g++ libtool
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+
+      - name: Configure
+        env:
+          CC: gcc
+          CXX: g++
+        run: >
+          cmake -S . -B build/coverage
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          -DWORM_BUILD_CLI=ON
+          -DWORM_BUILD_EXAMPLES=ON
+          -DWORM_ENABLE_POSTGRESQL=OFF
+          -DWORM_ENABLE_MYSQL=OFF
+          -DWORM_ENABLE_SQLITE=ON
+          -DWORM_ENABLE_COVERAGE=ON
+          -DWORM_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build/coverage --config Debug --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build/coverage -C Debug --output-on-failure
+
+      - name: Generate coverage report
+        run: |
+          mkdir -p build/coverage-report
+          gcovr \
+            --root . \
+            --filter 'src/' \
+            --filter 'cli/src/' \
+            --exclude 'tests/' \
+            --branches \
+            --html-details build/coverage-report/index.html \
+            --xml build/coverage-report/coverage.xml \
+            --txt build/coverage-report/coverage.txt \
+            --print-summary
+
+          {
+            echo '## Worm coverage'
+            echo
+            echo '```text'
+            cat build/coverage-report/coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-coverage
+          path: build/coverage-report
+          if-no-files-found: error
+          retention-days: 14
+
   optional-drivers:
     name: Optional drivers / ${{ matrix.name }}
     needs: changes

@@ -30,6 +30,10 @@ ctest --preset debug
 
 Top-level builds enable strict compiler warnings by default through `WORM_ENABLE_STRICT_WARNINGS`. Pass `-DWORM_WARNINGS_AS_ERRORS=ON` during configuration to reproduce the CI policy that rejects project warnings.
 
+Pass `-DWORM_ENABLE_SANITIZERS=ON` to instrument project targets with AddressSanitizer on MSVC or AddressSanitizer and UndefinedBehaviorSanitizer on GCC and Clang. Use a non-Debug configuration with MSVC because its Debug runtime checks are incompatible with AddressSanitizer; CI uses `RelWithDebInfo` on Windows.
+
+Pass `-DWORM_ENABLE_COVERAGE=ON` with GCC or Clang on a Unix-like platform to enable gcov-compatible instrumentation. CI runs the SQLite, CLI, and example suites, publishes detailed HTML and Cobertura XML artifacts, and places the text report in the workflow summary without enforcing an arbitrary percentage threshold.
+
 For a minimal SQLite-only build:
 
 ```powershell
