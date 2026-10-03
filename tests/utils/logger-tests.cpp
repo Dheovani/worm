@@ -52,8 +52,7 @@ int main()
 #else
   const bool hasPortableSourceLocation = hasCallSite;
 #endif
-  if (contents.find("Hidden diagnostic") != std::string::npos ||
-      !hasPortableSourceLocation ||
+  if (contents.find("Hidden diagnostic") != std::string::npos || !hasPortableSourceLocation ||
       contents.find("Logger smoke test: ok") == std::string::npos ||
       contents.find("driver=\"sqlite\"") == std::string::npos ||
       contents.find("detail=\"quoted \\\"value\\\"\\nnext line\"") == std::string::npos ||
