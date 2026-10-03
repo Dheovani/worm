@@ -10,6 +10,7 @@ INPUT                   = "@PROJECT_SOURCE_DIR@/src" \
                           "@PROJECT_SOURCE_DIR@/CHANGELOG.md" \
                           "@PROJECT_SOURCE_DIR@/TODO.md" \
                           "@PROJECT_SOURCE_DIR@/CONTRIBUTING.md" \
+                          "@PROJECT_SOURCE_DIR@/CONTRIBUTORS.md" \
                           "@PROJECT_SOURCE_DIR@/CODE_OF_CONDUCT.md" \
                           "@PROJECT_SOURCE_DIR@/SECURITY.md" \
                           "@PROJECT_SOURCE_DIR@/.env.example" \
