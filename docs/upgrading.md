@@ -36,4 +36,4 @@ Migration artifacts are immutable history. Do not edit an artifact that was alre
 
 ## Recording future breaks
 
-A pull request that introduces a breaking change must update the `Unreleased` changelog and this guide when consumers need more than a direct rename. The entry should identify the old contract, the replacement, required data or configuration steps, and whether rollback is possible. Once semantic versioning is adopted, the release process will promote those entries into a dated version section and use major or pre-release version changes as appropriate.
+A pull request that introduces a breaking change must update the `Unreleased` changelog and this guide when consumers need more than a direct rename. The entry should identify the old contract, the replacement, required data or configuration steps, and whether rollback is possible. The [release policy](releases.md) determines the required semantic-version increment and promotes those entries into a dated version section when a release is prepared.

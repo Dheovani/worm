@@ -31,8 +31,32 @@ placed directly under `build/quick-start/examples/`.
 
 ## Consume Worm with CMake
 
-Until install rules and `find_package(Worm)` are available, include the
-repository as a subdirectory:
+Install the selected build configuration to a prefix. With a multi-configuration generator, install both Debug and Release so each consumer configuration resolves the matching library:
+
+```powershell
+cmake --install build --config Debug --prefix C:/worm
+cmake --install build --config Release --prefix C:/worm
+```
+
+Configure consumers with the same dependency toolchain and make the installation prefix discoverable:
+
+```cmake
+find_package(Worm CONFIG REQUIRED)
+
+add_executable(my_application main.cpp)
+target_compile_features(my_application PRIVATE cxx_std_20)
+target_link_libraries(my_application PRIVATE Worm::Core Worm::Connection)
+```
+
+```powershell
+cmake -S . -B build `
+  -DCMAKE_PREFIX_PATH=C:/worm `
+  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+```
+
+The installed package exports `Worm::Errors`, `Worm::Reflection`, `Worm::Utils`, `Worm::Core`, and `Worm::Connection`. Its configuration resolves only the database dependencies enabled when Worm was built. Debug libraries use a `d` postfix, and MinSizeRel or RelWithDebInfo consumers fall back to the installed Release libraries.
+
+For source-tree integration, the repository can still be included as a subdirectory:
 
 ```cmake
 set(WORM_ENABLE_POSTGRESQL OFF CACHE BOOL "" FORCE)
