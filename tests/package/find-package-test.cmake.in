@@ -1,0 +1,80 @@
+set(packageRoot "@PROJECT_BINARY_DIR@/package-test")
+set(installRoot "${packageRoot}/install")
+set(consumerBuild "${packageRoot}/consumer")
+set(packagePrefixes "${installRoot}")
+
+if(NOT "@WORM_PACKAGE_TEST_VCPKG_INSTALLED_DIR@" STREQUAL "")
+  list(APPEND packagePrefixes "@WORM_PACKAGE_TEST_VCPKG_INSTALLED_DIR@/@VCPKG_TARGET_TRIPLET@")
+endif()
+list(JOIN packagePrefixes ";" packagePrefixPath)
+string(REPLACE ";" "\\;" packagePrefixArgument "${packagePrefixPath}")
+
+file(REMOVE_RECURSE "${packageRoot}")
+
+execute_process(
+  COMMAND
+    "@CMAKE_COMMAND@"
+    --install "@PROJECT_BINARY_DIR@"
+    --prefix "${installRoot}"
+    --config "${TEST_CONFIG}"
+  RESULT_VARIABLE installResult
+  COMMAND_ECHO STDOUT
+)
+if(NOT installResult EQUAL 0)
+  message(FATAL_ERROR "Installing Worm for the package test failed with exit code ${installResult}.")
+endif()
+
+set(
+  configureCommand
+  "@CMAKE_COMMAND@"
+  -S "@PROJECT_SOURCE_DIR@/tests/package"
+  -B "${consumerBuild}"
+  -G "@CMAKE_GENERATOR@"
+  "-DCMAKE_PREFIX_PATH=${packagePrefixArgument}"
+)
+
+if(NOT "@CMAKE_GENERATOR_PLATFORM@" STREQUAL "")
+  list(APPEND configureCommand -A "@CMAKE_GENERATOR_PLATFORM@")
+endif()
+
+if(NOT "@CMAKE_GENERATOR_TOOLSET@" STREQUAL "")
+  list(APPEND configureCommand -T "@CMAKE_GENERATOR_TOOLSET@")
+endif()
+
+if(NOT "@WORM_PACKAGE_TEST_TOOLCHAIN_FILE@" STREQUAL "")
+  list(APPEND configureCommand "-DCMAKE_TOOLCHAIN_FILE=@WORM_PACKAGE_TEST_TOOLCHAIN_FILE@")
+endif()
+
+execute_process(
+  COMMAND ${configureCommand}
+  RESULT_VARIABLE configureResult
+  COMMAND_ECHO STDOUT
+)
+if(NOT configureResult EQUAL 0)
+  message(FATAL_ERROR "Configuring the find_package consumer failed with exit code ${configureResult}.")
+endif()
+
+execute_process(
+  COMMAND
+    "@CMAKE_COMMAND@"
+    --build "${consumerBuild}"
+    --config "${TEST_CONFIG}"
+  RESULT_VARIABLE buildResult
+  COMMAND_ECHO STDOUT
+)
+if(NOT buildResult EQUAL 0)
+  message(FATAL_ERROR "Building the find_package consumer failed with exit code ${buildResult}.")
+endif()
+
+execute_process(
+  COMMAND
+    "@CMAKE_CTEST_COMMAND@"
+    --test-dir "${consumerBuild}"
+    -C "${TEST_CONFIG}"
+    --output-on-failure
+  RESULT_VARIABLE testResult
+  COMMAND_ECHO STDOUT
+)
+if(NOT testResult EQUAL 0)
+  message(FATAL_ERROR "Running the find_package consumer failed with exit code ${testResult}.")
+endif()
