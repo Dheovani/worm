@@ -26,14 +26,14 @@ the roadmap.
 
 The [getting started guide](docs/getting-started.md) shows a complete SQLite flow: CMake integration, reflected entity, CRUD, parameterized queries, transactions, errors, and ownership. The canonical [current limitations](docs/limitations.md) list defines the boundaries that still apply. The [examples index](examples/README.md) provides executable programs for reflection, hydration, CRUD, queries, relationships, sessions, transactions, schema comparison, and migration planning. The [architecture guide](docs/architecture.md) maps the subsystems and execution flow, while [technical decisions](docs/technical-decisions.md) explain the constraints behind them. The [API documentation guide](docs/api-documentation.md) explains how to generate the browsable Doxygen reference locally.
 
-User-visible changes are recorded in the [changelog](CHANGELOG.md). Because Worm is still pre-release, consult the [upgrade guide](docs/upgrading.md) before moving an application between revisions that may change public APIs, configuration, or schema behavior.
+User-visible changes are recorded in the [changelog](CHANGELOG.md). Because Worm is still pre-release, consult the [upgrade guide](docs/upgrading.md) before moving an application between revisions that may change public APIs, configuration, or schema behavior. The [release policy](docs/releases.md) defines semantic-versioning rules and objective alpha, beta, release-candidate, and `1.0.0` gates.
 
 The optional [Worm CLI](cli/README.md) can analyze one observed `SELECT` query or a semicolon-separated query log for repeated parameterized shapes without connecting to or executing statements against a database. See the [logging guide](docs/logging.md) for severity levels, structured fields, sensitive-data rules, and verbose CLI diagnostics.
 
 ## Requirements
 
 - CMake 3.20 or newer.
-- A compiler with C++20 support.
+- A supported C++20 compiler from the [tested compiler matrix](docs/compiler-support.md).
 - Git.
 - vcpkg.
 - On Windows, Visual Studio 2022 Build Tools with the C++ workload.

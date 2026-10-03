@@ -160,12 +160,12 @@ This milestone should end with a complete example that creates, persists, querie
 ## Milestone 7 — Portability and distribution
 
 - [x] Configure CI for Windows and Linux with MSVC, GCC, and Clang.
-- [ ] Test minimum and current supported compiler versions.
-- [ ] Create CMake install and export rules with `find_package(Worm)`.
-- [ ] Publish reproducible packages on vcpkg and, if there is demand, Conan.
+- [x] Test minimum and current supported compiler versions.
+- [x] Create CMake install and export rules with `find_package(Worm)`.
+- [x] Define the package-distribution policy: publish vcpkg from an immutable release tag and add Conan only if there is demand.
 - [x] Allow minimal SQLite-only builds.
-- [ ] Define and follow semantic versioning.
-- [ ] Establish objective criteria for alpha, beta, and `1.0.0` releases.
+- [x] Define and follow semantic versioning for published releases.
+- [x] Establish objective criteria for alpha, beta, release-candidate, and `1.0.0` releases.
 
 ## Milestone 8 — Community and sustainability
 
@@ -181,7 +181,9 @@ This milestone should end with a complete example that creates, persists, querie
 - [ ] Public API documented with a compatibility policy.
 - [ ] CRUD, transactions, parameters, and hydration validated on the supported databases.
 - [ ] No critical manual ownership or known SQL vulnerability.
-- [ ] Installable package and an example consumed by a clean external project.
+- [x] Installable package and an example consumed by a clean external project.
+- [ ] One source of truth propagates the release version to CMake, the CLI, vcpkg metadata, package configuration, tags, and artifacts.
+- [ ] A vcpkg port built from an immutable tag is published and validated on supported triplets.
 - [ ] Stable CI, sanitizers, static analysis, and integration tests.
 - [ ] Published getting started guide, reference, limitations, and contribution process.
 - [x] Update README.md with the main project information.

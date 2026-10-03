@@ -32,10 +32,13 @@ endif()
 add_library(WormConnection ${WORM_CONNECTION_SOURCES})
 add_library(Worm::Connection ALIAS WormConnection)
 
+set_target_properties(WormConnection PROPERTIES DEBUG_POSTFIX d EXPORT_NAME Connection)
+
 target_include_directories(
   WormConnection
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_INCLUDE_DIR}>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(

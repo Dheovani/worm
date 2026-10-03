@@ -15,7 +15,6 @@ on:
       - ".github/ISSUE_TEMPLATE/**"
       - ".github/workflows/code-quality.yml"
       - ".github/workflows/documentation.yml"
-      - ".github/workflows/unit-tests.yml"
 
 permissions:
   contents: read
@@ -41,7 +40,7 @@ jobs:
           head-sha: ${{ github.sha }}
 
   documentation-unit-statuses:
-    name: ${{ matrix.os }} / ${{ matrix.compiler }}
+    name: ${{ matrix.name }}
     needs: changes
     if: needs.changes.outputs.code != 'true'
     runs-on: ubuntu-24.04
@@ -50,14 +49,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            compiler: gcc
-          - os: ubuntu-latest
-            compiler: clang
-          - os: windows-latest
-            compiler: msvc
-          - os: macos-latest
-            compiler: appleclang
+          - name: ubuntu-latest / gcc
+          - name: ubuntu-latest / clang
+          - name: windows-latest / msvc
+          - name: macos-latest / appleclang
+          - name: minimum / gcc-13
+          - name: minimum / clang-16
+          - name: minimum / appleclang-xcode-15.4
 
     steps:
       - name: Report documentation-only change
@@ -84,7 +82,7 @@ jobs:
         run: echo "No source code changed; this required driver status replaces the skipped build."
 
   unit-tests:
-    name: ${{ matrix.os }} / ${{ matrix.compiler }}
+    name: ${{ matrix.name }}
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
@@ -93,20 +91,46 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - name: ubuntu-latest / gcc
+            os: ubuntu-24.04
             compiler: gcc
-            cc: gcc
-            cxx: g++
-          - os: ubuntu-latest
+            cc: gcc-14
+            cxx: g++-14
+            packages: gcc-14 g++-14
+          - name: ubuntu-latest / clang
+            os: ubuntu-24.04
             compiler: clang
-            cc: clang
-            cxx: clang++
-          - os: windows-latest
+            cc: clang-18
+            cxx: clang++-18
+            packages: clang-18
+          - name: windows-latest / msvc
+            os: windows-2022
             compiler: msvc
-          - os: macos-latest
+            toolset: version=14.44
+          - name: macos-latest / appleclang
+            os: macos-15
             compiler: appleclang
             cc: clang
             cxx: clang++
+            xcode: /Applications/Xcode_16.4.app
+          - name: minimum / gcc-13
+            os: ubuntu-24.04
+            compiler: gcc
+            cc: gcc-13
+            cxx: g++-13
+            packages: gcc-13 g++-13
+          - name: minimum / clang-16
+            os: ubuntu-24.04
+            compiler: clang
+            cc: clang-16
+            cxx: clang++-16
+            packages: clang-16
+          - name: minimum / appleclang-xcode-15.4
+            os: macos-14
+            compiler: appleclang
+            cc: clang
+            cxx: clang++
+            xcode: /Applications/Xcode_15.4.app
 
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
@@ -119,7 +143,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf autoconf-archive automake default-libmysqlclient-dev libtool pkg-config
+          sudo apt-get install -y autoconf autoconf-archive automake default-libmysqlclient-dev libtool pkg-config ${{ matrix.packages }}
 
       - name: Install MySQL client development files
         if: runner.os == 'macOS'
@@ -127,11 +151,13 @@ jobs:
           brew install autoconf autoconf-archive automake libtool mysql-client pkg-config
           echo "PKG_CONFIG_PATH=$(brew --prefix mysql-client)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
-      - name: Install Clang
-        if: runner.os == 'Linux' && matrix.compiler == 'clang'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang
+      - name: Select Xcode
+        if: runner.os == 'macOS'
+        run: sudo xcode-select --switch "${{ matrix.xcode }}/Contents/Developer"
+
+      - name: Report compiler version
+        if: runner.os != 'Windows'
+        run: ${{ matrix.cxx }} --version
 
       - name: Bootstrap vcpkg
         if: runner.os != 'Windows'
@@ -156,6 +182,7 @@ jobs:
           -DWORM_ENABLE_MYSQL=ON
           -DWORM_ENABLE_SQLITE=ON
           -DWORM_WARNINGS_AS_ERRORS=ON
+          -T "${{ matrix.toolset }}"
           -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
 
       - name: Configure

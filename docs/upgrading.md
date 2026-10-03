@@ -22,7 +22,7 @@ A source break includes renamed headers or symbols, changed concepts, signatures
 
 ### Build and driver configuration
 
-A build break includes renamed CMake targets or options, changed required compiler versions, vcpkg feature changes, and newly optional or required dependencies. Delete or replace the affected build directory when a cached toolchain or manifest feature no longer matches the selected drivers.
+A build break includes renamed CMake targets or options, changed required compiler versions, vcpkg feature changes, and newly optional or required dependencies. Check the [compiler support matrix](compiler-support.md), then delete or replace the affected build directory when a cached toolchain or manifest feature no longer matches the selected drivers.
 
 ### Runtime configuration
 
@@ -36,4 +36,4 @@ Migration artifacts are immutable history. Do not edit an artifact that was alre
 
 ## Recording future breaks
 
-A pull request that introduces a breaking change must update the `Unreleased` changelog and this guide when consumers need more than a direct rename. The entry should identify the old contract, the replacement, required data or configuration steps, and whether rollback is possible. Once semantic versioning is adopted, the release process will promote those entries into a dated version section and use major or pre-release version changes as appropriate.
+A pull request that introduces a breaking change must update the `Unreleased` changelog and this guide when consumers need more than a direct rename. The entry should identify the old contract, the replacement, required data or configuration steps, and whether rollback is possible. The [release policy](releases.md) determines the required semantic-version increment and promotes those entries into a dated version section when a release is prepared.

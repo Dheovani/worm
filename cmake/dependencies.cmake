@@ -4,6 +4,8 @@ include_guard(GLOBAL)
 add_library(WormDependencies INTERFACE)
 add_library(Worm::Dependencies ALIAS WormDependencies)
 
+set_target_properties(WormDependencies PROPERTIES EXPORT_NAME Dependencies)
+
 if(WORM_ENABLE_POSTGRESQL)
   # libpqxx provides a stable config-package target both upstream and through
   # vcpkg.
@@ -23,9 +25,11 @@ if(WORM_ENABLE_SQLITE)
 
   if(TARGET unofficial::sqlite3::sqlite3)
     set(WORM_SQLITE_TARGET unofficial::sqlite3::sqlite3)
+    set(WORM_SQLITE_PACKAGE unofficial-sqlite3)
   else()
     find_package(SQLite3 REQUIRED)
     set(WORM_SQLITE_TARGET SQLite::SQLite3)
+    set(WORM_SQLITE_PACKAGE SQLite3)
   endif()
 
   target_link_libraries(WormDependencies INTERFACE ${WORM_SQLITE_TARGET})
@@ -38,6 +42,7 @@ if(WORM_ENABLE_MYSQL)
 
   if(TARGET unofficial::libmysql::libmysql)
     set(WORM_MYSQL_TARGET unofficial::libmysql::libmysql)
+    set(WORM_MYSQL_PACKAGE unofficial-libmysql)
   else()
     find_package(PkgConfig QUIET)
 
@@ -47,6 +52,7 @@ if(WORM_ENABLE_MYSQL)
 
     if(TARGET PkgConfig::MySQLClient)
       set(WORM_MYSQL_TARGET PkgConfig::MySQLClient)
+      set(WORM_MYSQL_PACKAGE PkgConfig)
     else()
       message(
         FATAL_ERROR
