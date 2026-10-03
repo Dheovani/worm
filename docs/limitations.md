@@ -5,7 +5,7 @@ This document is the canonical public list of Worm's current limitations. It des
 ## Stability and distribution
 
 - Worm is pre-release and does not currently guarantee source, API, ABI, configuration, or schema compatibility between revisions. Follow the [upgrade guide](upgrading.md) for every update.
-- The supported minimum and current compiler versions have not been formally defined and tested yet, beyond the compiler matrix exercised by CI.
+- Compiler support is limited to the minimum and current versions in the [tested compiler matrix](compiler-support.md); older compilers are not supported even when they can compile part of the project.
 - CMake install and export rules are not available, so consumers cannot use `find_package(Worm)` from an installed package. Worm is not published through vcpkg or Conan.
 - Semantic versioning and objective alpha, beta, and `1.0.0` release criteria have not been adopted yet.
 

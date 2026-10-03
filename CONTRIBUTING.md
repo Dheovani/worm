@@ -9,7 +9,7 @@ test.
 You need:
 
 - CMake 3.20 or newer.
-- A C++20 compiler.
+- A supported C++20 compiler from the [tested compiler matrix](docs/compiler-support.md).
 - Git.
 - vcpkg.
 - On Windows, Visual Studio 2022 Build Tools with the C++ workload.

@@ -14,6 +14,7 @@ The format follows the categories from Keep a Changelog without claiming semanti
 - Opt-in sanitizer and coverage instrumentation, with Linux and Windows sanitizer CI plus published Linux coverage reports.
 - Deterministic property tests, a bounded Clang/libFuzzer CI target, and opt-in core and driver performance benchmarks.
 - A canonical public limitations list and a contributor recognition policy linked from the project documentation.
+- Explicit minimum and current compiler lanes for GCC, Clang, MSVC, and AppleClang, with pinned runner operating systems and compiler selections.
 
 ### Changed
 

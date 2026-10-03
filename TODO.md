@@ -160,7 +160,7 @@ This milestone should end with a complete example that creates, persists, querie
 ## Milestone 7 — Portability and distribution
 
 - [x] Configure CI for Windows and Linux with MSVC, GCC, and Clang.
-- [ ] Test minimum and current supported compiler versions.
+- [x] Test minimum and current supported compiler versions.
 - [ ] Create CMake install and export rules with `find_package(Worm)`.
 - [ ] Publish reproducible packages on vcpkg and, if there is demand, Conan.
 - [x] Allow minimal SQLite-only builds.

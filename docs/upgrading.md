@@ -22,7 +22,7 @@ A source break includes renamed headers or symbols, changed concepts, signatures
 
 ### Build and driver configuration
 
-A build break includes renamed CMake targets or options, changed required compiler versions, vcpkg feature changes, and newly optional or required dependencies. Delete or replace the affected build directory when a cached toolchain or manifest feature no longer matches the selected drivers.
+A build break includes renamed CMake targets or options, changed required compiler versions, vcpkg feature changes, and newly optional or required dependencies. Check the [compiler support matrix](compiler-support.md), then delete or replace the affected build directory when a cached toolchain or manifest feature no longer matches the selected drivers.
 
 ### Runtime configuration
 

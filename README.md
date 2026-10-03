@@ -33,7 +33,7 @@ The optional [Worm CLI](cli/README.md) can analyze one observed `SELECT` query o
 ## Requirements
 
 - CMake 3.20 or newer.
-- A compiler with C++20 support.
+- A supported C++20 compiler from the [tested compiler matrix](docs/compiler-support.md).
 - Git.
 - vcpkg.
 - On Windows, Visual Studio 2022 Build Tools with the C++ workload.
