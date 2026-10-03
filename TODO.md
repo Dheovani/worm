@@ -155,7 +155,7 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Measure statement preparation cost per driver and decide whether there should be a reusable per-connection cache.
 - [x] Measure connection opening cost and decide whether there should be a connection pool.
 - [x] Define a security policy and responsible disclosure channel.
-- [ ] Audit logs and exceptions to never expose passwords or sensitive parameters.
+- [x] Audit logs and exceptions to never expose passwords or sensitive parameters.
 
 ## Milestone 7 — Portability and distribution
 

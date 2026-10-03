@@ -10,6 +10,7 @@ endfunction()
 add_worm_utils_test(WormHelpersTests helpers-tests.cpp Worm.Utils.Helpers)
 add_worm_utils_test(WormHashTests hash-tests.cpp Worm.Utils.Hash)
 add_worm_utils_test(WormLoggerTests logger-tests.cpp Worm.Utils.Logger)
+add_worm_utils_test(WormSensitiveDataTests sensitive-data-tests.cpp Worm.Utils.SensitiveData)
 add_worm_utils_test(
   WormNPlusOneDetectorTests
   n-plus-one-detector-tests.cpp

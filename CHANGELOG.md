@@ -20,7 +20,7 @@ The format follows the categories from Keep a Changelog without claiming semanti
 
 ### Fixed
 
-- No user-visible fixes have been recorded in this changelog yet.
+- Logs and normalized database exceptions now redact credential patterns, configured passwords, and sensitive parameter values echoed by drivers.
 
 ### Removed
 

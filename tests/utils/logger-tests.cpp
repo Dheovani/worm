@@ -3,6 +3,7 @@
 #include <exception>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 
@@ -37,14 +38,23 @@ int main()
     {
       {"driver", "sqlite"},
       {"detail", "quoted \"value\"\nnext line"},
+      {"password", "structured-secret"},
+      {"reason", "connection failed with password=native-secret"},
+      {"token_count", "3"},
     });
+  logger.error(std::runtime_error{"postgresql://worm:uri-secret@localhost/worm"});
 
   const std::string contents = output.str();
   if (contents.find("Hidden diagnostic") != std::string::npos ||
       contents.find("[INFO] logger-tests.cpp:") == std::string::npos ||
       contents.find("Logger smoke test: ok") == std::string::npos ||
       contents.find("driver=\"sqlite\"") == std::string::npos ||
-      contents.find("detail=\"quoted \\\"value\\\"\\nnext line\"") == std::string::npos) {
+      contents.find("detail=\"quoted \\\"value\\\"\\nnext line\"") == std::string::npos ||
+      contents.find("password=\"<redacted>\"") == std::string::npos ||
+      contents.find("reason=\"connection failed with password=<redacted>\"") == std::string::npos ||
+      contents.find("token_count=\"3\"") == std::string::npos ||
+      contents.find("structured-secret") != std::string::npos || contents.find("native-secret") != std::string::npos ||
+      contents.find("uri-secret") != std::string::npos) {
     std::cerr << "Logger filtering or structured output is invalid.\n";
     return 1;
   }

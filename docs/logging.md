@@ -32,6 +32,8 @@ The text sink renders fields as escaped `name="value"` pairs. Field names should
 
 Never log passwords, tokens, complete connection strings, SQL parameter values, environment-variable contents, or entity data. SQL text may be logged only when external values remain represented by placeholders. Prefer counts, types, identifiers, elapsed time, and sanitized database metadata. Host, port, database, driver, file path, entity, table, and column names may be logged when they are necessary for diagnosis.
 
+The text logger defensively replaces values of structured fields whose names identify passwords, secrets, tokens, credentials, authorization data, cookies, DSNs, connection strings, or private keys. It also redacts common key/value credential forms and URI user information from messages. Driver connection failures remove the configured password, and query failures remove echoed quoted strings, decimal values, and strings of at least four characters that match bound parameters. This is a safety boundary, not permission to pass sensitive values to logging APIs; callers must still follow the prohibition above.
+
 ## Exception boundaries
 
 Log an exception only where it is handled or converted into a final user-facing result. Lower layers should add context through Worm exceptions and rethrow without logging. A user-facing error message is presentation; it does not justify logging the same exception from multiple internal layers.
