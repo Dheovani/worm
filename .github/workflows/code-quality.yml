@@ -134,5 +134,14 @@ jobs:
               if file.is_relative_to(project_root / "src") or file.is_relative_to(project_root / "tests")
           ]
 
-          subprocess.run(["clang-tidy", "-p", "build/quality", *project_files], check=True)
+          subprocess.run(
+              [
+                  "clang-tidy",
+                  "-p",
+                  "build/quality",
+                  "--extra-arg=-Wno-unknown-warning-option",
+                  *project_files,
+              ],
+              check=True,
+          )
           PY

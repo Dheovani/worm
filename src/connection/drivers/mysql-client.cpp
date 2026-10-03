@@ -3,6 +3,7 @@
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/migration-lock-exception.hpp>
 #include <errors/query-execution-exception.hpp>
+#include <utils/sensitive-data.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -214,7 +215,10 @@ namespace worm::connection
     if (databaseConfig.timeoutConfig.connectionTimeout.has_value()) {
       unsigned int timeout = mysqlTimeoutSeconds(*databaseConfig.timeoutConfig.connectionTimeout);
       if (mysql_options(connection_.get(), MYSQL_OPT_CONNECT_TIMEOUT, &timeout) != 0) {
-        throw DatabaseConnectionException(mysql_error(connection_.get()));
+        throw DatabaseConnectionException(
+          utils::redactSensitiveValue(
+            utils::redactSensitiveText(mysql_error(connection_.get())),
+            databaseConfig.password));
       }
     }
 
@@ -222,7 +226,10 @@ namespace worm::connection
       unsigned int timeout = mysqlTimeoutSeconds(*databaseConfig.timeoutConfig.queryTimeout);
       if (mysql_options(connection_.get(), MYSQL_OPT_READ_TIMEOUT, &timeout) != 0 ||
           mysql_options(connection_.get(), MYSQL_OPT_WRITE_TIMEOUT, &timeout) != 0) {
-        throw DatabaseConnectionException(mysql_error(connection_.get()));
+        throw DatabaseConnectionException(
+          utils::redactSensitiveValue(
+            utils::redactSensitiveText(mysql_error(connection_.get())),
+            databaseConfig.password));
       }
     }
 
@@ -235,7 +242,10 @@ namespace worm::connection
           port,
           nullptr,
           0) == nullptr) {
-      throw DatabaseConnectionException(mysql_error(connection_.get()));
+      throw DatabaseConnectionException(
+        utils::redactSensitiveValue(
+          utils::redactSensitiveText(mysql_error(connection_.get())),
+          databaseConfig.password));
     }
   }
 

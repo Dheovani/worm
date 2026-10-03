@@ -1,4 +1,4 @@
-add_library(WormUtils logger.cpp)
+add_library(WormUtils logger.cpp sensitive-data.cpp)
 add_library(Worm::Utils ALIAS WormUtils)
 
 target_compile_features(WormUtils PUBLIC cxx_std_20)

@@ -6,6 +6,7 @@
 #include <errors/query-execution-exception.hpp>
 #include <errors/transaction-exception.hpp>
 #include <utils/helpers.hpp>
+#include <utils/sensitive-data.hpp>
 
 #include <chrono>
 #include <cstddef>
@@ -160,7 +161,8 @@ namespace worm::connection
     } catch (const InvalidArgException&) {
       throw;
     } catch (const std::exception& error) {
-      throw DatabaseConnectionException(error.what());
+      throw DatabaseConnectionException(
+        utils::redactSensitiveValue(utils::redactSensitiveText(error.what()), databaseConfig.password));
     }
   }
 

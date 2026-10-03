@@ -1,4 +1,5 @@
 #include <utils/logger.hpp>
+#include <utils/sensitive-data.hpp>
 
 #include <iostream>
 
@@ -82,11 +83,13 @@ namespace worm
   {
     const std::scoped_lock lock{mutex_};
     *output_ << getLogTypeMessage(level) << getClassName(location.file_name()) << ':' << location.line() << ' '
-             << message;
+             << utils::redactSensitiveText(message);
 
     for (const LogField& field : fields) {
       *output_ << ' ' << field.name << '=';
-      writeFieldValue(*output_, field.value);
+      const std::string safeValue = utils::isSensitiveName(field.name) ? std::string{utils::redactedValue}
+                                                                       : utils::redactSensitiveText(field.value);
+      writeFieldValue(*output_, safeValue);
     }
 
     *output_ << '\n';

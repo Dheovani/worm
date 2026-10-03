@@ -148,14 +148,14 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Run formatting and static analysis automatically in CI.
 - [x] Disable tests/quality CIs when no source code is changed.
 - [x] Enable strict warnings and treat project warnings as errors in CI.
-- [ ] Add sanitizers on Linux and equivalent tooling on Windows.
-- [ ] Measure coverage and publish relevant gaps without chasing only a percentage.
-- [ ] Add property tests and fuzzing for parsing, SQL generation, and SQL parameters.
-- [ ] Create benchmarks for hydration, snapshots, and query generation.
-- [ ] Measure statement preparation cost per driver and decide whether there should be a reusable per-connection cache.
-- [ ] Measure connection opening cost and decide whether there should be a connection pool.
+- [x] Add sanitizers on Linux and equivalent tooling on Windows.
+- [x] Measure coverage and publish relevant gaps without chasing only a percentage.
+- [x] Add property tests and fuzzing for parsing, SQL generation, and SQL parameters.
+- [x] Create benchmarks for hydration, snapshots, and query generation.
+- [x] Measure statement preparation cost per driver and decide whether there should be a reusable per-connection cache.
+- [x] Measure connection opening cost and decide whether there should be a connection pool.
 - [x] Define a security policy and responsible disclosure channel.
-- [ ] Audit logs and exceptions to never expose passwords or sensitive parameters.
+- [x] Audit logs and exceptions to never expose passwords or sensitive parameters.
 
 ## Milestone 7 — Portability and distribution
 

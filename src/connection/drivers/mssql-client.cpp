@@ -4,6 +4,7 @@
 #include <errors/invalid-arg-exception.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <utils/helpers.hpp>
+#include <utils/sensitive-data.hpp>
 
 #include <algorithm>
 #include <array>
@@ -373,12 +374,18 @@ namespace worm::connection
 
     if (!SQL_SUCCEEDED(
           SQLSetEnvAttr(environment_.get(), SQL_ATTR_ODBC_VERSION, reinterpret_cast<SQLPOINTER>(SQL_OV_ODBC3), 0))) {
-      throw DatabaseConnectionException(diagnostics(SQL_HANDLE_ENV, environment_.get()));
+      throw DatabaseConnectionException(
+        utils::redactSensitiveValue(
+          utils::redactSensitiveText(diagnostics(SQL_HANDLE_ENV, environment_.get())),
+          databaseConfig.password));
     }
 
     SQLHDBC connection = SQL_NULL_HDBC;
     if (!SQL_SUCCEEDED(SQLAllocHandle(SQL_HANDLE_DBC, environment_.get(), &connection))) {
-      throw DatabaseConnectionException(diagnostics(SQL_HANDLE_ENV, environment_.get()));
+      throw DatabaseConnectionException(
+        utils::redactSensitiveValue(
+          utils::redactSensitiveText(diagnostics(SQL_HANDLE_ENV, environment_.get())),
+          databaseConfig.password));
     }
     connection_.reset(connection);
 
@@ -391,7 +398,10 @@ namespace worm::connection
         0);
 
       if (!SQL_SUCCEEDED(result)) {
-        throw DatabaseConnectionException(diagnostics(SQL_HANDLE_DBC, connection_.get()));
+        throw DatabaseConnectionException(
+          utils::redactSensitiveValue(
+            utils::redactSensitiveText(diagnostics(SQL_HANDLE_DBC, connection_.get())),
+            databaseConfig.password));
       }
     }
 
@@ -407,7 +417,10 @@ namespace worm::connection
       SQL_DRIVER_NOPROMPT);
 
     if (!SQL_SUCCEEDED(result)) {
-      throw DatabaseConnectionException(diagnostics(SQL_HANDLE_DBC, connection_.get()));
+      throw DatabaseConnectionException(
+        utils::redactSensitiveValue(
+          utils::redactSensitiveText(diagnostics(SQL_HANDLE_DBC, connection_.get())),
+          databaseConfig.password));
     }
   }
 

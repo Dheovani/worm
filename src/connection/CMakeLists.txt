@@ -10,6 +10,14 @@ set(
 
 if(WORM_ENABLE_POSTGRESQL)
   list(APPEND WORM_CONNECTION_SOURCES drivers/pg-client.cpp)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # GCC 13 reports a false positive while libpqxx moves its internal std::variant during parameter binding.
+    set_property(
+      SOURCE drivers/pg-client.cpp
+      APPEND
+      PROPERTY COMPILE_OPTIONS -Wno-error=maybe-uninitialized
+    )
+  endif()
 endif()
 if(WORM_ENABLE_MYSQL)
   list(APPEND WORM_CONNECTION_SOURCES drivers/mysql-client.cpp)

@@ -21,6 +21,8 @@ add_worm_core_test(WormRelationshipTests model/relationship-tests.cpp Worm.Core.
 add_worm_core_test(WormParameterTests query/parameter-tests.cpp Worm.Core.Parameter)
 add_worm_core_test(WormDialectTests query/dialect-tests.cpp Worm.Core.Dialect)
 add_worm_core_test(WormStatementTests query/statement-tests.cpp Worm.Core.Statement)
+add_worm_core_test(WormPropertyTests query/property-tests.cpp Worm.Core.Property)
+set_tests_properties(Worm.Core.Property PROPERTIES LABELS "unit;core;property")
 add_worm_core_test(WormValidatorTests query/validator-tests.cpp Worm.Core.Validator)
 add_worm_core_test(WormExpressionTests query/expression-tests.cpp Worm.Core.Expression)
 add_worm_core_test(WormCriteriaTests query/criteria-tests.cpp Worm.Core.Criteria)

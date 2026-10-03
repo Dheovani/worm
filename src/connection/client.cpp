@@ -3,16 +3,52 @@
 #include <connection/configuration.hpp>
 #include <errors/query-execution-exception.hpp>
 #include <utils/logger.hpp>
+#include <utils/sensitive-data.hpp>
 
 #include <chrono>
 #include <string>
+#include <string_view>
+#include <type_traits>
+#include <variant>
+#include <vector>
 
 namespace worm::connection
 {
   namespace
   {
     constexpr auto slowQueryThreshold = std::chrono::seconds{1};
-  }
+
+    [[nodiscard]]
+    std::string redactParameterValues(std::string_view message, const std::vector<core::Parameter>& parameters)
+    {
+      std::string result = utils::redactSensitiveText(message);
+      for (const core::Parameter& parameter : parameters) {
+        std::visit(
+          [&result](const auto& value) {
+            using Value = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<Value, std::string>) {
+              if (!value.empty()) {
+                result = utils::redactSensitiveValue(result, "'" + value + "'");
+                result = utils::redactSensitiveValue(result, "\"" + value + "\"");
+                if (value.size() >= 4) {
+                  result = utils::redactSensitiveValue(result, value);
+                }
+              }
+            } else if constexpr (std::is_same_v<Value, core::Decimal>) {
+              const std::string_view decimal = value.value();
+              if (!decimal.empty()) {
+                result = utils::redactSensitiveValue(result, "'" + std::string{decimal} + "'");
+                if (decimal.size() >= 4) {
+                  result = utils::redactSensitiveValue(result, decimal);
+                }
+              }
+            }
+          },
+          parameter);
+      }
+      return result;
+    }
+  } // namespace
 
   Client::~Client()
   {
@@ -49,7 +85,12 @@ namespace worm::connection
     }
 
     const auto started = std::chrono::steady_clock::now();
-    core::ResultSet result = executeImpl(statement);
+    core::ResultSet result;
+    try {
+      result = executeImpl(statement);
+    } catch (const QueryExecutionException& error) {
+      throw QueryExecutionException(redactParameterValues(error.what(), statement.parameters));
+    }
     const auto duration = std::chrono::steady_clock::now() - started;
     if (cacheable) {
       cachedResults_.add(statement, result);
