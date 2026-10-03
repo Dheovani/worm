@@ -24,12 +24,15 @@ add_library(
 )
 add_library(Worm::Core ALIAS WormCore)
 
+set_target_properties(WormCore PROPERTIES DEBUG_POSTFIX d EXPORT_NAME Core)
+
 target_compile_features(WormCore PUBLIC cxx_std_20)
 
 target_include_directories(
   WormCore
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_INCLUDE_DIR}>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(

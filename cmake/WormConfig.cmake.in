@@ -1,0 +1,39 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+if(@WORM_ENABLE_POSTGRESQL@)
+  find_dependency(libpqxx CONFIG)
+endif()
+
+if(@WORM_ENABLE_SQLITE@)
+  if("@WORM_SQLITE_PACKAGE@" STREQUAL "unofficial-sqlite3")
+    find_dependency(unofficial-sqlite3 CONFIG)
+  else()
+    find_dependency(SQLite3)
+  endif()
+endif()
+
+if(@WORM_ENABLE_MYSQL@)
+  if("@WORM_MYSQL_PACKAGE@" STREQUAL "unofficial-libmysql")
+    find_dependency(unofficial-libmysql CONFIG)
+  else()
+    find_dependency(PkgConfig)
+    pkg_check_modules(MySQLClient REQUIRED IMPORTED_TARGET mysqlclient)
+  endif()
+endif()
+
+if(@WORM_ENABLE_MSSQL@)
+  find_dependency(ODBC)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/WormTargets.cmake")
+
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/WormTargets-release.cmake")
+  foreach(target Utils Core Connection)
+    set_property(TARGET Worm::${target} PROPERTY MAP_IMPORTED_CONFIG_MINSIZEREL Release)
+    set_property(TARGET Worm::${target} PROPERTY MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release)
+  endforeach()
+endif()
+
+check_required_components(Worm)

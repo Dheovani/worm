@@ -59,6 +59,9 @@ project(
   LANGUAGES CXX
 )
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
 option(WORM_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings for Worm targets" ${PROJECT_IS_TOP_LEVEL})
 option(WORM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(WORM_ENABLE_SANITIZERS "Enable supported runtime sanitizers for Worm targets" OFF)
@@ -144,4 +147,58 @@ endif()
 
 if(WORM_BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
+endif()
+
+set(
+  WORM_INSTALL_CMAKEDIR
+  "${CMAKE_INSTALL_LIBDIR}/cmake/Worm"
+  CACHE STRING "Directory for Worm CMake package files"
+)
+
+install(
+  TARGETS
+    WormErrors
+    WormReflection
+    WormUtils
+    WormCore
+    WormConnection
+    WormDependencies
+  EXPORT WormTargets
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+  INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+
+install(
+  DIRECTORY "${PROJECT_SOURCE_DIR}/src/"
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  FILES_MATCHING PATTERN "*.hpp"
+)
+
+configure_package_config_file(
+  "${PROJECT_SOURCE_DIR}/cmake/WormConfig.cmake.in"
+  "${PROJECT_BINARY_DIR}/WormConfig.cmake"
+  INSTALL_DESTINATION "${WORM_INSTALL_CMAKEDIR}"
+)
+
+install(
+  EXPORT WormTargets
+  FILE WormTargets.cmake
+  NAMESPACE Worm::
+  DESTINATION "${WORM_INSTALL_CMAKEDIR}"
+)
+
+install(
+  FILES "${PROJECT_BINARY_DIR}/WormConfig.cmake"
+  DESTINATION "${WORM_INSTALL_CMAKEDIR}"
+)
+
+install(
+  FILES "${PROJECT_SOURCE_DIR}/LICENSE"
+  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/Worm"
+)
+
+if(WORM_BUILD_CLI)
+  install(TARGETS WormCli RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif()
