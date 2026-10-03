@@ -63,6 +63,7 @@ option(WORM_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings for Worm tar
 option(WORM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(WORM_ENABLE_SANITIZERS "Enable supported runtime sanitizers for Worm targets" OFF)
 option(WORM_ENABLE_COVERAGE "Enable source coverage instrumentation for Worm targets" OFF)
+option(WORM_BUILD_FUZZERS "Build libFuzzer targets for Worm" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -85,7 +86,11 @@ if(WORM_WARNINGS_AS_ERRORS)
   endif()
 endif()
 
-if(WORM_ENABLE_SANITIZERS)
+if(WORM_BUILD_FUZZERS AND (WIN32 OR NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
+  message(FATAL_ERROR "WORM_BUILD_FUZZERS requires Clang with libFuzzer support on a Unix-like platform.")
+endif()
+
+if(WORM_ENABLE_SANITIZERS OR WORM_BUILD_FUZZERS)
   if(MSVC)
     add_compile_options(/fsanitize=address)
     add_link_options(/INCREMENTAL:NO)
@@ -131,6 +136,10 @@ endif()
 
 if(WORM_BUILD_DOCS)
   add_subdirectory(docs)
+endif()
+
+if(WORM_BUILD_FUZZERS)
+  add_subdirectory(fuzz)
 endif()
 
 if(WORM_BUILD_BENCHMARKS)

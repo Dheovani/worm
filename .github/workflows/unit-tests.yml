@@ -479,6 +479,60 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  fuzzing:
+    name: Fuzzing / Clang
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Clang
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: >
+          cmake -S . -B build/fuzz
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DBUILD_TESTING=OFF
+          -DWORM_BUILD_FUZZERS=ON
+          -DWORM_ENABLE_POSTGRESQL=OFF
+          -DWORM_ENABLE_MYSQL=OFF
+          -DWORM_ENABLE_SQLITE=OFF
+          -DWORM_ENABLE_MSSQL=OFF
+          -DWORM_WARNINGS_AS_ERRORS=ON
+
+      - name: Build fuzz target
+        run: cmake --build build/fuzz --config RelWithDebInfo --parallel --target WormStatementFuzzer
+
+      - name: Fuzz statements and parameters
+        run: >
+          build/fuzz/fuzz/WormStatementFuzzer
+          fuzz/corpus
+          -max_total_time=30
+          -timeout=5
+          -print_final_stats=1
+
+      - name: Upload failing fuzz input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-fuzz-failure
+          path: |
+            crash-*
+            leak-*
+            oom-*
+            timeout-*
+          if-no-files-found: ignore
+          retention-days: 14
+
   optional-drivers:
     name: Optional drivers / ${{ matrix.name }}
     needs: changes

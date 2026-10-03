@@ -1,0 +1,5 @@
+add_executable(WormStatementFuzzer statement-fuzzer.cpp)
+target_link_libraries(WormStatementFuzzer PRIVATE Worm::Core)
+target_compile_features(WormStatementFuzzer PRIVATE cxx_std_20)
+target_compile_options(WormStatementFuzzer PRIVATE -fsanitize=fuzzer)
+target_link_options(WormStatementFuzzer PRIVATE -fsanitize=fuzzer)
