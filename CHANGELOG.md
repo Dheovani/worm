@@ -12,6 +12,7 @@ The format follows the categories from Keep a Changelog without claiming semanti
 - An architecture guide and a record of the technical decisions governing reflection, statements, drivers, persistence contexts, migrations, and optional dependencies.
 - An upgrade guide for handling source, build, configuration, and database compatibility changes during the pre-release period.
 - Opt-in sanitizer and coverage instrumentation, with Linux and Windows sanitizer CI plus published Linux coverage reports.
+- Deterministic property tests, a bounded Clang/libFuzzer CI target, and opt-in core and driver performance benchmarks.
 
 ### Changed
 

@@ -245,10 +245,11 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DWORM_ENABLE_POSTGRESQL=ON
           -DWORM_ENABLE_MYSQL=ON
           -DWORM_ENABLE_SQLITE=ON
+          -DWORM_BUILD_BENCHMARKS=ON
           -DBUILD_TESTING=ON
           -DWORM_WARNINGS_AS_ERRORS=ON
           -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
@@ -260,9 +261,35 @@ jobs:
           WormSqliteSchemaInspectorTests
           WormPostgresDriverContractTests
           WormMySqlDriverContractTests
+          WormDriverBenchmarks
 
       - name: Run driver contracts
-        run: ctest --test-dir build -C Debug -L driver-contract --output-on-failure
+        run: ctest --test-dir build -C RelWithDebInfo -L driver-contract --output-on-failure
+
+      - name: Measure driver costs
+        run: |
+          mkdir -p build/benchmark-results
+          build/benchmarks/WormDriverBenchmarks sqlite 100 > build/benchmark-results/drivers.csv
+          build/benchmarks/WormDriverBenchmarks postgresql 100 | tail -n +2 >> build/benchmark-results/drivers.csv
+          build/benchmarks/WormDriverBenchmarks mysql 100 | tail -n +2 >> build/benchmark-results/drivers.csv
+
+          {
+            echo '## Driver performance sample'
+            echo
+            echo 'The statement measurement includes preparation, execution, result decoding, and hydration.'
+            echo
+            echo '```csv'
+            cat build/benchmark-results/drivers.csv
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload driver measurements
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-driver-benchmarks
+          path: build/benchmark-results/drivers.csv
+          if-no-files-found: error
+          retention-days: 14
 
   sanitizers:
     name: Sanitizers / ${{ matrix.name }}

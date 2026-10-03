@@ -34,6 +34,10 @@ Pass `-DWORM_ENABLE_SANITIZERS=ON` to instrument project targets with AddressSan
 
 Pass `-DWORM_ENABLE_COVERAGE=ON` with GCC or Clang on a Unix-like platform to enable gcov-compatible instrumentation. CI runs the SQLite, CLI, and example suites, publishes detailed HTML and Cobertura XML artifacts, and places the text report in the workflow summary without enforcing an arbitrary percentage threshold.
 
+Pass `-DWORM_BUILD_BENCHMARKS=ON` to build `WormCoreBenchmarks`. Run the Release executable with an optional positive iteration count, for example `build/benchmarks/Release/WormCoreBenchmarks.exe 100000` on Windows or `build/benchmarks/WormCoreBenchmarks 100000` on a single-config platform; it writes CSV measurements for hydration, snapshot creation/change detection, and query generation without imposing timing thresholds on shared CI hardware.
+
+The same option builds `WormDriverBenchmarks`, which accepts a driver name and optional iteration count. For example, `build/benchmarks/WormDriverBenchmarks sqlite 1000` measures connection opening/closing and a parameterized statement round-trip; external drivers read connection settings from `WORM_BENCH_<DRIVER>_HOST`, `_PORT`, `_DBNAME`, `_USERNAME`, and `_PASSWORD`, where `<DRIVER>` is `POSTGRES`, `MYSQL`, or `MSSQL`, while SQLite accepts `WORM_BENCH_SQLITE_DBNAME`. The statement result includes preparation, execution, decoding, and hydration because the public driver contract intentionally does not expose native preparation separately.
+
 For a minimal SQLite-only build:
 
 ```powershell

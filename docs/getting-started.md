@@ -327,11 +327,7 @@ and I/O timeouts, SQLite uses `busy_timeout` for lock waits, and SQL Server uses
 ODBC login and statement attributes. Millisecond values are rounded up when a
 driver only accepts seconds.
 
-Worm does not keep a reusable prepared statement cache at the moment. Each
-`Statement` is prepared and executed inside the driver call. This avoids a
-premature per-connection invalidation policy and will be revisited only after
-benchmarks or a real use case. For the same reason, there is no connection pool:
-use one `Session` and one `Client` per concurrent workflow.
+Worm does not keep a reusable prepared statement cache. Each `Statement` is prepared and executed inside the driver call; `WormDriverBenchmarks` measures that full round-trip because preparation is not exposed as a separate public operation. The current decision is to avoid cache invalidation, native-handle lifetime, and reconnect complexity until application measurements identify statement preparation as a material bottleneck. Worm also has no connection pool: connection opening/closing is measurable with the same benchmark, while applications should continue using one `Session` and one `Client` per concurrent workflow until production latency and concurrency requirements justify explicit pool ownership and limits.
 
 ## Current limitations
 

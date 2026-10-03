@@ -71,3 +71,13 @@ This document records the architectural decisions that currently constrain Worm.
 **Decision:** Each driver is controlled by an independent CMake option and matching vcpkg feature. Disabled drivers do not add sources, headers, libraries, or driver-specific tests to the build.
 
 **Consequences:** No-driver and single-driver configurations are supported contracts. Shared code must not rely on transitive native headers, and CI must continue validating representative optional-driver combinations.
+
+## TD-008: Defer prepared-statement caching and connection pooling
+
+**Status:** Accepted.
+
+**Context:** Prepared statements and connections own driver-specific resources and session state. Reuse requires bounded ownership, invalidation after reconnects and schema changes, transaction isolation, health checks, and behavior compatible with Worm's thread-affine clients. Adding either mechanism without measured demand would create a public operational contract before its limits are understood.
+
+**Decision:** Keep statement preparation inside each driver execution and keep connection ownership explicit per `Client` and `Session`. `WormDriverBenchmarks` measures connection open/close and the full parameterized statement path for every enabled driver; CI records SQLite, PostgreSQL, and MySQL samples, while SQL Server remains manually measurable until service-backed CI exists. No reusable statement cache or connection pool will be added until application measurements show that one of these costs is material and provide concrete concurrency, capacity, invalidation, and lifetime requirements.
+
+**Consequences:** Driver behavior remains simple and predictable, with no hidden connection sharing or native statement lifetime. Applications with high connection churn must manage longer-lived thread-local sessions explicitly. Benchmark CSV artifacts provide comparable evidence for revisiting the decision, but shared-runner timings are observational and are not regression thresholds.

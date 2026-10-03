@@ -17,6 +17,7 @@ option(WORM_ENABLE_MSSQL "Build the Microsoft SQL Server driver" OFF)
 option(WORM_BUILD_EXAMPLES "Build Worm usage examples" OFF)
 option(WORM_BUILD_CLI "Build the Worm entity and schema cli" OFF)
 option(WORM_BUILD_DOCS "Add the Worm API documentation target" OFF)
+option(WORM_BUILD_BENCHMARKS "Build Worm performance benchmarks" OFF)
 
 set(WORM_VCPKG_FEATURES)
 if(WORM_ENABLE_POSTGRESQL)
@@ -130,4 +131,8 @@ endif()
 
 if(WORM_BUILD_DOCS)
   add_subdirectory(docs)
+endif()
+
+if(WORM_BUILD_BENCHMARKS)
+  add_subdirectory(benchmarks)
 endif()
