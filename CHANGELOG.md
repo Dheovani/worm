@@ -1,8 +1,8 @@
 # Changelog
 
-This file records notable user-visible changes to Worm. The project is still pre-release and does not yet guarantee API or binary stability, so all current work remains under `Unreleased` until the first release policy is adopted.
+This file records notable user-visible changes to Worm. The project is still pre-release and does not yet guarantee API or binary stability, so all current work remains under `Unreleased` until the first release satisfies the release policy.
 
-The format follows the categories from Keep a Changelog without claiming semantic-versioning guarantees that Worm has not adopted yet.
+The format follows the categories from Keep a Changelog, and published releases follow the semantic-versioning rules in the [release policy](docs/releases.md).
 
 ## Unreleased
 
@@ -15,6 +15,8 @@ The format follows the categories from Keep a Changelog without claiming semanti
 - Deterministic property tests, a bounded Clang/libFuzzer CI target, and opt-in core and driver performance benchmarks.
 - A canonical public limitations list and a contributor recognition policy linked from the project documentation.
 - Explicit minimum and current compiler lanes for GCC, Clang, MSVC, and AppleClang, with pinned runner operating systems and compiler selections.
+- CMake install and export rules for consuming an installed Worm build through `find_package(Worm)` and namespaced `Worm::*` targets.
+- A semantic-versioning policy with objective alpha, beta, release-candidate, `1.0.0`, severity, and package-publication gates.
 
 ### Changed
 
