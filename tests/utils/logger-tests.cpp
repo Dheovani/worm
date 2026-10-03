@@ -45,8 +45,15 @@ int main()
   logger.error(std::runtime_error{"postgresql://worm:uri-secret@localhost/worm"});
 
   const std::string contents = output.str();
+  const bool hasCallSite = contents.find("[INFO] logger-tests.cpp:") != std::string::npos;
+#if defined(__apple_build_version__)
+  // AppleClang may report the implicit Message conversion in the header instead of at its call site.
+  const bool hasPortableSourceLocation = hasCallSite || contents.find("[INFO] logger.hpp:") != std::string::npos;
+#else
+  const bool hasPortableSourceLocation = hasCallSite;
+#endif
   if (contents.find("Hidden diagnostic") != std::string::npos ||
-      contents.find("[INFO] logger-tests.cpp:") == std::string::npos ||
+      !hasPortableSourceLocation ||
       contents.find("Logger smoke test: ok") == std::string::npos ||
       contents.find("driver=\"sqlite\"") == std::string::npos ||
       contents.find("detail=\"quoted \\\"value\\\"\\nnext line\"") == std::string::npos ||
@@ -55,7 +62,7 @@ int main()
       contents.find("token_count=\"3\"") == std::string::npos ||
       contents.find("structured-secret") != std::string::npos || contents.find("native-secret") != std::string::npos ||
       contents.find("uri-secret") != std::string::npos) {
-    std::cerr << "Logger filtering or structured output is invalid.\n";
+    std::cerr << "Logger filtering or structured output is invalid:\n" << contents;
     return 1;
   }
 

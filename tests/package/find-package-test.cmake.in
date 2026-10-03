@@ -31,6 +31,7 @@ set(
   -B "${consumerBuild}"
   -G "@CMAKE_GENERATOR@"
   "-DCMAKE_PREFIX_PATH=${packagePrefixArgument}"
+  "-DWORM_PACKAGE_CONFIG=${TEST_CONFIG}"
 )
 
 if(NOT "@CMAKE_GENERATOR_PLATFORM@" STREQUAL "")
