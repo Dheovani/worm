@@ -173,8 +173,8 @@ This milestone should end with a complete example that creates, persists, querie
 - [x] Create `CONTRIBUTING.md` with setup, tests, and review criteria.
 - [x] Adopt a code of conduct.
 - [x] Create templates for bugs, proposals, and pull requests.
-- [ ] Maintain a public list of limitations and out-of-scope decisions.
-- [ ] Recognize contributors and record important decisions openly.
+- [x] Maintain a public list of limitations and out-of-scope decisions.
+- [x] Recognize contributors and record important decisions openly.
 
 ## Criteria for version 1.0
 

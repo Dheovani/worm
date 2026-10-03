@@ -2,6 +2,10 @@
 
 This document records the architectural decisions that currently constrain Worm. They describe implemented behavior and should be updated when a deliberate replacement changes one of these boundaries.
 
+## Maintaining this record
+
+Accepted architectural boundaries receive the next `TD-NNN` identifier and record their status, context, decision, and consequences. A pull request that replaces a decision must keep the earlier entry, mark it `Superseded`, and link it to the replacement instead of rewriting history. The pull request discussion remains supporting context, while this file is the durable public record that stays with the codebase.
+
 ## TD-001: Use static reflection for persistent fields
 
 **Status:** Accepted.

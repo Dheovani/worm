@@ -13,6 +13,7 @@ The format follows the categories from Keep a Changelog without claiming semanti
 - An upgrade guide for handling source, build, configuration, and database compatibility changes during the pre-release period.
 - Opt-in sanitizer and coverage instrumentation, with Linux and Windows sanitizer CI plus published Linux coverage reports.
 - Deterministic property tests, a bounded Clang/libFuzzer CI target, and opt-in core and driver performance benchmarks.
+- A canonical public limitations list and a contributor recognition policy linked from the project documentation.
 
 ### Changed
 

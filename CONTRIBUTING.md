@@ -92,6 +92,8 @@ Pull requests always run a lightweight source-change check so required statuses 
 
 Architectural changes must update [docs/architecture.md](docs/architecture.md) and [docs/technical-decisions.md](docs/technical-decisions.md) when they replace or materially alter a recorded boundary. Breaking changes must also provide concrete consumer steps in [docs/upgrading.md](docs/upgrading.md).
 
+Update [docs/limitations.md](docs/limitations.md) when a contribution adds, removes, or changes a documented boundary. After a person's first accepted contribution reaches the default branch, add their preferred public name and handle to [CONTRIBUTORS.md](CONTRIBUTORS.md); preserve co-author metadata when more than one person contributed to the change.
+
 ## Pull request expectations
 
 A good pull request should:

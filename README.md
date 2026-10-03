@@ -24,7 +24,7 @@ the roadmap.
 
 ## Real usage
 
-The [getting started guide](docs/getting-started.md) shows a complete SQLite flow: CMake integration, reflected entity, CRUD, parameterized queries, transactions, errors, ownership, and current limitations. The [examples index](examples/README.md) provides executable programs for reflection, hydration, CRUD, queries, relationships, sessions, transactions, schema comparison, and migration planning. The [architecture guide](docs/architecture.md) maps the subsystems and execution flow, while [technical decisions](docs/technical-decisions.md) explain the constraints behind them. The [API documentation guide](docs/api-documentation.md) explains how to generate the browsable Doxygen reference locally.
+The [getting started guide](docs/getting-started.md) shows a complete SQLite flow: CMake integration, reflected entity, CRUD, parameterized queries, transactions, errors, and ownership. The canonical [current limitations](docs/limitations.md) list defines the boundaries that still apply. The [examples index](examples/README.md) provides executable programs for reflection, hydration, CRUD, queries, relationships, sessions, transactions, schema comparison, and migration planning. The [architecture guide](docs/architecture.md) maps the subsystems and execution flow, while [technical decisions](docs/technical-decisions.md) explain the constraints behind them. The [API documentation guide](docs/api-documentation.md) explains how to generate the browsable Doxygen reference locally.
 
 User-visible changes are recorded in the [changelog](CHANGELOG.md). Because Worm is still pre-release, consult the [upgrade guide](docs/upgrading.md) before moving an application between revisions that may change public APIs, configuration, or schema behavior.
 
@@ -131,8 +131,7 @@ worm/
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
-and [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CONTRIBUTORS.md](CONTRIBUTORS.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md).
 
 ## License
 

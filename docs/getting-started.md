@@ -331,12 +331,4 @@ Worm does not keep a reusable prepared statement cache. Each `Statement` is prep
 
 ## Current limitations
 
-- Migration and schema generation cover the explicitly documented DDL set; unsupported transformations require authored SQL, and SQLite table rebuilds are not generated automatically.
-- Database-generated keys do not yet have portable behavior across drivers.
-- The SQL Server driver compiles and implements the ODBC contract, but it does
-  not yet have a contract test running against a real CI instance.
-- Automatic relationship loading and eager/lazy execution do not exist yet.
-- There is no connection pool or prepared statement cache.
-- A single `Client`, `Session`, `Repository`, or `Registry` must not be shared
-  across threads; create independent contexts for parallel work.
-- Install rules and `find_package(Worm)` still need to be defined.
+The canonical [current limitations](limitations.md) list covers stability, distribution, drivers, persistence, relationships, migrations, performance, and diagnostics. Consult it before adopting Worm or upgrading between revisions; migration-specific details remain in the [migration guide](migrations.md).
