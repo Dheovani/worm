@@ -8,6 +8,8 @@ The format follows the categories from Keep a Changelog, and published releases 
 
 ### Added
 
+- One release-version source in `vcpkg.json`, propagated to the CLI and installed CMake package, with version-aware `find_package`, conservative prerelease selection, and tag/artifact consistency checks.
+
 - Browsable Doxygen API documentation with local CMake generation, pull-request artifacts, and GitHub Pages publishing from `main`.
 - An architecture guide and a record of the technical decisions governing reflection, statements, drivers, persistence contexts, migrations, and optional dependencies.
 - An upgrade guide for handling source, build, configuration, and database compatibility changes during the pre-release period.
