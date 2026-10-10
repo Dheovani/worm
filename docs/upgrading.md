@@ -8,6 +8,8 @@ No stable Worm release has been published and there is no earlier supported rele
 
 ## Upgrade checklist
 
+Generated-key entity insertion now fails before SQL execution: `Repository::insert(entity)` and non-empty `insert(vector)` calls throw `MappingException` when the primary key is marked `generated`. Previously, an insert could write a row before reporting the missing returned key, or appear to work with a custom client that returned rows. Use application-provided keys for this API, or an explicit parameterized `insert(Statement)` with application-managed lookup. The statement overload returns affected rows, not a hydrated entity. Existing generated-key rows can still be read and updated. Do not retry earlier failed inserts against persistent data without checking whether they already wrote a row.
+
 1. Read the `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, and `Security` entries between the old and new revisions.
 2. Search the codebase for renamed or removed public symbols, CMake options, environment variables, and CLI options identified by those entries.
 3. Configure a clean build directory so stale CMake cache values and vcpkg features cannot preserve removed behavior.

@@ -12,7 +12,7 @@ This document is the canonical public list of Worm's current limitations. It des
 ## Database drivers
 
 - PostgreSQL, MySQL, and SQLite run the shared driver contract in CI; PostgreSQL and MySQL use disposable services, while SQLite runs locally. SQL Server implements the ODBC driver contract but does not yet have equivalent service-backed CI coverage.
-- Database-generated primary keys do not yet have one portable retrieval contract across all drivers.
+- Database-generated primary keys do not yet have a portable retrieval contract. `Repository::insert(entity)` and non-empty `insert(vector)` calls reject models whose primary key is marked `generated` with `MappingException` before executing SQL, even when the entity already contains a key value. Use application-provided keys for entity insertion. An explicit parameterized `insert(Statement)` remains available and returns affected rows without retrieving generated keys or registering entities; existing rows with generated keys can still be read and updated.
 - Database versions newer than the highest major version validated by Worm are reported by the CLI as warnings rather than treated as confirmed-compatible versions.
 - Dialect differences remain visible. SQL, DDL, types, timeouts, permissions, locking, generated values, and transaction behavior cannot be assumed to behave identically across supported databases.
 

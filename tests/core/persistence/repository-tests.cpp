@@ -1,6 +1,7 @@
 #include <core/persistence/repository.hpp>
 
 #include <connection/client.hpp>
+#include <errors/concurrent-access-exception.hpp>
 #include <errors/invalid-operation-exception.hpp>
 #include <errors/mapping-exception.hpp>
 #include <errors/query-execution-exception.hpp>
@@ -14,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 namespace
@@ -58,6 +60,28 @@ namespace
     {
       return std::tuple{worm::reflection::field("id", &GeneratedUser::id, {.generated = true}),
         worm::reflection::field("name", &GeneratedUser::name)};
+    }
+  };
+
+  struct GeneratedNameUser
+  {
+    std::int64_t id{};
+    std::string name;
+
+    static constexpr worm::core::Table table() noexcept
+    {
+      return User::table();
+    }
+
+    static constexpr worm::core::PrimaryKey primaryKey() noexcept
+    {
+      return User::primaryKey();
+    }
+
+    static constexpr auto reflect() noexcept
+    {
+      return std::tuple{worm::reflection::field("id", &GeneratedNameUser::id),
+        worm::reflection::field("name", &GeneratedNameUser::name, {.generated = true})};
     }
   };
 
@@ -401,24 +425,31 @@ int main()
   }
 
   RecordingClient generatedInsertClient{{usersResult({{9, "Grace"}}, 1)}};
-  const worm::core::Repository<GeneratedUser> generatedInsertRepository{nonOwning(generatedInsertClient), queryBuilder};
-  const std::shared_ptr<GeneratedUser> generatedInserted =
-    generatedInsertRepository.insert(GeneratedUser{.name = "Grace"});
+  const auto generatedNameRegistry = std::make_shared<worm::core::Registry>();
+  const worm::core::Repository<GeneratedNameUser> generatedInsertRepository{nonOwning(generatedInsertClient),
+    queryBuilder,
+    generatedNameRegistry};
+  const std::shared_ptr<GeneratedNameUser> generatedInserted =
+    generatedInsertRepository.insert(GeneratedNameUser{.id = 9});
 
   if (!generatedInserted || generatedInserted->id != 9 || generatedInserted->name != "Grace" ||
       generatedInsertClient.statements.size() != 1 ||
-      generatedInsertClient.lastStatement.parameters != std::vector<worm::core::Parameter>{std::string{"Grace"}} ||
-      builder.insertColumnsCount != 1) {
-    std::cerr << "Repository insert(entity) did not use returned rows for generated primary keys.\n";
+      generatedInsertClient.lastStatement.parameters != std::vector<worm::core::Parameter>{std::int64_t{9}} ||
+      generatedInsertClient.lastStatement.sql != "insert into users (id) values (?)" ||
+      builder.insertColumnsCount != 1 || generatedInsertRepository.find(std::int64_t{9}) != generatedInserted ||
+      !generatedNameRegistry->instances<GeneratedNameUser>().hasSnapshot(std::int64_t{9})) {
+    std::cerr << "Repository insert(entity) did not hydrate a returned row with a generated non-key field.\n";
     return 1;
   }
 
   bool missingGeneratedIdFailed = false;
   std::string missingGeneratedIdMessage;
+  RecordingClient missingGeneratedIdClient{{worm::core::ResultSet{std::uint64_t{1}}}};
+  const auto generatedKeyRegistry = std::make_shared<worm::core::Registry>();
+  const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{nonOwning(missingGeneratedIdClient),
+    queryBuilder,
+    generatedKeyRegistry};
   try {
-    RecordingClient missingGeneratedIdClient{{worm::core::ResultSet{std::uint64_t{1}}}};
-    const worm::core::Repository<GeneratedUser> missingGeneratedIdRepository{nonOwning(missingGeneratedIdClient),
-      queryBuilder};
     static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Missing"}));
   } catch (const worm::MappingException& error) {
     missingGeneratedIdFailed = true;
@@ -428,8 +459,41 @@ int main()
   if (!missingGeneratedIdFailed || missingGeneratedIdMessage.find("INSERT") == std::string::npos ||
       missingGeneratedIdMessage.find("entity table 'users'") == std::string::npos ||
       missingGeneratedIdMessage.find("primary key field 'id'") == std::string::npos ||
-      missingGeneratedIdMessage.find("column 'id'") == std::string::npos) {
-    std::cerr << "Repository generated-key diagnostic omitted entity, field, column, or operation context.\n";
+      missingGeneratedIdMessage.find("column 'id'") == std::string::npos ||
+      missingGeneratedIdMessage.find("No SQL was executed") == std::string::npos ||
+      !missingGeneratedIdClient.statements.empty() || generatedKeyRegistry->instances<GeneratedUser>().count() != 0) {
+    std::cerr << "Repository generated-key rejection executed SQL, changed the registry, or omitted context.\n";
+    return 1;
+  }
+
+  bool generatedBatchRejected = false;
+  try {
+    static_cast<void>(
+      missingGeneratedIdRepository.insert(std::vector<GeneratedUser>{{.name = "First"}, {.name = "Second"}}));
+  } catch (const worm::MappingException&) {
+    generatedBatchRejected = true;
+  }
+  if (!generatedBatchRejected || !missingGeneratedIdClient.statements.empty() ||
+      generatedKeyRegistry->instances<GeneratedUser>().count() != 0 ||
+      missingGeneratedIdRepository.insert(std::vector<GeneratedUser>{}) != 0) {
+    std::cerr << "Repository generated-key batch rejection was not side-effect free.\n";
+    return 1;
+  }
+
+  bool generatedThreadRejected = false;
+  {
+    const std::jthread worker{[&] {
+      try {
+        static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Wrong thread"}));
+      } catch (const worm::ConcurrentAccessException&) {
+        generatedThreadRejected = true;
+      } catch (const worm::WormException&) {
+        // A mapping failure must not conceal use outside the client's owner thread.
+      }
+    }};
+  }
+  if (!generatedThreadRejected || !missingGeneratedIdClient.statements.empty()) {
+    std::cerr << "Repository generated-key validation did not preserve client thread affinity.\n";
     return 1;
   }
 
