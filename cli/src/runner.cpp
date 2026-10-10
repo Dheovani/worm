@@ -109,6 +109,7 @@ namespace worm::cli
               << "  --database <name>     Database name or SQLite database path\n"
               << "  --username <name>     Database username\n"
               << "  --password-env <var>  Read the database password from an environment variable\n"
+              << "  --trust-server-certificate  Trust the SQL Server TLS certificate (development only)\n"
               << "  --format <format>     Output format (text, json)\n"
               << "  --verbose             Enable verbose output\n"
               << "  --no-color            Disable ANSI colors\n"

@@ -21,6 +21,11 @@ add_test(
 )
 set_tests_properties(Worm.Package.FindPackage PROPERTIES LABELS "package;integration")
 
+add_test(NAME Worm.Package.Version
+  COMMAND "${CMAKE_COMMAND}" "-DTEST_ROOT=${PROJECT_BINARY_DIR}/version-test"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/package/version-tests.cmake")
+set_tests_properties(Worm.Package.Version PROPERTIES LABELS "package;unit")
+
 if(TARGET WormCliCore)
   add_subdirectory(cli)
 endif()

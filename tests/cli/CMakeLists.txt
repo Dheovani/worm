@@ -42,3 +42,15 @@ if(WORM_ENABLE_SQLITE)
   set_tests_properties(Worm.Cli.Push.SQLite PROPERTIES LABELS "integration;cli;sqlite")
   set_tests_properties(Worm.Cli.Seed.SQLite PROPERTIES LABELS "integration;cli;sqlite")
 endif()
+
+if(WORM_ENABLE_MSSQL)
+  add_worm_cli_test(WormCliMsSqlContractTests mssql-cli-contract-tests.cpp Worm.Cli.MSSQL.Contract)
+  set_tests_properties(
+    Worm.Cli.MSSQL.Contract
+    PROPERTIES
+      LABELS "integration;cli;driver-contract;mssql"
+      TIMEOUT 60
+      SKIP_RETURN_CODE 77
+      RESOURCE_LOCK mssql_database
+  )
+endif()

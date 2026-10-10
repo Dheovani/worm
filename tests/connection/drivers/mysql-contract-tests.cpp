@@ -54,10 +54,14 @@ namespace
     }
 
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_driver_contract");
+    executeSql(connection.get(), "DROP TABLE IF EXISTS worm_generated_key_contract");
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_schema_contract");
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_migration_contract");
     executeSql(connection.get(), "DROP TABLE IF EXISTS worm_migration_failure");
     executeSql(connection.get(), "DROP TABLE IF EXISTS _worm_migrations");
+    executeSql(
+      connection.get(),
+      "CREATE TABLE worm_generated_key_contract (id BIGINT AUTO_INCREMENT PRIMARY KEY, label VARCHAR(255) NOT NULL)");
     executeSql(
       connection.get(),
       "CREATE TABLE worm_driver_contract ("

@@ -32,7 +32,12 @@ set(
   -G "@CMAKE_GENERATOR@"
   "-DCMAKE_PREFIX_PATH=${packagePrefixArgument}"
   "-DWORM_PACKAGE_CONFIG=${TEST_CONFIG}"
+  "-DWORM_PACKAGE_EXPECTED_VERSION=@WORM_VERSION@"
 )
+
+if("@WORM_VERSION_PRERELEASE@" STREQUAL "")
+  list(APPEND configureCommand "-DWORM_PACKAGE_VERSION_REQUEST=@WORM_VERSION_NUMERIC@")
+endif()
 
 if(NOT "@CMAKE_GENERATOR_PLATFORM@" STREQUAL "")
   list(APPEND configureCommand -A "@CMAKE_GENERATOR_PLATFORM@")
@@ -78,4 +83,32 @@ execute_process(
 )
 if(NOT testResult EQUAL 0)
   message(FATAL_ERROR "Running the find_package consumer failed with exit code ${testResult}.")
+endif()
+
+math(EXPR nextMajor "@WORM_VERSION_MAJOR@ + 1")
+execute_process(COMMAND "@CMAKE_COMMAND@"
+  -S "@PROJECT_SOURCE_DIR@/tests/package/version-consumer" -B "${packageRoot}/incompatible-consumer"
+  "-DPACKAGE_DIR=${installRoot}/@WORM_INSTALL_CMAKEDIR@" "-DREQUEST=${nextMajor}.0.0" -DEXPECT_FOUND=OFF
+  RESULT_VARIABLE incompatibleResult COMMAND_ECHO STDOUT)
+if(NOT incompatibleResult EQUAL 0)
+  message(FATAL_ERROR "Installed package did not reject an incompatible version.")
+endif()
+
+set(releaseCheck "@CMAKE_COMMAND@" "-DWORM_RELEASE_TAG=v@WORM_VERSION@"
+  "-DWORM_ARTIFACT_VERSION_FILE=${installRoot}/@CMAKE_INSTALL_DATAROOTDIR@/Worm/WormVersion.txt")
+if("@WORM_BUILD_CLI@")
+  # Installation does not bundle third-party DLLs; use the matching dependency runtime.
+  if(WIN32 AND NOT "@WORM_PACKAGE_TEST_VCPKG_INSTALLED_DIR@" STREQUAL "")
+    set(runtimeRoot "@WORM_PACKAGE_TEST_VCPKG_INSTALLED_DIR@/@VCPKG_TARGET_TRIPLET@")
+    if(TEST_CONFIG STREQUAL "Debug")
+      string(APPEND runtimeRoot "/debug")
+    endif()
+    set(ENV{PATH} "${runtimeRoot}/bin;$ENV{PATH}")
+  endif()
+  list(APPEND releaseCheck "-DWORM_CLI_EXECUTABLE=${installRoot}/@CMAKE_INSTALL_BINDIR@/worm@CMAKE_EXECUTABLE_SUFFIX@")
+endif()
+execute_process(COMMAND ${releaseCheck} -P "@PROJECT_SOURCE_DIR@/cmake/check-release-version.cmake"
+  RESULT_VARIABLE releaseResult COMMAND_ECHO STDOUT)
+if(NOT releaseResult EQUAL 0)
+  message(FATAL_ERROR "Installed release metadata or CLI version validation failed.")
 endif()

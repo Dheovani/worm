@@ -135,6 +135,17 @@ namespace worm::core
     std::shared_ptr<T> insert(const T& entity) const
       requires PersistableEntity<T>
     {
+      constexpr auto primaryKey = primaryKeyField();
+      if (primaryKey.isGenerated()) {
+        dbClient->ensureThreadAffinity();
+        throw worm::MappingException(
+          "INSERT for entity table '{}' cannot retrieve generated primary key field '{}' mapped to column '{}'. "
+          "No SQL was executed. Use an application-provided primary key or an explicit INSERT Statement.",
+          detail::modelName<T>(),
+          primaryKey.name(),
+          primaryKey.columnName());
+      }
+
       const std::string alias = generateEntityAlias();
       const Statement statement =
         queryBuilder.insert({T::table().name(), alias}, mapFields(entity, core::Operation::Insert));
@@ -150,15 +161,6 @@ namespace worm::core
           "received {}.",
           detail::modelName<T>(),
           resultSet.rowCount());
-      }
-
-      constexpr auto primaryKey = primaryKeyField();
-      if (primaryKey.isGenerated()) {
-        throw worm::MappingException(
-          "INSERT for entity table '{}' did not return generated primary key field '{}' mapped to column '{}'.",
-          detail::modelName<T>(),
-          primaryKey.name(),
-          primaryKey.columnName());
       }
 
       const std::shared_ptr<T> createdEntity = find(primaryKey.get(entity));

@@ -106,9 +106,7 @@ struct User
 
 The name passed to `field()` is also the column name unless
 `FieldMetadata::columnName` is set. `PrimaryKey` is declared separately from field metadata so schema constraints can be represented independently from C++ member descriptors. Fields marked as `ignored` are not persisted.
-The current portable flow uses application-provided keys. Keys marked as
-`generated` require `INSERT` to return a row with the generated value, which is
-not yet complete across all drivers.
+The current portable entity-insertion flow uses application-provided keys. `Repository::insert(entity)` and non-empty `insert(vector)` calls reject a primary key marked `generated` with `MappingException` before executing SQL, even if a value is supplied in the entity. Automatic generated-key retrieval is not implemented. For explicit database-generated inserts, use a parameterized `insert(Statement)` and manage any subsequent lookup yourself: that overload returns affected rows and does not register an entity or retrieve its key. Reading and updating existing entities with generated keys remain supported.
 
 ## Create ORM objects
 

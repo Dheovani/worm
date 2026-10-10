@@ -425,6 +425,87 @@ namespace worm::connection
 
       throw QueryExecutionException("Unsupported database type during schema introspection.");
     }
+
+    core::Statement sqlServerForeignKeysStatement()
+    {
+      return core::Statement::prepare(
+        "select ps.name as schema_name,pt.name as table_name,pc.name as column_name,rs.name as referenced_schema,"
+        "rt.name as referenced_table,rc.name as referenced_column from sys.foreign_key_columns fkc "
+        "join sys.tables pt on pt.object_id=fkc.parent_object_id "
+        "join sys.schemas ps on ps.schema_id=pt.schema_id "
+        "join sys.columns pc on pc.object_id=pt.object_id and pc.column_id=fkc.parent_column_id "
+        "join sys.tables rt on rt.object_id=fkc.referenced_object_id "
+        "join sys.schemas rs on rs.schema_id=rt.schema_id "
+        "join sys.columns rc on rc.object_id=rt.object_id and rc.column_id=fkc.referenced_column_id "
+        "order by fkc.constraint_object_id,fkc.constraint_column_id");
+    }
+
+    core::Statement sqlServerIndexesStatement()
+    {
+      return core::Statement::prepare(
+        "select s.name as schema_name,t.name as table_name,i.name as index_name,c.name as column_name,"
+        "i.is_unique as is_unique from sys.indexes i join sys.tables t on t.object_id=i.object_id "
+        "join sys.schemas s on s.schema_id=t.schema_id "
+        "join sys.index_columns ic on ic.object_id=i.object_id and ic.index_id=i.index_id "
+        "join sys.columns c on c.object_id=ic.object_id and c.column_id=ic.column_id "
+        "where i.is_primary_key=0 and i.is_unique_constraint=0 and i.type>0 and ic.is_included_column=0 "
+        "order by s.name,t.name,i.name,ic.key_ordinal");
+    }
+
+    void inspectSqlServerRelationships(
+      const core::ResultSet& foreignKeys,
+      const core::ResultSet& indexes,
+      core::SchemaSnapshot& snapshot)
+    {
+      for (const core::ResultRow& row : foreignKeys.rows()) {
+        core::SchemaTableSnapshot* table = nullptr;
+        const std::string schemaName = stringValue(row, "schema_name");
+        const std::string tableName = stringValue(row, "table_name");
+
+        for (auto& candidate : snapshot.tables) {
+          if (candidate.schema == schemaName && candidate.name == tableName) {
+            table = &candidate;
+            break;
+          }
+        }
+
+        if (table != nullptr) {
+          table->foreignKey.push_back(
+            stringValue(row, "column_name") + " -> " + stringValue(row, "referenced_schema") + "." +
+            stringValue(row, "referenced_table") + "." + stringValue(row, "referenced_column"));
+        }
+      }
+
+      std::string previousKey;
+      for (const core::ResultRow& row : indexes.rows()) {
+        core::SchemaTableSnapshot* table = nullptr;
+        const std::string schemaName = stringValue(row, "schema_name");
+        const std::string tableName = stringValue(row, "table_name");
+        const std::string indexName = stringValue(row, "index_name");
+
+        for (auto& candidate : snapshot.tables) {
+          if (candidate.schema == schemaName && candidate.name == tableName) {
+            table = &candidate;
+            break;
+          }
+        }
+
+        if (table == nullptr) {
+          continue;
+        }
+
+        const std::string key = schemaName + '\x1f' + tableName + '\x1f' + indexName;
+        if (key != previousKey) {
+          table->indexes.push_back(
+            indexName + " (" + stringValue(row, "column_name") + ")" + (boolValue(row, "is_unique") ? " UNIQUE" : ""));
+          previousKey = key;
+        } else {
+          std::string& index = table->indexes.back();
+          const std::size_t closing = index.find(')');
+          index.insert(closing, ", " + stringValue(row, "column_name"));
+        }
+      }
+    }
   } // namespace
 
   SchemaInspector::SchemaInspector(Client& client) noexcept
@@ -509,6 +590,13 @@ namespace worm::connection
           {"column", columnName},
           {"native_type", normalizedType.nativeName},
         });
+    }
+
+    if (client_->type() == DatabaseType::MSSQL) {
+      inspectSqlServerRelationships(
+        client_->execute(sqlServerForeignKeysStatement()),
+        client_->execute(sqlServerIndexesStatement()),
+        snapshot);
     }
 
     logger.log(
