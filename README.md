@@ -74,13 +74,9 @@ cmake -S . -B build/sqlite `
   -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 ```
 
-`WORM_ENABLE_POSTGRESQL`, `WORM_ENABLE_MYSQL`, and `WORM_ENABLE_SQLITE` are
-independent and enabled by default. The SQL Server driver is enabled explicitly
-with `WORM_ENABLE_MSSQL=ON` and uses ODBC. Disabled drivers do not add their
-sources, tests, or dependencies to the build.
+`WORM_ENABLE_POSTGRESQL`, `WORM_ENABLE_MYSQL`, and `WORM_ENABLE_SQLITE` are independent and enabled by default. The SQL Server driver is enabled explicitly with `WORM_ENABLE_MSSQL=ON` and uses ODBC. Disabled drivers do not add their sources, tests, or dependencies to the build.
 
-To use SQL Server, install Microsoft ODBC Driver 18 and configure
-`MSSQL_ODBC_DRIVER`. The default name is `ODBC Driver 18 for SQL Server`.
+To use SQL Server, install Microsoft ODBC Driver 18 and configure `MSSQL_ODBC_DRIVER`. The default name is `ODBC Driver 18 for SQL Server`. Worm's service-backed contract runs against SQL Server 2022 Developer. Production connections validate the server certificate by default; local development with a self-signed certificate must opt in through `ConnectionConfig::trustServerCertificate` or the CLI's `--trust-server-certificate` global option.
 
 ## Tests
 

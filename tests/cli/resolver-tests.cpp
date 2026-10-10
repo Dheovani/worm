@@ -1,5 +1,7 @@
 #include <validator.hpp>
 
+#include <helpers/connection.hpp>
+
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -158,6 +160,23 @@ namespace
     return resolved.global.passwordEnv == "WORM_CLI_COMMAND_PASSWORD" && resolved.global.password == "command-secret";
   }
 
+  bool resolvesSqlServerCertificateTrust()
+  {
+    const auto parsed =
+      cli::parse({"--driver", "mssql", "--database", "worm_test", "--trust-server-certificate", "check"});
+    if (!parsed.global.trustServerCertificate ||
+        !cli::connectionConfig(parsed, worm::connection::DatabaseType::MSSQL).trustServerCertificate) {
+      return false;
+    }
+
+    try {
+      static_cast<void>(cli::parse({"--trust-server-certificate", "--trust-server-certificate", "check"}));
+    } catch (const std::exception&) {
+      return true;
+    }
+    return false;
+  }
+
   bool discoversDefaultConfiguration(const TemporaryDirectory& temporary)
   {
     temporary.write(
@@ -259,6 +278,7 @@ int main()
     verify(resolvesExplicitConfiguration(temporary), "explicit configuration");
     verify(preservesCommandLinePrecedence(temporary), "command-line precedence");
     verify(resolvesPasswordEnvironmentFromCommandLine(), "command-line password environment");
+    verify(resolvesSqlServerCertificateTrust(), "SQL Server certificate trust");
     verify(discoversDefaultConfiguration(temporary), "default configuration discovery");
     verify(ignoresPullOnlyConfigurationForOtherCommands(temporary), "command-specific configuration scope");
     verify(rejectsMissingExplicitConfiguration(temporary), "missing explicit configuration");

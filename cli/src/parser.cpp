@@ -29,6 +29,7 @@ namespace worm::cli
     inline constexpr std::string_view databaseCommand = "--database";
     inline constexpr std::string_view usernameCommand = "--username";
     inline constexpr std::string_view passwordEnvCommand = "--password-env";
+    inline constexpr std::string_view trustServerCertificateCommand = "--trust-server-certificate";
     inline constexpr std::string_view formatCommand = "--format";
     inline constexpr std::string_view verboseCommand = "--verbose";
     inline constexpr std::string_view noColorCommand = "--no-color";
@@ -88,6 +89,8 @@ namespace worm::cli
         return Username;
       if (opt == passwordEnvCommand)
         return Password;
+      if (opt == trustServerCertificateCommand)
+        return TrustServerCertificate;
       if (opt == formatCommand)
         return Format;
       if (opt == verboseCommand)
@@ -198,7 +201,7 @@ namespace worm::cli
     constexpr bool requiresValue(GlobalOptions opt) noexcept
     {
       using enum GlobalOptions;
-      return opt != Verbose && opt != NoColor;
+      return opt != TrustServerCertificate && opt != Verbose && opt != NoColor;
     }
 
     [[nodiscard]]
@@ -282,6 +285,12 @@ namespace worm::cli
         return;
       case Password:
         assignUnique(global.passwordEnv, std::move(value).value(), token);
+        return;
+      case TrustServerCertificate:
+        if (global.trustServerCertificate) {
+          throw DuplicateCommandException("Option '--trust-server-certificate' was specified more than once.");
+        }
+        global.trustServerCertificate = true;
         return;
       case Format:
         assignUnique(global.format, std::move(value).value(), token);

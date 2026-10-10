@@ -32,12 +32,18 @@ The CLI only supports drivers enabled in the same CMake configuration:
 
 Driver libraries remain optional. A disabled driver is not compiled or linked into the CLI.
 
+Microsoft ODBC Driver 18 encrypts SQL Server connections and Worm validates the server certificate by default. For a local SQL Server instance with a self-signed certificate, place `--trust-server-certificate` before the command. This flag weakens certificate verification and is intended only for controlled development environments:
+
+```bash
+worm --driver mssql --host 127.0.0.1 --database worm_test --username sa --password-env WORM_DATABASE_PASSWORD --trust-server-certificate doctor
+```
+
 ## Usage
 
 The command syntax is:
 
 ```text
-worm [global-options] <check|diff|pull|push|inspect|migrate|n-plus-one|doctor> [command-options]
+worm [global-options] <check|diff|pull|push|inspect|migrate|n-plus-one|doctor|seed> [command-options]
 ```
 
 Show the built-in reference or version:

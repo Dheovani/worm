@@ -90,6 +90,6 @@ Transactions use RAII for cleanup but require explicit `commit()` or `rollback()
 
 ## Architectural limits
 
-Worm does not currently provide a connection pool, reusable prepared-statement cache, automatic relationship loading, automatic cascade execution, cross-thread persistence contexts, or reconciliation of registry state after transaction rollback. SQL Server does not yet have the same service-backed integration coverage as PostgreSQL, MySQL, and SQLite. Installed builds can be consumed through `find_package(Worm)`, while publication in a package registry remains a later release step.
+Worm does not currently provide a connection pool, reusable prepared-statement cache, automatic relationship loading, automatic cascade execution, cross-thread persistence contexts, or reconciliation of registry state after transaction rollback. Installed builds can be consumed through `find_package(Worm)`, while publication in a package registry remains a later release step.
 
 The rationale behind the major boundaries is recorded in [technical decisions](technical-decisions.md). Public usage starts in the [getting started guide](getting-started.md), the canonical cross-project boundaries are maintained in [current limitations](limitations.md), and migration-specific behavior and database limitations are documented in [migrations](migrations.md).

@@ -9,6 +9,8 @@ The format follows the categories from Keep a Changelog, and published releases 
 ### Added
 
 - One release-version source in `vcpkg.json`, propagated to the CLI and installed CMake package, with version-aware `find_package`, conservative prerelease selection, and tag/artifact consistency checks.
+- Service-backed SQL Server 2022 driver and CLI contracts covering connectivity, CRUD, binding, hydration, schema inspection, migrations, diagnostics, and supported schema-management commands.
+- Explicit SQL Server certificate trust configuration for controlled local development while retaining certificate validation by default.
 
 - Browsable Doxygen API documentation with local CMake generation, pull-request artifacts, and GitHub Pages publishing from `main`.
 - An architecture guide and a record of the technical decisions governing reflection, statements, drivers, persistence contexts, migrations, and optional dependencies.
@@ -26,6 +28,8 @@ The format follows the categories from Keep a Changelog, and published releases 
 
 ### Fixed
 
+- Empty binary values are now bound as zero-length SQL Server binary parameters instead of being interpreted as SQL `NULL`.
+- SQL Server schema inspection now reports foreign keys and ordinary indexes, including composite and unique indexes.
 - Entity insertion with a generated primary key now raises `MappingException` before SQL execution, preventing a predictable missing-key error from leaving an inserted row behind. Non-empty entity batches follow the same rule; explicit parameterized `insert(Statement)` and application-provided keys remain supported.
 - Logs and normalized database exceptions now redact credential patterns, configured passwords, and sensitive parameter values echoed by drivers.
 

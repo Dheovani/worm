@@ -241,6 +241,21 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: WormTest@12345
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'WormTest@12345' -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+          --health-start-period 20s
+
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       WORM_TEST_POSTGRES_HOST: 127.0.0.1
@@ -253,15 +268,34 @@ jobs:
       WORM_TEST_MYSQL_DBNAME: worm_contract
       WORM_TEST_MYSQL_USERNAME: worm
       WORM_TEST_MYSQL_PASSWORD: worm
+      WORM_TEST_MSSQL_HOST: 127.0.0.1
+      WORM_TEST_MSSQL_PORT: 1433
+      WORM_TEST_MSSQL_DBNAME: worm_test
+      WORM_TEST_MSSQL_USERNAME: sa
+      WORM_TEST_MSSQL_PASSWORD: WormTest@12345
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Install MySQL client development files
+      - name: Install database client development files
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf autoconf-archive automake default-libmysqlclient-dev libtool pkg-config
+          sudo apt-get install -y autoconf autoconf-archive automake curl default-libmysqlclient-dev libtool pkg-config
+          curl -sSL -O "https://packages.microsoft.com/config/ubuntu/$(. /etc/os-release && echo "$VERSION_ID")/packages-microsoft-prod.deb"
+          sudo dpkg -i packages-microsoft-prod.deb
+          rm packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 unixodbc-dev
+
+      - name: Create SQL Server test database
+        run: >
+          /opt/mssql-tools18/bin/sqlcmd
+          -S 127.0.0.1
+          -U "$WORM_TEST_MSSQL_USERNAME"
+          -P "$WORM_TEST_MSSQL_PASSWORD"
+          -C
+          -Q "IF DB_ID(N'worm_test') IS NULL CREATE DATABASE [worm_test]"
 
       - name: Bootstrap vcpkg
         shell: bash
@@ -276,6 +310,8 @@ jobs:
           -DWORM_ENABLE_POSTGRESQL=ON
           -DWORM_ENABLE_MYSQL=ON
           -DWORM_ENABLE_SQLITE=ON
+          -DWORM_ENABLE_MSSQL=ON
+          -DWORM_BUILD_CLI=ON
           -DWORM_BUILD_BENCHMARKS=ON
           -DBUILD_TESTING=ON
           -DWORM_WARNINGS_AS_ERRORS=ON
@@ -288,6 +324,8 @@ jobs:
           WormSqliteSchemaInspectorTests
           WormPostgresDriverContractTests
           WormMySqlDriverContractTests
+          WormMsSqlDriverContractTests
+          WormCliMsSqlContractTests
           WormDriverBenchmarks
 
       - name: Run driver contracts
