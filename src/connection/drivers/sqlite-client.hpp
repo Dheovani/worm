@@ -30,7 +30,7 @@ namespace worm::connection
     };
 
     void throwConnectionError();
-    void throwStatementError(sqlite3_stmt* statement) const;
+    void throwStatementError() const;
     void executeTransactionCommand(const char* sql);
 
     std::unique_ptr<sqlite3, ConnectionDeleter> connection_;

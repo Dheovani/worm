@@ -26,6 +26,7 @@ namespace worm::connection
     std::string port;
     bool cacheResults{false};
     TimeoutConfig timeoutConfig;
+    bool trustServerCertificate{false};
   };
 
   [[nodiscard]]

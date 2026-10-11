@@ -131,4 +131,12 @@ if(WORM_ENABLE_MSSQL)
     drivers/mssql-client-tests.cpp
     Worm.Connection.MsSqlClient
   )
+
+  add_worm_driver_contract_test(
+    WormMsSqlDriverContractTests
+    drivers/mssql-contract-tests.cpp
+    Worm.Connection.Contract.MSSQL
+    mssql
+  )
+  set_tests_properties(Worm.Connection.Contract.MSSQL PROPERTIES RESOURCE_LOCK mssql_database)
 endif()

@@ -5,10 +5,38 @@ Worm follows [Semantic Versioning 2.0.0](https://semver.org/) for published rele
 ## Version rules
 
 - Development before `1.0.0` uses `0.y.z`; breaking changes are allowed but must be deliberate and recorded in the changelog and upgrade guide.
-- Alpha, beta, and release-candidate builds for the stable API use `1.0.0-alpha.N`, `1.0.0-beta.N`, and `1.0.0-rc.N` tags in increasing order.
+- Alpha, beta, and release-candidate builds for the stable API use versions `1.0.0-alpha.N`, `1.0.0-beta.N`, and `1.0.0-rc.N` in increasing order, with a `v` prefix in Git tags (for example, `v1.0.0-rc.1`).
 - After `1.0.0`, incompatible public-contract changes increment MAJOR, backward-compatible features increment MINOR, and backward-compatible fixes increment PATCH.
 - A published version and its tag are immutable. Corrections require a new version; packaging-only corrections use the package manager's port revision when available.
 - Deprecations after `1.0.0` remain available for at least one MINOR release before removal unless retaining them would preserve a security vulnerability or data-corruption defect.
+
+## Version source and package selection
+
+`vcpkg.json`'s `version-semver` is the single authoritative release version. CMake validates it during configuration and derives `PROJECT_VERSION` from its numeric `X.Y.Z` part; `WORM_VERSION`, `worm --version`, installed `Worm_VERSION`, and `share/Worm/WormVersion.txt` retain the full identifier. Accepted release identifiers are `X.Y.Z` and `X.Y.Z-alpha.N`, `X.Y.Z-beta.N`, or `X.Y.Z-rc.N`, with no leading zeroes. Build-metadata suffixes are not used by this release process. Changing the manifest triggers CMake reconfiguration; do not edit generated version files or define a separate CLI version.
+
+The installed `WormConfigVersion.cmake` accepts only an equal numeric version before `1.0.0`; version ranges are rejected during that period. For stable releases starting at `1.0.0`, a minimum-version request accepts an equal or newer version within the same MAJOR, `EXACT` requires equality, and CMake version ranges must stay within the compatible major. This is source compatibility, not an ABI guarantee.
+
+```cmake
+find_package(Worm 0.1.0 EXACT CONFIG REQUIRED)
+target_link_libraries(application PRIVATE Worm::Core)
+```
+
+CMake version requests are numeric and cannot express a SemVer prerelease suffix. A prerelease therefore rejects every numeric version request, including `EXACT`, rather than masquerading as a stable release. To consume a prerelease, select its installation prefix explicitly, use unversioned `find_package`, and check the full identifier:
+
+```cmake
+find_package(Worm CONFIG REQUIRED)
+if(NOT Worm_VERSION STREQUAL "1.0.0-rc.1")
+  message(FATAL_ERROR "This build requires Worm 1.0.0-rc.1")
+endif()
+```
+
+Release tags use `v` followed by the full manifest version. The `Release version` workflow checks pushed `v*` tags without publishing anything. Before publication, validate the version file from the staged artifact and, when included, its CLI (adjust the paths and tag for that release):
+
+```sh
+cmake -DWORM_RELEASE_TAG=v0.1.0 -DWORM_ARTIFACT_VERSION_FILE=install/share/Worm/WormVersion.txt -DWORM_CLI_EXECUTABLE=install/bin/worm -P cmake/check-release-version.cmake
+```
+
+Use `worm.exe` on Windows; omit `WORM_CLI_EXECUTABLE` for a library-only artifact. The installed CLI requires its third-party runtime libraries to be available; on Windows, put the matching vcpkg triplet's `bin` (or `debug/bin` for Debug) on `PATH`. Installation does not bundle those DLLs. With only `WORM_RELEASE_TAG`, the command validates source metadata against the proposed tag; artifact validation requires `WORM_ARTIFACT_VERSION_FILE`. It does not create or verify the existence of a Git tag, publish packages, or replace archive checksum validation. The `package` CTest label covers installed consumer compatibility, artifact metadata, CLI output when enabled, invalid identifiers, mismatched tags/artifacts, and synthetic stable/prerelease versions without changing the repository's version.
 
 ## Severity gates
 
@@ -38,6 +66,6 @@ The source repository's pinned vcpkg baseline makes dependency resolution repeat
 
 1. Confirm the applicable gate and all required CI jobs are green at the release commit.
 2. Move relevant changelog entries from `Unreleased` into the exact version and release date without rewriting earlier entries.
-3. Verify the project, manifest, CLI, CMake package version, tag, and package metadata agree once version propagation is implemented.
+3. Run `ctest --test-dir build -C Debug -L package --output-on-failure`, then run `cmake/check-release-version.cmake` with the proposed tag and staged artifact paths to verify version consistency.
 4. Create and push the signed or annotated immutable tag, then build release artifacts from that tag.
 5. Publish and validate the vcpkg port when required by the gate, and record any packaging-only revision separately from the Worm version.

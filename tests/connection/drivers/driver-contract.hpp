@@ -10,6 +10,7 @@
 #include <core/persistence/repository.hpp>
 #include <core/query/migration-ddl.hpp>
 #include <core/query/sql-builder.hpp>
+#include <errors/mapping-exception.hpp>
 #include <errors/migration-exception.hpp>
 #include <errors/migration-lock-exception.hpp>
 #include <errors/query-execution-exception.hpp>
@@ -64,6 +65,94 @@ namespace worm::tests
     }
   }
 
+  struct GeneratedKeyContractEntity
+  {
+    std::int64_t id{};
+    std::string label;
+
+    static constexpr core::Table table() noexcept
+    {
+      return core::Table{"worm_generated_key_contract"};
+    }
+
+    static constexpr core::PrimaryKey primaryKey() noexcept
+    {
+      return core::PrimaryKey{"pk_worm_generated_key_contract", {core::Column{"id", table()}}};
+    }
+
+    static constexpr auto reflect() noexcept
+    {
+      return std::tuple{reflection::field("id", &GeneratedKeyContractEntity::id, {.generated = true}),
+        reflection::field("label", &GeneratedKeyContractEntity::label)};
+    }
+  };
+
+  template <typename Client, core::SqlBuilderI Builder>
+  void runGeneratedKeyRejectionContract(const std::shared_ptr<Client>& client, const Builder& sqlBuilder)
+  {
+    const core::QueryBuilder queryBuilder{sqlBuilder};
+    const auto registry = std::make_shared<core::Registry>();
+    const core::Repository<GeneratedKeyContractEntity> repository{client, queryBuilder, registry};
+    const auto selectAll = queryBuilder.selectAll({GeneratedKeyContractEntity::table().name()});
+    const auto rejectInsert = [&](const auto& entity) {
+      bool rejected = false;
+      try {
+        static_cast<void>(repository.insert(entity));
+      } catch (const MappingException&) {
+        rejected = true;
+      }
+      requireContract(rejected, "Generated-key entity insertion was not rejected.");
+      requireContract(
+        registry->instances<GeneratedKeyContractEntity>().count() == 0,
+        "Rejected insertion changed the registry.");
+    };
+
+    for (int attempt = 0; attempt < 2; ++attempt) {
+      rejectInsert(GeneratedKeyContractEntity{.label = "rejected"});
+      const auto rows = repository.findAll(selectAll);
+      if (!rows.empty()) {
+        throw std::runtime_error(
+          "Rejected generated-key insertion left " + std::to_string(rows.size()) + " persisted row(s).");
+      }
+    }
+    rejectInsert(GeneratedKeyContractEntity{.id = 123, .label = "still-generated"});
+    rejectInsert(std::vector<GeneratedKeyContractEntity>{{.label = "batch-one"}, {.label = "batch-two"}});
+    requireContract(repository.findAll(selectAll).empty(), "Rejected generated-key batch inserted rows.");
+
+    const auto manualInsert =
+      queryBuilder.insert({GeneratedKeyContractEntity::table().name()}, {{"label", std::string{"manual's value"}}});
+    {
+      auto transaction = client->beginTransaction();
+      requireContract(repository.insert(manualInsert) == 1, "Explicit INSERT did not report one affected row.");
+      rejectInsert(GeneratedKeyContractEntity{.label = "rejected-in-transaction"});
+      transaction.commit();
+    }
+    // Verify through a separate persistence context so reads do not populate the rejected insert's registry.
+    const core::Repository<GeneratedKeyContractEntity> verification{client, queryBuilder};
+    const auto committed = verification.findAll(selectAll);
+    requireContract(
+      committed.size() == 1 && committed.front()->label == "manual's value",
+      "Rejected insertion wrote a row or interfered with the caller's commit.");
+    requireContract(
+      verification.find(committed.front()->id) == committed.front(),
+      "Reading a manually inserted generated key did not preserve entity identity.");
+    {
+      auto transaction = client->beginTransaction();
+      requireContract(repository.insert(manualInsert) == 1, "Explicit INSERT failed after rejection.");
+      rejectInsert(GeneratedKeyContractEntity{.label = "rejected-before-rollback"});
+      transaction.rollback();
+    }
+    requireContract(
+      verification.findAll(selectAll).size() == 1,
+      "Rejected insertion interfered with the caller's rollback.");
+    requireContract(
+      verification.update(committed.front()->id, {.id = committed.front()->id, .label = "updated"}) == 1,
+      "Updating an existing generated-key entity failed.");
+    const core::Repository<GeneratedKeyContractEntity> updatedVerification{client, queryBuilder};
+    const auto updated = updatedVerification.find(committed.front()->id);
+    requireContract(updated != nullptr && updated->label == "updated", "Generated-key update was not persisted.");
+  }
+
   inline core::Binary contractPayload()
   {
     std::vector<std::byte> bytes(5000);
@@ -81,6 +170,7 @@ namespace worm::tests
   {
     requireContract(client->type() == expectedDatabaseType, "Driver returned the wrong database type.");
     client->ping();
+    runGeneratedKeyRejectionContract(client, sqlBuilder);
     requireContract(client->isConnected(), "Driver did not complete the connectivity round trip.");
     requireContract(!client->databaseVersion().value.empty(), "Driver did not report its database version.");
     requireContract(
@@ -110,6 +200,9 @@ namespace worm::tests
 
     requireContract(first != nullptr, "Driver did not return the first inserted entity.");
     requireContract(second != nullptr, "Driver did not return the second inserted entity.");
+    requireContract(
+      first->id == "first" && repository.find(std::string{"first"}) == first,
+      "Application-provided insertion did not preserve the key and registered entity identity.");
     requireContract(
       first->label == "Ada's record" && first->note == "bound text",
       "Driver did not preserve bound text parameters.");

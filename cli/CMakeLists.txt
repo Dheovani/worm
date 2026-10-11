@@ -25,6 +25,7 @@ add_library(Worm::CliCore ALIAS WormCliCore)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 target_compile_features(WormCliCore PUBLIC cxx_std_20)
+target_compile_definitions(WormCliCore PRIVATE WORM_VERSION="${WORM_VERSION}")
 target_include_directories(
   WormCliCore
   PUBLIC

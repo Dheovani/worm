@@ -37,12 +37,16 @@ namespace
     pqxx::connection connection{connectionString(config)};
     pqxx::work transaction{connection};
     transaction.exec("DROP TABLE IF EXISTS worm_driver_contract");
+    transaction.exec("DROP TABLE IF EXISTS worm_generated_key_contract");
     transaction.exec("DROP TABLE IF EXISTS worm_schema_contract");
     transaction.exec("DROP TABLE IF EXISTS worm_migration_contract");
     transaction.exec("DROP TABLE IF EXISTS worm_migration_failure");
     transaction.exec("DROP TABLE IF EXISTS _worm_migrations");
     transaction.exec("DROP TYPE IF EXISTS worm_contract_status");
     transaction.exec("CREATE TYPE worm_contract_status AS ENUM ('active','on''hold')");
+    transaction.exec(
+      "CREATE TABLE worm_generated_key_contract (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, label TEXT NOT "
+      "NULL)");
     transaction.exec(
       "CREATE TABLE worm_driver_contract ("
       "id TEXT PRIMARY KEY, label TEXT NOT NULL, note TEXT NULL, amount NUMERIC(30,6) NOT NULL, "

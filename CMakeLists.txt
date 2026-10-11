@@ -52,15 +52,25 @@ set(
   FORCE
 )
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake")
+worm_read_version("${CMAKE_CURRENT_SOURCE_DIR}/vcpkg.json")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg.json")
+
 project(
   worm
-  VERSION 0.1.0
+  VERSION "${WORM_VERSION_NUMERIC}"
   DESCRIPTION "A C++ ORM inspired by Doctrine"
   LANGUAGES CXX
 )
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+
+set(
+  WORM_INSTALL_CMAKEDIR
+  "${CMAKE_INSTALL_LIBDIR}/cmake/Worm"
+  CACHE STRING "Directory for Worm CMake package files"
+)
 
 option(WORM_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings for Worm targets" ${PROJECT_IS_TOP_LEVEL})
 option(WORM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
@@ -149,12 +159,6 @@ if(WORM_BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
 endif()
 
-set(
-  WORM_INSTALL_CMAKEDIR
-  "${CMAKE_INSTALL_LIBDIR}/cmake/Worm"
-  CACHE STRING "Directory for Worm CMake package files"
-)
-
 install(
   TARGETS
     WormErrors
@@ -182,6 +186,10 @@ configure_package_config_file(
   INSTALL_DESTINATION "${WORM_INSTALL_CMAKEDIR}"
 )
 
+worm_write_package_version("${PROJECT_BINARY_DIR}/WormConfigVersion.cmake")
+configure_file(cmake/WormVersion.txt.in "${PROJECT_BINARY_DIR}/WormVersion.txt" @ONLY)
+install(FILES "${PROJECT_BINARY_DIR}/WormVersion.txt" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/Worm")
+
 install(
   EXPORT WormTargets
   FILE WormTargets.cmake
@@ -190,7 +198,7 @@ install(
 )
 
 install(
-  FILES "${PROJECT_BINARY_DIR}/WormConfig.cmake"
+  FILES "${PROJECT_BINARY_DIR}/WormConfig.cmake" "${PROJECT_BINARY_DIR}/WormConfigVersion.cmake"
   DESTINATION "${WORM_INSTALL_CMAKEDIR}"
 )
 

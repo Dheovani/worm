@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <set>
 #include <string>
 #include <type_traits>
@@ -45,6 +46,26 @@ namespace
   struct MySqlBoolFlag
   {
     bool value{};
+  };
+
+  struct MySqlResultDeleter
+  {
+    void operator()(MYSQL_RES* result) const noexcept
+    {
+      if (result != nullptr) {
+        mysql_free_result(result);
+      }
+    }
+  };
+
+  struct MySqlStatementDeleter
+  {
+    void operator()(MYSQL_STMT* statement) const noexcept
+    {
+      if (statement != nullptr) {
+        mysql_stmt_close(statement);
+      }
+    }
   };
 
   void refreshMySqlBind(MySqlBoundParameter& boundParameter)
@@ -254,7 +275,6 @@ namespace worm::connection
     std::vector<core::ResultRow> rows;
     std::vector<MYSQL_FIELD> fields;
 
-    MYSQL_RES* res;
     MYSQL_ROW row;
 
     if (statement.parameters.empty()) {
@@ -262,26 +282,24 @@ namespace worm::connection
         throw QueryExecutionException(mysql_error(connection_.get()));
       }
 
-      res = mysql_store_result(connection_.get());
+      const std::unique_ptr<MYSQL_RES, MySqlResultDeleter> result{mysql_store_result(connection_.get())};
 
-      if (res != nullptr) {
+      if (result != nullptr) {
         MYSQL_FIELD* field;
-        while ((field = mysql_fetch_field(res))) {
+        while ((field = mysql_fetch_field(result.get()))) {
           fields.push_back(*field);
         }
 
-        while ((row = mysql_fetch_row(res))) {
+        while ((row = mysql_fetch_row(result.get()))) {
           std::vector<core::ResultColumn> columns;
-          const unsigned long* lengths = mysql_fetch_lengths(res);
+          const unsigned long* lengths = mysql_fetch_lengths(result.get());
 
-          for (unsigned int i = 0; i < mysql_num_fields(res); ++i) {
+          for (unsigned int i = 0; i < mysql_num_fields(result.get()); ++i) {
             columns.push_back({fields[i].name, mysqlValue(fields[i], row[i], lengths[i])});
           }
 
           rows.push_back({columns});
         }
-
-        mysql_free_result(res);
       } else if (mysql_field_count(connection_.get()) != 0) {
         throw QueryExecutionException(mysql_error(connection_.get()));
       }
@@ -291,19 +309,17 @@ namespace worm::connection
       return core::ResultSet{rows, affectedRows};
     }
 
-    MYSQL_STMT* preparedStatement = mysql_stmt_init(connection_.get());
+    const std::unique_ptr<MYSQL_STMT, MySqlStatementDeleter> preparedStatement{mysql_stmt_init(connection_.get())};
 
     if (preparedStatement == nullptr) {
       throw QueryExecutionException("Unable to initialize a MySQL prepared statement.");
     }
 
     if (mysql_stmt_prepare(
-          preparedStatement,
+          preparedStatement.get(),
           statement.sql.c_str(),
           static_cast<unsigned long>(statement.sql.size()))) {
-      const std::string error = mysql_stmt_error(preparedStatement);
-      mysql_stmt_close(preparedStatement);
-      throw QueryExecutionException(error);
+      throw QueryExecutionException(mysql_stmt_error(preparedStatement.get()));
     }
 
     std::vector<MySqlBoundParameter> parameters;
@@ -321,32 +337,27 @@ namespace worm::connection
       binds.push_back(parameter.bind);
     }
 
-    if (!binds.empty() && mysql_stmt_bind_param(preparedStatement, binds.data())) {
-      const std::string error = mysql_stmt_error(preparedStatement);
-      mysql_stmt_close(preparedStatement);
-      throw QueryExecutionException(error);
+    if (!binds.empty() && mysql_stmt_bind_param(preparedStatement.get(), binds.data())) {
+      throw QueryExecutionException(mysql_stmt_error(preparedStatement.get()));
     }
 
-    if (mysql_stmt_execute(preparedStatement)) {
-      const std::string error = mysql_stmt_error(preparedStatement);
-      mysql_stmt_close(preparedStatement);
-      throw QueryExecutionException(error);
+    if (mysql_stmt_execute(preparedStatement.get())) {
+      throw QueryExecutionException(mysql_stmt_error(preparedStatement.get()));
     }
 
-    res = mysql_stmt_result_metadata(preparedStatement);
+    const std::unique_ptr<MYSQL_RES, MySqlResultDeleter> result{mysql_stmt_result_metadata(preparedStatement.get())};
 
-    if (res == nullptr) {
-      const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));
-      mysql_stmt_close(preparedStatement);
+    if (result == nullptr) {
+      const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement.get()));
       return core::ResultSet{rows, affectedRows};
     }
 
     MYSQL_FIELD* field;
-    while ((field = mysql_fetch_field(res))) {
+    while ((field = mysql_fetch_field(result.get()))) {
       fields.push_back(*field);
     }
 
-    const unsigned int columnCount = mysql_num_fields(res);
+    const unsigned int columnCount = mysql_num_fields(result.get());
     std::vector<std::string> buffers(columnCount, std::string(resultBufferSize, '\0'));
     std::vector<unsigned long> lengths(columnCount);
     std::vector<MySqlBoolFlag> isNull(columnCount);
@@ -363,15 +374,12 @@ namespace worm::connection
       resultBinds[i].error = &errors[i].value;
     }
 
-    if (mysql_stmt_bind_result(preparedStatement, resultBinds.data())) {
-      const std::string error = mysql_stmt_error(preparedStatement);
-      mysql_free_result(res);
-      mysql_stmt_close(preparedStatement);
-      throw QueryExecutionException(error);
+    if (mysql_stmt_bind_result(preparedStatement.get(), resultBinds.data())) {
+      throw QueryExecutionException(mysql_stmt_error(preparedStatement.get()));
     }
 
     int fetchResult = 0;
-    while ((fetchResult = mysql_stmt_fetch(preparedStatement)) == 0 || fetchResult == MYSQL_DATA_TRUNCATED) {
+    while ((fetchResult = mysql_stmt_fetch(preparedStatement.get())) == 0 || fetchResult == MYSQL_DATA_TRUNCATED) {
       std::vector<core::ResultColumn> columns;
 
       for (unsigned int i = 0; i < columnCount; i++) {
@@ -389,11 +397,8 @@ namespace worm::connection
           expandedBind.buffer = expanded.data();
           expandedBind.buffer_length = lengths[i];
           expandedBind.length = &lengths[i];
-          if (mysql_stmt_fetch_column(preparedStatement, &expandedBind, i, 0)) {
-            const std::string error = mysql_stmt_error(preparedStatement);
-            mysql_free_result(res);
-            mysql_stmt_close(preparedStatement);
-            throw QueryExecutionException(error);
+          if (mysql_stmt_fetch_column(preparedStatement.get(), &expandedBind, i, 0)) {
+            throw QueryExecutionException(mysql_stmt_error(preparedStatement.get()));
           }
           value = expanded.data();
         }
@@ -404,16 +409,11 @@ namespace worm::connection
     }
 
     if (fetchResult != MYSQL_NO_DATA) {
-      const std::string error = mysql_stmt_error(preparedStatement);
-      mysql_free_result(res);
-      mysql_stmt_close(preparedStatement);
-      throw QueryExecutionException(error);
+      throw QueryExecutionException(mysql_stmt_error(preparedStatement.get()));
     }
 
-    const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement));
+    const std::uint64_t affectedRows = static_cast<std::uint64_t>(mysql_stmt_affected_rows(preparedStatement.get()));
 
-    mysql_free_result(res);
-    mysql_stmt_close(preparedStatement);
     return core::ResultSet{rows, affectedRows};
   }
 

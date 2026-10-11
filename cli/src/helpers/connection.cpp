@@ -66,6 +66,7 @@ namespace worm::cli
       .password = invocation.global.password.value_or(""),
       .dbname = *invocation.global.database,
       .port = invocation.global.port.value_or(defaultPort(type)),
+      .trustServerCertificate = invocation.global.trustServerCertificate,
     };
   }
 

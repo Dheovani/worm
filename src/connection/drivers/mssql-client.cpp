@@ -30,6 +30,7 @@ namespace
     SQLCHAR boolean{};
     std::string text;
     std::vector<std::byte> binary;
+    std::byte emptyBinary{};
     SQLLEN indicator{};
     SQLSMALLINT valueType{SQL_C_CHAR};
     SQLSMALLINT parameterType{SQL_VARCHAR};
@@ -112,7 +113,7 @@ namespace
     using worm::utils::strings::replaceFirst;
 
     std::string connectionString = "Driver={driver};Server={server};Database={dbname};UID={username};PWD={password};"
-                                   "Encrypt=yes;TrustServerCertificate=no;";
+                                   "Encrypt=yes;TrustServerCertificate={trust};";
 
     std::string driver = worm::utils::env::envValue("MSSQL_ODBC_DRIVER");
     if (driver.empty()) {
@@ -129,6 +130,7 @@ namespace
     replaceFirst(connectionString, "{dbname}", quoteOdbcValue(config.dbname));
     replaceFirst(connectionString, "{username}", quoteOdbcValue(config.username));
     replaceFirst(connectionString, "{password}", quoteOdbcValue(config.password));
+    replaceFirst(connectionString, "{trust}", config.trustServerCertificate ? "yes" : "no");
 
     return connectionString;
   }
@@ -222,7 +224,7 @@ namespace
         parameter.value = &parameter.boolean;
         break;
       case SQL_C_BINARY:
-        parameter.value = parameter.binary.data();
+        parameter.value = parameter.binary.empty() ? &parameter.emptyBinary : parameter.binary.data();
         break;
       default:
         parameter.value = parameter.indicator == SQL_NULL_DATA ? nullptr : parameter.text.data();

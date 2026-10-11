@@ -11,8 +11,14 @@ namespace
   class FakeClient final : public worm::connection::Client
   {
   public:
-    explicit FakeClient(worm::core::ResultSet result, worm::connection::DatabaseType type)
+    explicit FakeClient(
+      worm::core::ResultSet result,
+      worm::connection::DatabaseType type,
+      worm::core::ResultSet foreignKeys = {},
+      worm::core::ResultSet indexes = {})
       : result_(std::move(result)),
+        foreignKeys_(std::move(foreignKeys)),
+        indexes_(std::move(indexes)),
         type_(type)
     {}
 
@@ -25,7 +31,7 @@ namespace
     [[nodiscard]]
     const worm::core::Statement& statement() const noexcept
     {
-      return statement_;
+      return statements_.front();
     }
 
   private:
@@ -37,12 +43,20 @@ namespace
 
     worm::core::ResultSet executeImpl(const worm::core::Statement& statement) override
     {
-      statement_ = statement;
+      statements_.push_back(statement);
+      if (statement.sql.find("sys.foreign_key_columns") != std::string::npos) {
+        return foreignKeys_;
+      }
+      if (statement.sql.find("sys.indexes") != std::string::npos) {
+        return indexes_;
+      }
       return result_;
     }
 
     worm::core::ResultSet result_;
-    worm::core::Statement statement_;
+    worm::core::ResultSet foreignKeys_;
+    worm::core::ResultSet indexes_;
+    std::vector<worm::core::Statement> statements_;
     worm::connection::DatabaseType type_;
   };
 
@@ -141,7 +155,22 @@ int main()
                      0,
                      0,
                      "(newid())")}},
-    worm::connection::DatabaseType::MSSQL};
+    worm::connection::DatabaseType::MSSQL,
+    worm::core::ResultSet{{worm::core::ResultRow{{
+      {"schema_name", std::string{"public"}},
+      {"table_name", std::string{"users"}},
+      {"column_name", std::string{"role_id"}},
+      {"referenced_schema", std::string{"public"}},
+      {"referenced_table", std::string{"roles"}},
+      {"referenced_column", std::string{"id"}},
+    }}}},
+    worm::core::ResultSet{{worm::core::ResultRow{{
+      {"schema_name", std::string{"public"}},
+      {"table_name", std::string{"users"}},
+      {"index_name", std::string{"ix_users_role"}},
+      {"column_name", std::string{"role_id"}},
+      {"is_unique", std::int64_t{0}},
+    }}}}};
 
   const worm::connection::SchemaInspector mysqlInspector{mysql};
   const worm::connection::SchemaInspector mysqlEnumInspector{mysqlEnum};
@@ -161,6 +190,8 @@ int main()
       sqliteInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Decimal ||
       mssqlInspector.inspect().tables[0].columns[0].type.kind != worm::core::ColumnTypeKind::Uuid ||
       mssqlInspector.inspect().tables[0].columns[0].defaultExpression != std::optional<std::string>{"(newid())"} ||
+      mssqlInspector.inspect().tables[0].foreignKey != std::vector<std::string>{"role_id -> public.roles.id"} ||
+      mssqlInspector.inspect().tables[0].indexes != std::vector<std::string>{"ix_users_role (role_id)"} ||
       mysqlTextInspector.inspect().tables[0].columns[0].defaultExpression != std::optional<std::string>{"'active'"}) {
     std::cerr << "SchemaInspector did not normalize database-specific types.\n";
     return 1;

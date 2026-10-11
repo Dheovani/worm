@@ -16,6 +16,7 @@ namespace worm::cli
     Database,
     Username,
     Password,
+    TrustServerCertificate,
     Format,
     Verbose,
     NoColor
@@ -81,6 +82,7 @@ namespace worm::cli
     std::optional<std::string> passwordEnv;
     std::optional<std::string> password;
     std::optional<std::string> format;
+    bool trustServerCertificate{false};
 
     bool verbose{false};
     bool noColor{false};

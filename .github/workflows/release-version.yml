@@ -1,0 +1,19 @@
+name: Release version
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate tag against release metadata
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: cmake "-DWORM_RELEASE_TAG=$RELEASE_TAG" -P cmake/check-release-version.cmake

@@ -1,5 +1,7 @@
 @PACKAGE_INIT@
 
+set(Worm_VERSION "@WORM_VERSION@")
+
 include(CMakeFindDependencyMacro)
 
 if(@WORM_ENABLE_POSTGRESQL@)
