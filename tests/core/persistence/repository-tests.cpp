@@ -481,17 +481,16 @@ int main()
   }
 
   bool generatedThreadRejected = false;
-  {
-    const std::jthread worker{[&] {
-      try {
-        static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Wrong thread"}));
-      } catch (const worm::ConcurrentAccessException&) {
-        generatedThreadRejected = true;
-      } catch (const worm::WormException&) {
-        // A mapping failure must not conceal use outside the client's owner thread.
-      }
-    }};
-  }
+  std::thread worker{[&] {
+    try {
+      static_cast<void>(missingGeneratedIdRepository.insert(GeneratedUser{.name = "Wrong thread"}));
+    } catch (const worm::ConcurrentAccessException&) {
+      generatedThreadRejected = true;
+    } catch (const worm::WormException&) {
+      // A mapping failure must not conceal use outside the client's owner thread.
+    }
+  }};
+  worker.join();
   if (!generatedThreadRejected || !missingGeneratedIdClient.statements.empty()) {
     std::cerr << "Repository generated-key validation did not preserve client thread affinity.\n";
     return 1;

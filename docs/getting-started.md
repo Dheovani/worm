@@ -129,8 +129,7 @@ const auto registry = std::make_shared<worm::core::Registry>();
 const worm::core::Repository<User> users{client, queryBuilder, registry};
 ```
 
-Worm does not create tables yet. The schema must exist before using the
-repository:
+CRUD repositories do not create tables implicitly. Create the schema before using the repository, either with reviewed migrations, the supported CLI schema workflow, or equivalent database tooling:
 
 ```sql
 CREATE TABLE users (

@@ -28,6 +28,7 @@ The format follows the categories from Keep a Changelog, and published releases 
 
 ### Fixed
 
+- SQLite statements and MySQL statements/results now release their native handles on every exit path, including exceptions during parameter or result materialization.
 - Empty binary values are now bound as zero-length SQL Server binary parameters instead of being interpreted as SQL `NULL`.
 - SQL Server schema inspection now reports foreign keys and ordinary indexes, including composite and unique indexes.
 - Entity insertion with a generated primary key now raises `MappingException` before SQL execution, preventing a predictable missing-key error from leaving an inserted row behind. Non-empty entity batches follow the same rule; explicit parameterized `insert(Statement)` and application-provided keys remain supported.

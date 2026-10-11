@@ -103,9 +103,7 @@ tests/
 └── utils/
 ```
 
-SQLite, MySQL, and PostgreSQL share the same integration contract. SQLite runs
-locally; the other databases use disposable CI services and can also be run
-locally with the variables described in `.env.example`.
+SQLite, PostgreSQL, MySQL, and SQL Server share the same integration contract. SQLite runs locally; the three server databases use disposable CI services and can also be run locally with the variables described in `.env.example`.
 
 ## Structure
 
