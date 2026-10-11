@@ -1,0 +1,39 @@
+vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+
+@WORM_VCPKG_SOURCE_BLOCK@
+
+vcpkg_check_features(
+  OUT_FEATURE_OPTIONS featureOptions
+  FEATURES
+    cli WORM_BUILD_CLI
+    mssql WORM_ENABLE_MSSQL
+    mysql WORM_ENABLE_MYSQL
+    postgresql WORM_ENABLE_POSTGRESQL
+    sqlite WORM_ENABLE_SQLITE
+)
+
+vcpkg_cmake_configure(
+  SOURCE_PATH "${SOURCE_PATH}"
+  OPTIONS
+    -DBUILD_TESTING=OFF
+    -DWORM_BUILD_BENCHMARKS=OFF
+    -DWORM_BUILD_DOCS=OFF
+    -DWORM_BUILD_EXAMPLES=OFF
+    -DWORM_BUILD_FUZZERS=OFF
+    ${featureOptions}
+)
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(PACKAGE_NAME Worm CONFIG_PATH lib/cmake/Worm)
+vcpkg_copy_pdbs()
+
+if("cli" IN_LIST FEATURES)
+  vcpkg_copy_tools(TOOL_NAMES worm AUTO_CLEAN)
+endif()
+
+file(REMOVE_RECURSE
+  "${CURRENT_PACKAGES_DIR}/debug/include"
+  "${CURRENT_PACKAGES_DIR}/debug/share"
+  "${CURRENT_PACKAGES_DIR}/share/licenses"
+)
+file(INSTALL "${CURRENT_PORT_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

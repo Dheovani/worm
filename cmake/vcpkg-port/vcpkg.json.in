@@ -1,0 +1,58 @@
+{
+  "name": "worm",
+  "version-semver": "@WORM_VERSION@",
+  "description": "A small, typed, predictable C++20 ORM",
+  "homepage": "https://github.com/Dheovani/worm",
+  "license": "MIT",
+  "supports": "(windows | linux | osx) & !uwp & !xbox",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
+  "default-features": [
+    "mysql",
+    "postgresql",
+    "sqlite"
+  ],
+  "features": {
+    "cli": {
+      "description": "Build the Worm command-line interface",
+      "dependencies": [
+        "nlohmann-json"
+      ]
+    },
+    "mssql": {
+      "description": "Build the Microsoft SQL Server driver",
+      "dependencies": [
+        {
+          "name": "unixodbc",
+          "platform": "linux | osx"
+        }
+      ]
+    },
+    "mysql": {
+      "description": "Build the MySQL driver",
+      "dependencies": [
+        "libmysql"
+      ]
+    },
+    "postgresql": {
+      "description": "Build the PostgreSQL driver",
+      "dependencies": [
+        "libpqxx"
+      ]
+    },
+    "sqlite": {
+      "description": "Build the SQLite driver",
+      "dependencies": [
+        "sqlite3"
+      ]
+    }
+  }
+}

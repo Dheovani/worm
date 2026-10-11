@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "worm-vcpkg-consumer",
+  "version-string": "test",
+  "dependencies": [
+    {
+      "name": "worm",
+      "features": [
+        "cli",
+        "mssql"
+      ]
+    }
+  ]
+}

@@ -26,6 +26,12 @@ add_test(NAME Worm.Package.Version
     -P "${CMAKE_CURRENT_SOURCE_DIR}/package/version-tests.cmake")
 set_tests_properties(Worm.Package.Version PROPERTIES LABELS "package;unit")
 
+add_test(NAME Worm.Package.VcpkgPort
+  COMMAND "${CMAKE_COMMAND}" "-DTEST_ROOT=${PROJECT_BINARY_DIR}/vcpkg-port-test"
+    "-DSOURCE_ROOT=${PROJECT_SOURCE_DIR}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/package/vcpkg-port-tests.cmake")
+set_tests_properties(Worm.Package.VcpkgPort PROPERTIES LABELS "package;unit")
+
 if(TARGET WormCliCore)
   add_subdirectory(cli)
 endif()
