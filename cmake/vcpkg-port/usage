@@ -1,0 +1,8 @@
+worm provides CMake package targets:
+
+  find_package(Worm CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE Worm::Core)
+
+Link Worm::Connection when constructing database clients directly. Driver availability follows the features selected while installing the port.
+
+The cli feature installs the worm executable under tools/worm.

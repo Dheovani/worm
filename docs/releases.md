@@ -33,7 +33,7 @@ endif()
 Release tags use `v` followed by the full manifest version. The `Release version` workflow checks pushed `v*` tags without publishing anything. Before publication, validate the version file from the staged artifact and, when included, its CLI (adjust the paths and tag for that release):
 
 ```sh
-cmake -DWORM_RELEASE_TAG=v0.1.0 -DWORM_ARTIFACT_VERSION_FILE=install/share/Worm/WormVersion.txt -DWORM_CLI_EXECUTABLE=install/bin/worm -P cmake/check-release-version.cmake
+cmake -DWORM_RELEASE_TAG=v1.0.0-rc.1 -DWORM_ARTIFACT_VERSION_FILE=install/share/Worm/WormVersion.txt -DWORM_CLI_EXECUTABLE=install/bin/worm -P cmake/check-release-version.cmake
 ```
 
 Use `worm.exe` on Windows; omit `WORM_CLI_EXECUTABLE` for a library-only artifact. The installed CLI requires its third-party runtime libraries to be available; on Windows, put the matching vcpkg triplet's `bin` (or `debug/bin` for Debug) on `PATH`. Installation does not bundle those DLLs. With only `WORM_RELEASE_TAG`, the command validates source metadata against the proposed tag; artifact validation requires `WORM_ARTIFACT_VERSION_FILE`. It does not create or verify the existence of a Git tag, publish packages, or replace archive checksum validation. The `package` CTest label covers installed consumer compatibility, artifact metadata, CLI output when enabled, invalid identifiers, mismatched tags/artifacts, and synthetic stable/prerelease versions without changing the repository's version.
@@ -52,7 +52,7 @@ A beta release requires the alpha gate plus a frozen documented feature scope fo
 
 ## Release-candidate gate
 
-A release candidate requires the beta gate plus a clean external build that installs Worm and consumes it through `find_package(Worm)` on Windows, Linux, and macOS, a candidate vcpkg port built for the supported triplets, complete release notes, and no known change still planned for the `1.0.0` public contract. A change to that contract resets the release-candidate sequence.
+A release candidate requires the beta gate plus a clean external build that installs Worm and consumes it through `find_package(Worm)` on Windows, Linux, and macOS, a candidate vcpkg port built for `x64-windows-static`, `x64-linux`, and `x64-osx`, complete release notes, and no known change still planned for the `1.0.0` public contract. A change to that contract resets the release-candidate sequence.
 
 ## `1.0.0` gate
 
@@ -60,12 +60,20 @@ The stable release requires two consecutive release candidates separated by at l
 
 ## Package publication
 
-The source repository's pinned vcpkg baseline makes dependency resolution repeatable during development, but it does not publish Worm itself. A Worm port requires metadata plus a `portfile.cmake`, and a versioned registry entry points to immutable port contents as described by the [vcpkg ports](https://learn.microsoft.com/en-us/vcpkg/concepts/ports) and [registry](https://learn.microsoft.com/en-us/vcpkg/maintainers/registries) documentation. Create the port from a tagged source archive, verify its SHA-512 digest, build its default and optional features, validate a clean consumer, and then add the version entry with `vcpkg x-add-version`; never publish a port that follows a mutable branch.
+The source repository's pinned vcpkg baseline makes dependency resolution repeatable during development, but it does not publish Worm itself. A Worm port requires metadata plus a `portfile.cmake`, and a versioned registry entry points to immutable port contents as described by the [vcpkg ports](https://learn.microsoft.com/en-us/vcpkg/concepts/ports) and [registry](https://learn.microsoft.com/en-us/vcpkg/maintainers/registries) documentation. Create the port from a tagged source archive, verify its SHA-512 digest, build its default and optional features, validate a clean consumer, and then add the version entry with `vcpkg x-add-version`; never publish a port that follows a mutable branch. The port is static-only for `1.0.0` because Worm does not yet expose the symbol-visibility annotations required for a supported Windows DLL contract.
+
+Before tagging, generate a local-source port to validate the build recipe without claiming that an immutable archive already exists:
+
+```sh
+cmake -DWORM_SOURCE_ROOT=. -DWORM_OUTPUT_DIR=build/vcpkg-overlay -DWORM_LOCAL_SOURCE_PATH=. -P cmake/prepare-vcpkg-port.cmake
+```
+
+On a `v*` tag, the `vcpkg port` workflow calculates the GitHub source archive's SHA-512 digest, generates the publishable port against that exact tag, validates all features through a clean consumer on the three supported triplets, and uploads the generated port as a workflow artifact. That generated artifact is the input for the registry change; the local-source port is validation infrastructure and must not be published.
 
 ## Release checklist
 
 1. Confirm the applicable gate and all required CI jobs are green at the release commit.
 2. Move relevant changelog entries from `Unreleased` into the exact version and release date without rewriting earlier entries.
-3. Run `ctest --test-dir build -C Debug -L package --output-on-failure`, then run `cmake/check-release-version.cmake` with the proposed tag and staged artifact paths to verify version consistency.
-4. Create and push the signed or annotated immutable tag, then build release artifacts from that tag.
-5. Publish and validate the vcpkg port when required by the gate, and record any packaging-only revision separately from the Worm version.
+3. Run `ctest --test-dir build -C Debug -L package --output-on-failure`, validate the local-source port on all supported triplets, then run `cmake/check-release-version.cmake` with the proposed tag and staged artifact paths to verify version consistency.
+4. Create and push the signed or annotated immutable tag, then require both the release-version and tagged vcpkg-port workflows to pass before publishing release artifacts.
+5. Publish and validate the generated immutable-tag vcpkg port when required by the gate, and record any packaging-only revision separately from the Worm version.

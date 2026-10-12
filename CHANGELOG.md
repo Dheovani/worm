@@ -1,13 +1,16 @@
 # Changelog
 
-This file records notable user-visible changes to Worm. The project is still pre-release and does not yet guarantee API or binary stability, so all current work remains under `Unreleased` until the first release satisfies the release policy.
+This file records notable user-visible changes to Worm. The project remains pre-release until `1.0.0` and does not yet guarantee API or binary stability.
 
 The format follows the categories from Keep a Changelog, and published releases follow the semantic-versioning rules in the [release policy](docs/releases.md).
 
-## Unreleased
+## [Unreleased]
+
+## [1.0.0-rc.1] - 2026-10-11
 
 ### Added
 
+- A generated vcpkg port and clean-consumer workflow covering all port features on `x64-windows-static`, `x64-linux`, and `x64-osx`, with immutable tag-archive validation for releases.
 - One release-version source in `vcpkg.json`, propagated to the CLI and installed CMake package, with version-aware `find_package`, conservative prerelease selection, and tag/artifact consistency checks.
 - Service-backed SQL Server 2022 driver and CLI contracts covering connectivity, CRUD, binding, hydration, schema inspection, migrations, diagnostics, and supported schema-management commands.
 - Explicit SQL Server certificate trust configuration for controlled local development while retaining certificate validation by default.
@@ -40,4 +43,7 @@ The format follows the categories from Keep a Changelog, and published releases 
 
 ## Maintaining this file
 
-Add an entry under `Unreleased` in the same pull request as a user-visible addition, change, fix, deprecation, security correction, or removal. Describe observable behavior rather than implementation details. When a release process is established, move those entries into a dated version section and add comparison links without rewriting earlier release notes.
+Add an entry under `Unreleased` in the same pull request as a user-visible addition, change, fix, deprecation, security correction, or removal. Describe observable behavior rather than implementation details. Move release entries into a dated version section and add comparison links without rewriting earlier release notes.
+
+[Unreleased]: https://github.com/Dheovani/worm/compare/v1.0.0-rc.1...HEAD
+[1.0.0-rc.1]: https://github.com/Dheovani/worm/releases/tag/v1.0.0-rc.1

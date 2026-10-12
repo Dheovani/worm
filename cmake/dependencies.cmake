@@ -67,18 +67,29 @@ endif()
 
 if(WORM_ENABLE_MSSQL)
   # SQL Server connectivity uses the standard ODBC API. CMake's FindODBC
-  # resolves the platform ODBC driver manager:
+  # resolves the platform ODBC driver manager. Prefer vcpkg's unixODBC config
+  # target when available because it preserves static transitive dependencies:
   #
   #   Windows: Windows SDK / odbc32
   #   Unix:    unixODBC or iODBC
   #
   # The Microsoft ODBC Driver for SQL Server itself is a runtime dependency
   # and is not linked directly into Worm.
-  find_package(ODBC REQUIRED)
+  find_package(unofficial-unixodbc CONFIG QUIET)
 
-  if(NOT TARGET ODBC::ODBC)
-    message(FATAL_ERROR "ODBC was found, but target ODBC::ODBC is unavailable.")
+  if(TARGET unofficial::unixodbc::unixodbc)
+    set(WORM_MSSQL_TARGET unofficial::unixodbc::unixodbc)
+    set(WORM_MSSQL_PACKAGE unofficial-unixodbc)
+  else()
+    find_package(ODBC REQUIRED)
+
+    if(NOT TARGET ODBC::ODBC)
+      message(FATAL_ERROR "ODBC was found, but target ODBC::ODBC is unavailable.")
+    endif()
+
+    set(WORM_MSSQL_TARGET ODBC::ODBC)
+    set(WORM_MSSQL_PACKAGE ODBC)
   endif()
 
-  target_link_libraries(WormDependencies INTERFACE ODBC::ODBC)
+  target_link_libraries(WormDependencies INTERFACE ${WORM_MSSQL_TARGET})
 endif()

@@ -1,0 +1,174 @@
+name: vcpkg port
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/vcpkg-port.yml"
+      - "CMakeLists.txt"
+      - "cli/**"
+      - "cmake/**"
+      - "src/**"
+      - "tests/package/vcpkg-consumer/**"
+      - "vcpkg.json"
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+    paths:
+      - ".github/workflows/vcpkg-port.yml"
+      - "CMakeLists.txt"
+      - "cli/**"
+      - "cmake/**"
+      - "src/**"
+      - "tests/package/vcpkg-consumer/**"
+      - "vcpkg.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Prepare source metadata
+    runs-on: ubuntu-24.04
+    outputs:
+      sha512: ${{ steps.archive.outputs.sha512 }}
+      vcpkg_baseline: ${{ steps.manifest.outputs.vcpkg_baseline }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Read vcpkg baseline
+        id: manifest
+        shell: bash
+        run: echo "vcpkg_baseline=$(jq -r '.\"builtin-baseline\"' vcpkg.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Hash immutable tag archive
+        id: archive
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          cmake "-DWORM_RELEASE_TAG=$RELEASE_TAG" -P cmake/check-release-version.cmake
+          curl --fail --location --retry 3 \
+            "https://github.com/$REPOSITORY/archive/refs/tags/$RELEASE_TAG.tar.gz" \
+            --output source.tar.gz
+          echo "sha512=$(sha512sum source.tar.gz | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
+  validate:
+    name: ${{ matrix.triplet }}
+    needs: source
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            triplet: x64-windows-static
+          - os: ubuntu-24.04
+            triplet: x64-linux
+          - os: macos-14
+            triplet: x64-osx
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      WORM_PORT_ROOT: ${{ github.workspace }}/build/vcpkg-overlay
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Checkout pinned vcpkg
+        uses: actions/checkout@v5
+        with:
+          repository: microsoft/vcpkg
+          ref: ${{ needs.source.outputs.vcpkg_baseline }}
+          path: vcpkg
+
+      - name: Bootstrap vcpkg
+        if: runner.os != 'Windows'
+        shell: bash
+        run: "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+
+      - name: Bootstrap vcpkg
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '& "$env:VCPKG_ROOT\bootstrap-vcpkg.bat"'
+
+      - name: Install Linux build prerequisites
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes autoconf autoconf-archive automake libltdl-dev libtool libtool-bin libtirpc-dev
+
+      - name: Install macOS build prerequisites
+        if: runner.os == 'macOS'
+        shell: bash
+        run: brew install autoconf autoconf-archive automake libtool
+
+      - name: Generate local-source port
+        if: github.ref_type != 'tag'
+        run: >
+          cmake
+          "-DWORM_SOURCE_ROOT=${{ github.workspace }}"
+          "-DWORM_OUTPUT_DIR=${{ env.WORM_PORT_ROOT }}"
+          "-DWORM_LOCAL_SOURCE_PATH=${{ github.workspace }}"
+          -P cmake/prepare-vcpkg-port.cmake
+
+      - name: Generate immutable-tag port
+        if: github.ref_type == 'tag'
+        run: >
+          cmake
+          "-DWORM_SOURCE_ROOT=${{ github.workspace }}"
+          "-DWORM_OUTPUT_DIR=${{ env.WORM_PORT_ROOT }}"
+          "-DWORM_SOURCE_SHA512=${{ needs.source.outputs.sha512 }}"
+          -P cmake/prepare-vcpkg-port.cmake
+
+      - name: Configure clean consumer
+        run: >
+          cmake
+          -S tests/package/vcpkg-consumer
+          -B build/vcpkg-consumer
+          "-DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
+          "-DVCPKG_OVERLAY_PORTS=${{ env.WORM_PORT_ROOT }}"
+          "-DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}"
+          "-DWORM_PORT_MANIFEST=${{ env.WORM_PORT_ROOT }}/worm/vcpkg.json"
+
+      - name: Build clean consumer
+        run: cmake --build build/vcpkg-consumer --config Release --parallel
+
+      - name: Run clean consumer
+        run: ctest --test-dir build/vcpkg-consumer -C Release --output-on-failure
+
+      - name: Validate installed CLI version
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          expected=$(cmake -DPORT_MANIFEST="$WORM_PORT_ROOT/worm/vcpkg.json" -P tests/package/vcpkg-consumer/read-version.cmake)
+          actual=$("build/vcpkg-consumer/vcpkg_installed/${{ matrix.triplet }}/tools/worm/worm" --version)
+          test "$actual" = "worm $expected"
+
+      - name: Validate installed CLI version
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $expected = & cmake "-DPORT_MANIFEST=$env:WORM_PORT_ROOT/worm/vcpkg.json" -P tests/package/vcpkg-consumer/read-version.cmake
+          $actual = & "build/vcpkg-consumer/vcpkg_installed/${{ matrix.triplet }}/tools/worm/worm.exe" --version
+          if ($actual -ne "worm $expected") {
+            throw "Expected CLI version 'worm $expected', got '$actual'."
+          }
+
+      - name: Upload publishable port
+        if: github.ref_type == 'tag' && matrix.triplet == 'x64-linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-vcpkg-port-${{ github.ref_name }}
+          path: ${{ env.WORM_PORT_ROOT }}/worm
+          if-no-files-found: error
+          retention-days: 30

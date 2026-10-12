@@ -21,6 +21,8 @@ The MSVC minimum and current lanes currently coincide because the Windows runner
 - Compilers older than the listed minimums may work, but they are not supported because the project does not test them.
 - Native database libraries remain optional. The compiler matrix exercises the configured default drivers, while the independent optional-driver matrix verifies disabled-driver and single-driver configurations.
 
+The release package is validated through a clean vcpkg consumer on `x64-windows-static`, `x64-linux`, and `x64-osx`. Worm's vcpkg port currently supports static linkage because its public libraries do not expose the symbol-visibility annotations required for a reliable Windows DLL contract.
+
 ## Changing the matrix
 
 Raise a minimum only when keeping the earlier compiler would block a required language, standard-library, dependency, security, or maintenance improvement. The change must update CI, this document, the changelog, and the upgrade guide when consumers need to change their toolchain. Record the reason and migration impact in the pull request; use a technical decision when the change establishes a broader portability boundary.
